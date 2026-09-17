@@ -51,18 +51,30 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     @ConfigProperty(name = ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL)
     private val epistolaRestUrl: Optional<String>,
 
-    @ConfigProperty(name = ENV_VAR_EPISTOLA_API_KEY)
-    private val epistolaApiKey: Optional<String>,
-
     @ConfigProperty(name = ENV_VAR_EPISTOLA_TENANT_ID)
-    private val epistolaTenantId: Optional<String>
+    private val epistolaTenantId: Optional<String>,
+
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_CONSUMER_ID)
+    private val epistolaJwtConsumerId: Optional<String>,
+
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY)
+    private val epistolaJwtPrivateKey: Optional<String>,
+
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH)
+    private val epistolaJwtPrivateKeyPath: Optional<String>
 ) {
     companion object {
         const val ENV_VAR_DOCUMENT_CREATION_PROVIDER = "DOCUMENT_CREATION_PROVIDER"
         const val ENV_VAR_SMARTDOCUMENTS_ENABLED = "SMARTDOCUMENTS_ENABLED"
         const val ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL = "EPISTOLA_CLIENT_MP_REST_URL"
-        const val ENV_VAR_EPISTOLA_API_KEY = "EPISTOLA_API_KEY"
         const val ENV_VAR_EPISTOLA_TENANT_ID = "EPISTOLA_TENANT_ID"
+
+        // Named after the Epistola client's own MicroProfile Config properties
+        // (epistola.client.jwt.*), which MicroProfile Config reads from exactly these environment
+        // variable names, so adopting that client needs no renaming here.
+        const val ENV_VAR_EPISTOLA_JWT_CONSUMER_ID = "EPISTOLA_CLIENT_JWT_CONSUMER_ID"
+        const val ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY = "EPISTOLA_CLIENT_JWT_PRIVATE_KEY"
+        const val ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH = "EPISTOLA_CLIENT_JWT_PRIVATE_KEY_PATH"
 
         private val LOG = Logger.getLogger(DocumentCreationProviderConfiguration::class.java.name)
     }
@@ -117,7 +129,8 @@ class DocumentCreationProviderConfiguration @Inject constructor(
                 "Use one of: ${DocumentCreationProvider.configurationValues()}."
         }
         smartDocumentsFlagMismatch()?.let { return it }
-        return missingEpistolaConfiguration()
+        missingEpistolaConfiguration()?.let { return it }
+        return ambiguousEpistolaPrivateKey()
     }
 
     /**
@@ -144,22 +157,47 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     }
 
     /**
-     * Epistola cannot generate anything without an endpoint, a key and a tenant, so a missing one is
-     * reported on startup rather than as a failed document generation later.
+     * Epistola cannot generate anything without an endpoint, a tenant and a signing identity, so a
+     * missing one is reported on startup rather than as a failed document generation later.
      */
     private fun missingEpistolaConfiguration(): String? {
         if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
         val missing = listOf(
             ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL to epistolaRestUrl,
-            ENV_VAR_EPISTOLA_API_KEY to epistolaApiKey,
-            ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId
+            ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId,
+            ENV_VAR_EPISTOLA_JWT_CONSUMER_ID to epistolaJwtConsumerId
         ).filter { (_, value) -> value.getOrNull()?.isNotBlank() != true }
             .map { (name, _) -> name }
+            .toMutableList()
+        if (!isPrivateKeyConfigured()) {
+            missing.add("$ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY or $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH")
+        }
         return if (missing.isEmpty()) {
             null
         } else {
             "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects Epistola but the following required " +
                 "environment variables are not set: ${missing.joinToString(", ")}."
+        }
+    }
+
+    /**
+     * The private key may be supplied inline or as a path to a mounted PEM file. Configuring both is
+     * rejected rather than resolved, because the two would disagree silently about which identity
+     * signs the token.
+     */
+    private fun isPrivateKeyConfigured() =
+        epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true ||
+            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
+
+    private fun ambiguousEpistolaPrivateKey(): String? {
+        if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
+        return if (epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true &&
+            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
+        ) {
+            "Both $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY and $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH are set. " +
+                "Configure exactly one of them."
+        } else {
+            null
         }
     }
 

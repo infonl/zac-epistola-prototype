@@ -168,9 +168,13 @@ documentCreationProvider: ""
 epistola:
    # -- URL to the Epistola API. Required when documentCreationProvider is EPISTOLA.
   url: ""
-   # -- Epistola API key, injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA.
-   # A static API key is the only supported Epistola authentication mechanism; Keycloak client credentials are out of scope for the prototype.
-  apiKey: ""
+   # -- Consumer identifier registered with Epistola, used as the 'iss' claim of the self-signed JWT. Required when documentCreationProvider is EPISTOLA.
+  jwtConsumerId: ""
+   # -- PKCS#8 PEM private key that signs the short-lived JWT, injected as a Kubernetes Secret. Configure either this or jwtPrivateKeyPath, not both.
+   # Epistola's static API key is deprecated and is deliberately not used; OAuth client credentials are the alternative, out of scope for the prototype.
+  jwtPrivateKey: ""
+   # -- Path to a mounted PKCS#8 PEM private key file, as an alternative to jwtPrivateKey.
+  jwtPrivateKeyPath: ""
    # -- Epistola tenant identifier that scopes the available template groups and templates. Required when documentCreationProvider is EPISTOLA.
   tenantId: ""
 
