@@ -38,10 +38,6 @@ class ConfigurationRestService @Inject constructor(
     private val fileSizeConfiguration: FileSizeConfiguration,
     private val documentCreationProviderConfiguration: DocumentCreationProviderConfiguration
 ) {
-    /**
-     * The document creation integration ZAC is configured with, so that the frontends can offer the
-     * matching template configuration and document creation actions, or none at all.
-     */
     @GET
     @Path("document-creation-provider")
     fun readDocumentCreationProvider(): String =

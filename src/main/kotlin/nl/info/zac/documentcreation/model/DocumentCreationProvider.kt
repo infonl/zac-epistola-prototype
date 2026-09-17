@@ -18,19 +18,12 @@ enum class DocumentCreationProvider {
 
     companion object {
         /**
-         * Resolves the value of the `DOCUMENT_CREATION_PROVIDER` environment variable.
-         *
-         * Matching is case-insensitive because the documented spelling (`SmartDocuments`) differs
-         * from the enum constant, and operators should not have to guess which one is meant.
-         *
-         * @return the matching provider, or `null` if the value names no known provider
+         * Matching is case-insensitive because the documented spelling (`SmartDocuments`) differs from
+         * the enum constant, and operators should not have to guess which one is meant.
          */
         fun fromConfigurationValue(value: String): DocumentCreationProvider? =
             entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
 
-        /**
-         * The spellings accepted in configuration, for use in error messages.
-         */
         fun configurationValues(): String = entries.joinToString(", ") { it.name }
     }
 }

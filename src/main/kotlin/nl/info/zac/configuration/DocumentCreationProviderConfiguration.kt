@@ -79,23 +79,16 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         private val LOG = Logger.getLogger(DocumentCreationProviderConfiguration::class.java.name)
     }
 
-    /**
-     * The configured value, trimmed, or `null` when the variable is absent or blank. Blank counts as
-     * absent so that an empty entry in a `.env` file behaves the same as leaving the line out.
-     */
+    /** Blank counts as absent, so an empty entry in a `.env` file behaves like leaving the line out. */
     private val requestedProvider: String? = configuredProvider.getOrNull()
         ?.trim()
         ?.takeIf { it.isNotBlank() }
 
-    /**
-     * Whether SmartDocuments was explicitly switched on or off, as opposed to not being configured.
-     */
     private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
 
     /**
-     * The provider ZAC runs with. An unrecognised configured value resolves to
-     * [DocumentCreationProvider.NONE] so that construction stays free of side effects; [onStartup]
-     * reports it and refuses to start.
+     * An unrecognised value resolves to [DocumentCreationProvider.NONE] so that construction stays free
+     * of side effects; [onStartup] reports it and refuses to start.
      */
     val activeProvider: DocumentCreationProvider = requestedProvider
         ?.let { DocumentCreationProvider.fromConfigurationValue(it) ?: DocumentCreationProvider.NONE }
@@ -156,10 +149,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         }
     }
 
-    /**
-     * Epistola cannot generate anything without an endpoint, a tenant and a signing identity, so a
-     * missing one is reported on startup rather than as a failed document generation later.
-     */
+    /** Reported on startup rather than as a failed document generation later. */
     private fun missingEpistolaConfiguration(): String? {
         if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
         val missing = listOf(
@@ -180,15 +170,14 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         }
     }
 
-    /**
-     * The private key may be supplied inline or as a path to a mounted PEM file. Configuring both is
-     * rejected rather than resolved, because the two would disagree silently about which identity
-     * signs the token.
-     */
     private fun isPrivateKeyConfigured() =
         epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true ||
             epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
 
+    /**
+     * Configuring both an inline key and a key path is rejected rather than resolved, because the two
+     * would disagree silently about which identity signs the token.
+     */
     private fun ambiguousEpistolaPrivateKey(): String? {
         if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
         return if (epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true &&
