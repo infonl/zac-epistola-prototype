@@ -138,6 +138,10 @@ dependencies {
     implementation(libs.flowable.cmmn.engine.configurator)
     implementation(libs.slf4j.jdk14)
     implementation(libs.auth0.java.jwt)
+    // Epistola's own Jakarta EE client, generated from their OpenAPI contract for exactly this stack.
+    // It declares no runtime dependencies of its own: every API it uses (JAX-RS, JSON-B, MicroProfile
+    // Rest Client and Config) is supplied by WildFly.
+    implementation(libs.epistola.client.jakarta)
     implementation(libs.javax.cache.api)
     implementation(libs.google.guava)
     implementation(libs.flyway.core)

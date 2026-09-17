@@ -54,6 +54,7 @@ openapi-generator-eclipse-microprofile-rest-client-api = "3.0"
 smallrye-health = "4.3.0"
 # tracks the Jakarta EE platform spec version implemented by WildFly, not an individually
 # versioned WildFly component, so it is not part of a WildFly BOM
+epistola-client-jakarta = "1.2.0"
 jakarta-jakartaee = "11.0.0"
 # ~Versions of dependencies provided by WildFly.
 
@@ -126,6 +127,7 @@ keycloak-admin-client = { group = "org.keycloak", name = "keycloak-admin-client"
 # the few entries that do have a 'version.ref' are not covered by those BOMs; see the comments
 # next to their versions in the [versions] block above for why, and update them manually when
 # upgrading WildFly, following the instructions in 'updatingDependencies.md'
+epistola-client-jakarta = { group = "app.epistola.contract", name = "client-jakarta", version.ref = "epistola-client-jakarta" }
 eclipse-microprofile-rest-client-api = { group = "org.eclipse.microprofile.rest.client", name = "microprofile-rest-client-api" }
 eclipse-microprofile-config-api = { group = "org.eclipse.microprofile.config", name = "microprofile-config-api" }
 eclipse-microprofile-health-api = { group = "org.eclipse.microprofile.health", name = "microprofile-health-api" }
