@@ -8,9 +8,12 @@ import jakarta.json.bind.annotation.JsonbDateFormat
 import jakarta.json.bind.annotation.JsonbProperty
 import net.atos.zac.util.StringUtil
 import nl.info.client.kvk.zoeken.model.generated.ResultaatItem
+import nl.info.client.zgw.zrc.model.generated.GeoJSONGeometry
+import nl.info.client.zgw.zrc.model.generated.GeometryTypeEnum
 import java.time.LocalDate
 
 private const val DATE_FORMAT = "dd-MM-yyyy"
+private const val POINT_COORDINATE_COUNT = 2
 
 /**
  * The zaak data that ZAC offers to a document template, independent of which document creation
@@ -100,7 +103,28 @@ data class ZaakData(
 
     val verlengingReden: String? = null,
 
-    val zaaktype: String? = null
+    val zaaktype: String? = null,
+
+    /**
+     * Only filled for providers whose templates can address it. Leaving it null keeps it out of the
+     * serialized payload, so adding it did not change what an existing integration receives.
+     */
+    val zaakgeometrie: ZaakGeometrieData? = null,
+
+    /** The zaaktype-specific eigenschappen of the zaak, by name. Filled on the same terms as [zaakgeometrie]. */
+    val eigenschappen: Map<String, String>? = null
+)
+
+/**
+ * A zaak location in the terms a letter needs — a readable coordinate pair rather than GeoJSON.
+ *
+ * ZAC supports POINT geometries only, so anything else carries its type and no coordinates instead
+ * of a shape a template has no way to render.
+ */
+data class ZaakGeometrieData(
+    val type: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 fun ResultaatItem.toAanvragerDataBedrijf() =
@@ -119,3 +143,18 @@ fun ResultaatItem.toHuisnummer(): String? =
         this.adres.binnenlandsAdres.huisnummer?.toString(),
         this.adres.binnenlandsAdres.huisletter
     )
+
+/**
+ * GeoJSON orders a point's coordinates longitude first, which is the reverse of how they are
+ * written in a letter, so they are named here rather than passed on as a pair.
+ */
+fun GeoJSONGeometry.toZaakGeometrieData() =
+    if (type == GeometryTypeEnum.POINT && coordinates.size >= POINT_COORDINATE_COUNT) {
+        ZaakGeometrieData(
+            type = type.toString(),
+            longitude = coordinates[0].toDouble(),
+            latitude = coordinates[1].toDouble()
+        )
+    } else {
+        ZaakGeometrieData(type = type.toString())
+    }
