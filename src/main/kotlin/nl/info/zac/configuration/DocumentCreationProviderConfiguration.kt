@@ -80,6 +80,13 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     /** Kept nullable: the error messages below distinguish an unset flag from one explicitly set to false. */
     private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
 
+    private val epistolaSettings = EpistolaSettings(
+        restUrl = epistolaRestUrl.getOrNull(),
+        tenantId = epistolaTenantId.getOrNull(),
+        catalogId = epistolaCatalogId.getOrNull(),
+        apiKey = epistolaApiKey.getOrNull()
+    )
+
     /**
      * An unrecognised value resolves to [DocumentCreationProvider.NONE] so that construction stays free
      * of side effects; [onStartup] reports it and refuses to start.
@@ -139,19 +146,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     /** Reported on startup rather than as a failed document generation later. */
     private fun verifyEpistolaConfiguration() {
         if (activeProvider != DocumentCreationProvider.EPISTOLA) return
-        val missing = listOf(
-            ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL to epistolaRestUrl,
-            ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId,
-            ENV_VAR_EPISTOLA_CATALOG_ID to epistolaCatalogId,
-            ENV_VAR_EPISTOLA_API_KEY to epistolaApiKey
-        ).filter { (_, value) -> value.getOrNull()?.isNotBlank() != true }
-            .map { (name, _) -> name }
-        if (missing.isNotEmpty()) {
-            throw InvalidDocumentCreationProviderConfigurationException(
-                "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects Epistola but the following required " +
-                    "environment variables are not set: ${missing.joinToString(", ")}."
-            )
-        }
+        epistolaSettings.verify()
     }
 
     private fun derivedFromSmartDocumentsFlag() =
