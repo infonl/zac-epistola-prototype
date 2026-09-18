@@ -68,6 +68,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         const val ENV_VAR_SMARTDOCUMENTS_ENABLED = "SMARTDOCUMENTS_ENABLED"
         const val ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL = "EPISTOLA_CLIENT_MP_REST_URL"
         const val ENV_VAR_EPISTOLA_TENANT_ID = "EPISTOLA_TENANT_ID"
+        const val ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS = "EPISTOLA_GENERATION_TIMEOUT_SECONDS"
 
         // Named after the Epistola client's own MicroProfile Config properties
         // (epistola.client.jwt.*), which MicroProfile Config reads from exactly these environment

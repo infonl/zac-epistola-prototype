@@ -177,6 +177,9 @@ epistola:
   jwtPrivateKeyPath: ""
    # -- Epistola tenant identifier that scopes the available template groups and templates. Required when documentCreationProvider is EPISTOLA.
   tenantId: ""
+   # -- How long ZAC waits for an Epistola generation job before giving up, in seconds. Generation is asynchronous,
+   # so ZAC polls the job and only then downloads the document. Defaults to 60 when left empty.
+  generationTimeoutSeconds: ""
 
 smartDocuments:
    # -- Enable SmartDocuments integration for creating a new document

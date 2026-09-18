@@ -58,6 +58,9 @@ data:
   EPISTOLA_CLIENT_MP_REST_URL: {{ required "Valid .Values.epistola.url entry required!" .Values.epistola.url }}
   EPISTOLA_TENANT_ID: {{ required "Valid .Values.epistola.tenantId entry required!" .Values.epistola.tenantId | quote }}
   EPISTOLA_CLIENT_JWT_CONSUMER_ID: {{ required "Valid .Values.epistola.jwtConsumerId entry required!" .Values.epistola.jwtConsumerId | quote }}
+  {{- if .Values.epistola.generationTimeoutSeconds }}
+  EPISTOLA_GENERATION_TIMEOUT_SECONDS: {{ .Values.epistola.generationTimeoutSeconds | quote }}
+  {{- end }}
   {{- if .Values.epistola.jwtPrivateKeyPath }}
   EPISTOLA_CLIENT_JWT_PRIVATE_KEY_PATH: {{ .Values.epistola.jwtPrivateKeyPath | quote }}
   {{- end }}

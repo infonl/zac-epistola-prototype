@@ -1,6 +1,6 @@
 # zaakafhandelcomponent
 
-![Version: 1.0.326](https://img.shields.io/badge/Version-1.0.326-informational?style=flat-square) ![AppVersion: 5.7](https://img.shields.io/badge/AppVersion-5.7-informational?style=flat-square)
+![Version: 1.0.327](https://img.shields.io/badge/Version-1.0.327-informational?style=flat-square) ![AppVersion: 5.7](https://img.shields.io/badge/AppVersion-5.7-informational?style=flat-square)
 
 A Helm chart for installing Zaakafhandelcomponent
 
@@ -84,6 +84,7 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | db.password | string | `""` |  |
 | db.user | string | `""` |  |
 | documentCreationProvider | string | `""` | Selects the document creation integration ZAC uses. One of: SMARTDOCUMENTS, EPISTOLA, NONE (case-insensitive). ZAC supports one provider at a time; configuring two is rejected on startup. When left empty, the provider is derived from `smartDocuments.enabled`, so existing installations keep working unchanged. |
+| epistola.generationTimeoutSeconds | string | `""` | How long ZAC waits for an Epistola generation job before giving up, in seconds. Generation is asynchronous, so ZAC polls the job and only then downloads the document. Defaults to 60 when left empty. |
 | epistola.jwtConsumerId | string | `""` | Consumer identifier registered with Epistola, used as the 'iss' claim of the self-signed JWT. Required when documentCreationProvider is EPISTOLA. |
 | epistola.jwtPrivateKey | string | `""` | PKCS#8 PEM private key that signs the short-lived JWT, injected as a Kubernetes Secret. Configure either this or jwtPrivateKeyPath, not both. Epistola's static API key is deprecated and is deliberately not used; OAuth client credentials are the alternative, out of scope for the prototype. |
 | epistola.jwtPrivateKeyPath | string | `""` | Path to a mounted PKCS#8 PEM private key file, as an alternative to jwtPrivateKey. |
