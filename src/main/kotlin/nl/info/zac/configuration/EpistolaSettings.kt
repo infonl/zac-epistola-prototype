@@ -23,8 +23,15 @@ internal class EpistolaSettings(
     private val catalogId: String?,
     private val apiKey: String?
 ) {
+    companion object {
+        /** Epistola identifies a tenant by a slug and rejects anything else on every call. */
+        private val TENANT_ID_PATTERN = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+        private val TENANT_ID_LENGTH = 3..63
+    }
+
     fun verify() {
         verifyRequiredSettingsArePresent()
+        verifyTenantIdIsASlug()
     }
 
     private fun verifyRequiredSettingsArePresent() {
@@ -39,6 +46,17 @@ internal class EpistolaSettings(
             throw InvalidDocumentCreationProviderConfigurationException(
                 "${DocumentCreationProviderConfiguration.ENV_VAR_DOCUMENT_CREATION_PROVIDER} selects Epistola " +
                     "but the following required environment variables are not set: ${missing.joinToString(", ")}."
+            )
+        }
+    }
+
+    private fun verifyTenantIdIsASlug() {
+        val tenantId = tenantId?.trim().orEmpty()
+        if (tenantId.length !in TENANT_ID_LENGTH || !TENANT_ID_PATTERN.matches(tenantId)) {
+            throw InvalidDocumentCreationProviderConfigurationException(
+                "$ENV_VAR_EPISTOLA_TENANT_ID ('$tenantId') is not a valid Epistola tenant identifier. " +
+                    "Use a slug of ${TENANT_ID_LENGTH.first} to ${TENANT_ID_LENGTH.last} characters matching " +
+                    "${TENANT_ID_PATTERN.pattern}, for example 'acme-corp'."
             )
         }
     }

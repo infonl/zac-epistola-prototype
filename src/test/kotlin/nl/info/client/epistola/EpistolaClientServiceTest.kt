@@ -29,8 +29,8 @@ import java.nio.file.Files
 import java.util.Optional
 import java.util.UUID
 
-private const val FAKE_TENANT_ID = "fakeTenantId"
-private const val FAKE_TEMPLATE_ID = "fakeTemplateId"
+private const val FAKE_TENANT_ID = "fake-tenant"
+private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
 

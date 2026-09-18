@@ -191,4 +191,46 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
         }
     }
 
+    given("Epistola selected with a tenant identifier that is not a slug") {
+        val configuration = configuration(provider = "Epistola", epistolaTenantId = "ZAC_Gemeente")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails rather than every Epistola call being rejected later") {
+                exception.message!! shouldContain "EPISTOLA_TENANT_ID"
+                exception.message!! shouldContain "ZAC_Gemeente"
+            }
+        }
+    }
+
+    given("Epistola selected with a tenant identifier shorter than Epistola accepts") {
+        val configuration = configuration(provider = "Epistola", epistolaTenantId = "ab")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails naming the accepted length") {
+                exception.message!! shouldContain "3 to 63"
+            }
+        }
+    }
+
+    given("SmartDocuments selected with a tenant identifier that is not a slug") {
+        val configuration = configuration(
+            provider = "SmartDocuments",
+            smartDocumentsEnabled = true,
+            epistolaTenantId = "ZAC_Gemeente"
+        )
+
+        `when`("the configuration is validated on startup") {
+            then("the unused Epistola setting is not held against it") {
+                shouldNotThrowAny { configuration.onStartup(Any()) }
+            }
+        }
+    }
 })

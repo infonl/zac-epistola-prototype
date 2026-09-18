@@ -171,7 +171,8 @@ epistola:
    # -- Epistola API key, issued per consumer by an Epistola administrator. Injected as a Kubernetes Secret.
    # Required when documentCreationProvider is EPISTOLA.
   apiKey: ""
-   # -- Epistola tenant identifier that scopes the available templates. Required when documentCreationProvider is EPISTOLA.
+   # -- Epistola tenant identifier that scopes the available templates. A slug of 3 to 63
+   # characters matching ^[a-z][a-z0-9]*(-[a-z0-9]+)*$, for example "acme-corp". Required when documentCreationProvider is EPISTOLA.
   tenantId: ""
    # -- Epistola catalog identifier that holds the templates ZAC generates from. Required when documentCreationProvider is EPISTOLA.
   catalogId: ""
