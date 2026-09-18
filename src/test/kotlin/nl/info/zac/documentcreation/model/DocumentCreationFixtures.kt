@@ -5,15 +5,10 @@
 
 package nl.info.zac.documentcreation.model
 
-import nl.info.zac.documentcreation.model.AanvragerData
-import nl.info.zac.documentcreation.model.DocumentCreationData
-import nl.info.zac.documentcreation.model.GebruikerData
-import nl.info.zac.documentcreation.model.StartformulierData
-import nl.info.zac.documentcreation.model.TaskData
-import nl.info.zac.documentcreation.model.ZaakData
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import java.net.URI
+import java.time.LocalDate
 import java.time.ZonedDateTime
 
 fun createAanvragerData(
@@ -93,14 +88,61 @@ fun createTaskData(
     behandelaar = behandelaar
 )
 
+/**
+ * Every field carries a value, so that a test asserting which zaak data reaches a document creation
+ * provider fails when a new field is added here without being mapped.
+ */
+@Suppress("LongParameterList")
 fun createZaakData(
-    zaaktype: String = "fakeZaakType",
+    behandelaar: String = "fakeBehandelaar",
+    besluit: String = "fakeBesluit",
+    communicatiekanaal: String = "fakeCommunicatiekanaal",
+    einddatum: LocalDate = LocalDate.of(2026, 1, 2),
+    einddatumGepland: LocalDate = LocalDate.of(2026, 1, 3),
+    groep: String = "fakeGroep",
     identificatie: String = "fakeIdentificatie",
     omschrijving: String = "fakeOmschrijving",
+    opschortingReden: String = "fakeOpschortingReden",
+    registratiedatum: LocalDate = LocalDate.of(2026, 1, 1),
+    resultaat: String = "fakeResultaat",
+    startdatum: LocalDate = LocalDate.of(2026, 1, 1),
+    status: String = "fakeStatus",
     toelichting: String = "fakeToelichting",
+    uiterlijkeEinddatumAfdoening: LocalDate = LocalDate.of(2026, 1, 4),
+    vertrouwelijkheidaanduiding: String = "fakeVertrouwelijkheidaanduiding",
+    verlengingReden: String = "fakeVerlengingReden",
+    zaaktype: String = "fakeZaakType",
+    zaakgeometrie: ZaakGeometrieData = createZaakGeometrieData(),
+    eigenschappen: Map<String, String> = mapOf("fakeEigenschapNaam" to "fakeEigenschapWaarde")
 ) = ZaakData(
-    zaaktype = zaaktype,
+    behandelaar = behandelaar,
+    besluit = besluit,
+    communicatiekanaal = communicatiekanaal,
+    einddatum = einddatum,
+    einddatumGepland = einddatumGepland,
+    groep = groep,
     identificatie = identificatie,
     omschrijving = omschrijving,
-    toelichting = toelichting
+    opschortingReden = opschortingReden,
+    registratiedatum = registratiedatum,
+    resultaat = resultaat,
+    startdatum = startdatum,
+    status = status,
+    toelichting = toelichting,
+    uiterlijkeEinddatumAfdoening = uiterlijkeEinddatumAfdoening,
+    vertrouwelijkheidaanduiding = vertrouwelijkheidaanduiding,
+    verlengingReden = verlengingReden,
+    zaaktype = zaaktype,
+    zaakgeometrie = zaakgeometrie,
+    eigenschappen = eigenschappen
+)
+
+fun createZaakGeometrieData(
+    type: String = "Point",
+    latitude: Double = 52.0907,
+    longitude: Double = 5.1214
+) = ZaakGeometrieData(
+    type = type,
+    latitude = latitude,
+    longitude = longitude
 )

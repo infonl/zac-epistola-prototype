@@ -22,6 +22,7 @@ import nl.info.zac.documentcreation.model.GebruikerData
 import nl.info.zac.documentcreation.model.StartformulierData
 import nl.info.zac.documentcreation.model.TaskData
 import nl.info.zac.documentcreation.model.ZaakData
+import nl.info.zac.documentcreation.model.toZaakGeometrieData
 import nl.info.zac.documentcreation.model.toAanvragerDataBedrijf
 import nl.info.client.zgw.shared.ZgwApiService
 import nl.info.client.zgw.util.extractUuid
@@ -43,6 +44,7 @@ import nl.info.zac.util.NoArgConstructor
 import java.net.URI
 import java.util.Objects
 import java.util.UUID
+import java.util.logging.Logger
 
 @NoArgConstructor
 @Suppress("LongParameterList", "TooManyFunctions")
@@ -57,6 +59,10 @@ class DocumentCreationDataService @Inject constructor(
     private val identityService: IdentityService,
     private val productaanvraagService: ProductaanvraagService
 ) {
+    companion object {
+        private val LOG = Logger.getLogger(DocumentCreationDataService::class.java.name)
+    }
+
     fun createData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
         DocumentCreationData(
             aanvragerData = createAanvragerData(zaak, loggedInUser),
@@ -65,6 +71,42 @@ class DocumentCreationDataService @Inject constructor(
             taskData = taskId?.let { createTaskData(it) },
             zaakData = createZaakData(zaak)
         )
+
+    /**
+     * The same data, plus the zaak location and the zaaktype-specific eigenschappen.
+     *
+     * Those two are added here rather than in [createData] so that the payload an existing
+     * integration receives is unchanged by this issue. Both cost an extra call to the zaakregistratie,
+     * which is the second reason not to make every provider pay for them.
+     */
+    fun createEpistolaData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
+        createData(loggedInUser = loggedInUser, zaak = zaak, taskId = taskId).let {
+            it.copy(
+                zaakData = it.zaakData.copy(
+                    zaakgeometrie = zaak.zaakgeometrie?.toZaakGeometrieData(),
+                    eigenschappen = readEigenschappen(zaak)
+                )
+            )
+        }
+
+    /**
+     * Eigenschappen without a name cannot be addressed by a template, and a name occurring twice
+     * would silently drop one of the two, so both are left out and reported instead.
+     */
+    private fun readEigenschappen(zaak: Zaak): Map<String, String>? =
+        zrcClientService.listZaakeigenschappen(zaak.uuid)
+            .mapNotNull { zaakEigenschap ->
+                zaakEigenschap.naam?.takeIf { it.isNotBlank() }?.let { it to zaakEigenschap.waarde.orEmpty() }
+            }
+            .groupBy({ it.first }, { it.second })
+            .onEach { (naam, waarden) ->
+                if (waarden.size > 1) {
+                    LOG.warning { "Zaak '${zaak.identificatie}' has ${waarden.size} eigenschappen named '$naam'" }
+                }
+            }
+            .filterValues { it.size == 1 }
+            .mapValues { (_, waarden) -> waarden.first() }
+            .takeIf { it.isNotEmpty() }
 
     private fun createGebruikerData(loggedInUser: LoggedInUser) =
         GebruikerData(
