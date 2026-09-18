@@ -214,5 +214,30 @@ class EpistolaTemplateDataConverterTest : BehaviorSpec({
                 }
             }
         }
+        given("a template that declares the startformulier data as a free-form object") {
+            val documentCreationData = createData(
+                startformulier = createStartformulierData(
+                    data = mapOf("voorletters" to "fakeVoorletters", "bsn" to "fakeBsn")
+                )
+            )
+            val schema = objectSchema(
+                "startformulier" to objectSchema("data" to mapOf("type" to "object"))
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toEpistolaTemplateData(
+                    templateId = FAKE_TEMPLATE_ID,
+                    templateSchema = schema
+                )
+
+                then("everything the citizen submitted is sent, because the template declared no fields to narrow it to") {
+                    payload shouldContainExactly mapOf(
+                        "startformulier" to mapOf(
+                            "data" to mapOf("voorletters" to "fakeVoorletters", "bsn" to "fakeBsn")
+                        )
+                    )
+                }
+            }
+        }
     }
 })
