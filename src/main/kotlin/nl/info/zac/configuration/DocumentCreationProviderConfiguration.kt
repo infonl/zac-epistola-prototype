@@ -87,6 +87,14 @@ class DocumentCreationProviderConfiguration @Inject constructor(
 
     private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
 
+    private val epistolaSettings = EpistolaSettings(
+        restUrl = epistolaRestUrl.getOrNull(),
+        tenantId = epistolaTenantId.getOrNull(),
+        jwtConsumerId = epistolaJwtConsumerId.getOrNull(),
+        jwtPrivateKey = epistolaJwtPrivateKey.getOrNull(),
+        jwtPrivateKeyPath = epistolaJwtPrivateKeyPath.getOrNull()
+    )
+
     /**
      * An unrecognised value resolves to [DocumentCreationProvider.NONE] so that construction stays free
      * of side effects; [onStartup] reports it and refuses to start.
@@ -123,8 +131,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
                 "Use one of: ${DocumentCreationProvider.configurationValues()}."
         }
         smartDocumentsFlagMismatch()?.let { return it }
-        missingEpistolaConfiguration()?.let { return it }
-        return ambiguousEpistolaPrivateKey()
+        return if (activeProvider == DocumentCreationProvider.EPISTOLA) epistolaSettings.validationFailure() else null
     }
 
     /**
@@ -147,47 +154,6 @@ class DocumentCreationProviderConfiguration @Inject constructor(
                     "is 'true'. ZAC supports one document creation provider at a time, so set " +
                     "$ENV_VAR_SMARTDOCUMENTS_ENABLED to 'false' or remove it."
             else -> null
-        }
-    }
-
-    /** Reported on startup rather than as a failed document generation later. */
-    private fun missingEpistolaConfiguration(): String? {
-        if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
-        val missing = listOf(
-            ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL to epistolaRestUrl,
-            ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId,
-            ENV_VAR_EPISTOLA_JWT_CONSUMER_ID to epistolaJwtConsumerId
-        ).filter { (_, value) -> value.getOrNull()?.isNotBlank() != true }
-            .map { (name, _) -> name }
-            .toMutableList()
-        if (!isPrivateKeyConfigured()) {
-            missing.add("$ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY or $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH")
-        }
-        return if (missing.isEmpty()) {
-            null
-        } else {
-            "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects Epistola but the following required " +
-                "environment variables are not set: ${missing.joinToString(", ")}."
-        }
-    }
-
-    private fun isPrivateKeyConfigured() =
-        epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true ||
-            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
-
-    /**
-     * Configuring both an inline key and a key path is rejected rather than resolved, because the two
-     * would disagree silently about which identity signs the token.
-     */
-    private fun ambiguousEpistolaPrivateKey(): String? {
-        if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
-        return if (epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true &&
-            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
-        ) {
-            "Both $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY and $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH are set. " +
-                "Configure exactly one of them."
-        } else {
-            null
         }
     }
 
