@@ -16,13 +16,13 @@ import nl.info.client.brp.model.generated.Persoon
 import nl.info.client.brp.model.generated.VerblijfadresBinnenland
 import nl.info.client.kvk.KvkClientService
 import nl.info.client.or.`object`.ObjectsClientService
-import nl.info.client.smartdocuments.model.document.AanvragerData
-import nl.info.client.smartdocuments.model.document.Data
-import nl.info.client.smartdocuments.model.document.GebruikerData
-import nl.info.client.smartdocuments.model.document.StartformulierData
-import nl.info.client.smartdocuments.model.document.TaskData
-import nl.info.client.smartdocuments.model.document.ZaakData
-import nl.info.client.smartdocuments.model.document.toAanvragerDataBedrijf
+import nl.info.zac.documentcreation.model.AanvragerData
+import nl.info.zac.documentcreation.model.DocumentCreationData
+import nl.info.zac.documentcreation.model.GebruikerData
+import nl.info.zac.documentcreation.model.StartformulierData
+import nl.info.zac.documentcreation.model.TaskData
+import nl.info.zac.documentcreation.model.ZaakData
+import nl.info.zac.documentcreation.model.toAanvragerDataBedrijf
 import nl.info.client.zgw.shared.ZgwApiService
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
@@ -58,7 +58,7 @@ class DocumentCreationDataService @Inject constructor(
     private val productaanvraagService: ProductaanvraagService
 ) {
     fun createData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
-        Data(
+        DocumentCreationData(
             aanvragerData = createAanvragerData(zaak, loggedInUser),
             gebruikerData = createGebruikerData(loggedInUser),
             startformulierData = createStartformulierData(zaak.url),

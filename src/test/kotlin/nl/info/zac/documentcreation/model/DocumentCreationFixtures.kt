@@ -5,12 +5,12 @@
 
 package nl.info.zac.documentcreation.model
 
-import nl.info.client.smartdocuments.model.document.AanvragerData
-import nl.info.client.smartdocuments.model.document.Data
-import nl.info.client.smartdocuments.model.document.GebruikerData
-import nl.info.client.smartdocuments.model.document.StartformulierData
-import nl.info.client.smartdocuments.model.document.TaskData
-import nl.info.client.smartdocuments.model.document.ZaakData
+import nl.info.zac.documentcreation.model.AanvragerData
+import nl.info.zac.documentcreation.model.DocumentCreationData
+import nl.info.zac.documentcreation.model.GebruikerData
+import nl.info.zac.documentcreation.model.StartformulierData
+import nl.info.zac.documentcreation.model.TaskData
+import nl.info.zac.documentcreation.model.ZaakData
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import java.net.URI
@@ -36,7 +36,7 @@ fun createData(
     taskData: TaskData = createTaskData(),
     gebruikerData: GebruikerData = createGebruikerData(),
     aanvragerData: AanvragerData = createAanvragerData(),
-) = Data(
+) = DocumentCreationData(
     startformulierData = startformulier,
     zaakData = zaakData,
     taskData = taskData,
