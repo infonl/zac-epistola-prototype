@@ -24,6 +24,6 @@ enum class DocumentCreationProvider {
         fun fromConfigurationValue(value: String): DocumentCreationProvider? =
             entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
 
-        fun configurationValues(): String = entries.joinToString(", ") { it.name }
+        fun configurationValues() = entries.joinToString(", ") { it.name }
     }
 }

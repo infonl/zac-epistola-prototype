@@ -9,6 +9,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.mockk.checkUnnecessaryStub
 import nl.info.zac.configuration.exception.InvalidDocumentCreationProviderConfigurationException
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import java.util.Optional
@@ -30,6 +31,7 @@ private fun configuration(
 )
 
 class DocumentCreationProviderConfigurationTest : BehaviorSpec({
+    afterEach { checkUnnecessaryStub() }
 
     given("an existing installation that only sets SMARTDOCUMENTS_ENABLED") {
         `when`("the flag is true") {

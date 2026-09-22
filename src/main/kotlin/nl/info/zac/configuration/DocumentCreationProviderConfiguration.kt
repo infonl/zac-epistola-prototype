@@ -15,7 +15,6 @@ import nl.info.zac.util.NoArgConstructor
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import java.util.Optional
 import java.util.logging.Logger
-import kotlin.jvm.optionals.getOrDefault
 import kotlin.jvm.optionals.getOrNull
 
 /**
@@ -76,11 +75,6 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         private val LOG = Logger.getLogger(DocumentCreationProviderConfiguration::class.java.name)
     }
 
-    /**
-     * Blank counts as absent, so an empty entry in a `.env` file behaves like leaving the line out. The
-     * value is kept as written: [DocumentCreationProvider.fromConfigurationValue] trims it itself, and an
-     * error message that shows a stray space is more useful than one that has silently removed it.
-     */
     private val requestedProvider: String? = configuredProvider.getOrNull()?.takeIf { it.isNotBlank() }
 
     /** Kept nullable: the error messages below distinguish an unset flag from one explicitly set to false. */
@@ -119,10 +113,6 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     }
 
     /**
-     * Rejects a [ENV_VAR_SMARTDOCUMENTS_ENABLED] that does not match an explicitly configured provider.
-     * Only checked when the provider was configured explicitly, because otherwise the flag is what
-     * the provider was derived from and the two cannot disagree.
-     *
      * Selecting SmartDocuments requires the flag to be `true` rather than merely not `false`: the
      * SmartDocuments service reads that flag itself and stays inert without it, so an installation that
      * left it out would name SmartDocuments as its provider and then fail at the first document.
@@ -165,7 +155,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     }
 
     private fun derivedFromSmartDocumentsFlag() =
-        if (smartDocumentsEnabled.getOrDefault(false)) {
+        if (smartDocumentsFlag == true) {
             DocumentCreationProvider.SMARTDOCUMENTS
         } else {
             DocumentCreationProvider.NONE
