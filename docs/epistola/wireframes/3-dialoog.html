@@ -1,0 +1,91 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wireframe 3 — Dialoog: document genereren</title>
+    <link rel="stylesheet" href="wireframes.css" />
+  </head>
+  <body>
+    <main>
+      <h1>3 · Dialoog — document genereren, invoer en wachtstand</h1>
+      <p class="subtitle">
+        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 3. Dezelfde velden als de
+        bestaande SmartDocuments-dialoog, met één veld eruit en één veld niet-onderhandelbaar.
+      </p>
+
+      <div class="pair">
+        <div>
+          <div class="pair-label">Invoer</div>
+          <div class="frame">
+            <div class="frame-bar"><i class="dot"></i><span class="path">dialog · Document maken</span></div>
+            <div class="frame-body">
+              <div class="field">
+                <div class="fieldlabel">Sjabloongroep <span class="req">*</span></div>
+                <div class="box">Vergunningen <i class="caret">▾</i></div>
+              </div>
+              <div class="field">
+                <div class="fieldlabel">Sjabloon <span class="req">*</span></div>
+                <div class="box">Besluit evenementenvergunning <i class="caret">▾</i></div>
+              </div>
+              <div class="field">
+                <div class="fieldlabel">Titel <span class="req">*</span></div>
+                <div class="box">Besluit ZAAK-2026-0000000117</div>
+              </div>
+              <div class="field">
+                <div class="fieldlabel">Toelichting</div>
+                <div class="box">&nbsp;</div>
+              </div>
+              <div class="grid2">
+                <div class="field">
+                  <div class="fieldlabel">Documenttype</div>
+                  <div class="box ro">Besluit</div>
+                </div>
+                <div class="field">
+                  <div class="fieldlabel">Vertrouwelijkheid</div>
+                  <div class="box ro">Vertrouwelijk</div>
+                </div>
+              </div>
+              <div class="grid2">
+                <div class="field">
+                  <div class="fieldlabel">Formaat</div>
+                  <div class="box ro">PDF</div>
+                </div>
+                <div class="field">
+                  <div class="fieldlabel">Auteur <span class="req">*</span></div>
+                  <div class="box ro">Test Behandelaar 1</div>
+                </div>
+              </div>
+              <div class="btnrow">
+                <span class="btn">Annuleren</span>
+                <span class="btn primary">Genereren</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="pair-label">Bezig</div>
+          <div class="frame">
+            <div class="frame-bar"><i class="dot"></i><span class="path">dialog · Document maken</span></div>
+            <div class="frame-body">
+              <div class="spinner"><i class="ring"></i>Document wordt gegenereerd…</div>
+              <div class="toast warn">
+                <span class="mark">i</span>
+                <span>Dit kan enkele seconden duren. Sluit dit venster niet.</span>
+              </div>
+              <div class="btnrow">
+                <span class="btn">Annuleren</span>
+                <span class="btn primary disabled">Genereren</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

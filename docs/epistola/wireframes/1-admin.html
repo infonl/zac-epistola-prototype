@@ -1,0 +1,72 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wireframe 1 — Admin: Epistola documentsjablonen</title>
+    <link rel="stylesheet" href="wireframes.css" />
+  </head>
+  <body>
+    <main>
+      <h1>1 · Admin — Epistola documentsjablonen per zaaktype</h1>
+      <p class="subtitle">
+        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 1. Spiegelt
+        <code>smart-documents-form.component</code>.
+      </p>
+
+      <div class="frame">
+        <div class="frame-bar">
+          <i class="dot"></i>
+          <span class="path">/admin/parameters &rarr; zaaktype &rarr; Documentcreatie</span>
+        </div>
+        <div class="frame-body">
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Epistola documentsjablonen</div>
+                <div class="card-sub">
+                  Bepaal welke Epistola-sjablonen beschikbaar zijn voor zaken van dit zaaktype.
+                </div>
+              </div>
+              <div class="toggle"><i></i></div>
+            </div>
+            <div class="divider"></div>
+
+            <div class="grp">▾ Vergunningen</div>
+            <div class="row">
+              <i class="chk on"></i>
+              <span class="name">Besluit evenementenvergunning</span>
+              <span class="box">Besluit <i class="caret">▾</i></span>
+              <span class="box ro">Vertrouwelijk</span>
+            </div>
+            <div class="row">
+              <i class="chk on"></i>
+              <span class="name">Ontvangstbevestiging aanvraag</span>
+              <span class="box">Bijlage <i class="caret">▾</i></span>
+              <span class="box ro">Openbaar</span>
+            </div>
+            <div class="row">
+              <i class="chk"></i>
+              <span class="name">Verlenging beslistermijn</span>
+              <span class="box">— kies — <i class="caret">▾</i></span>
+              <span class="box ro">—</span>
+            </div>
+
+            <div class="grp">▾ Handhaving</div>
+            <div class="row">
+              <i class="chk"></i>
+              <span class="name">Voornemen tot handhaving</span>
+              <span class="box">— kies — <i class="caret">▾</i></span>
+              <span class="box ro">—</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

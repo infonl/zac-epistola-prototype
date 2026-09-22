@@ -18,6 +18,10 @@ bijbehorende projectbord.
 |---|---|---|
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
 | [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de drie wijzigingen die Epistola nodig heeft, met ERD | #14 |
+| [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
+
+De uitgangspunten, eisen en wensen en de ontwerpverantwoording staan niet hier: die horen bij de user
+stories op het projectbord en worden daar bijgehouden.
 
 ## Kernbesluiten in één oogopslag
 

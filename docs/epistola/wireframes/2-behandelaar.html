@@ -1,0 +1,64 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wireframe 2 — Behandelaar: zaakdetail zijbalk</title>
+    <link rel="stylesheet" href="wireframes.css" />
+  </head>
+  <body>
+    <main>
+      <h1>2 · Behandelaar — de actie in de zijbalk, CMMN naast BPMN</h1>
+      <p class="subtitle">
+        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 2. Dit is alles wat issue #7 aan
+        de interface verandert.
+      </p>
+
+      <div class="pair">
+        <div>
+          <div class="pair-label">CMMN-zaak · ondersteund</div>
+          <div class="frame">
+            <div class="frame-bar">
+              <i class="dot"></i><span class="path">/zaken/ZAAK-2026-0000000117</span>
+            </div>
+            <div class="frame-body">
+              <div class="sidebar">
+                <div class="side-sec">Zaak</div>
+                <div class="side-item"><i class="ico"></i>Ontvangstbevestiging versturen</div>
+                <div class="side-item"><i class="ico"></i>E-mail versturen</div>
+                <div class="side-item hl"><i class="ico"></i>Document maken</div>
+                <div class="side-item"><i class="ico"></i>Document toevoegen</div>
+                <div class="side-item"><i class="ico"></i>Document versturen</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="pair-label">BPMN-zaak · buiten scope</div>
+          <div class="frame">
+            <div class="frame-bar">
+              <i class="dot"></i><span class="path">/zaken/ZAAK-2026-0000000208</span>
+            </div>
+            <div class="frame-body">
+              <div class="sidebar">
+                <div class="side-sec">Zaak</div>
+                <div class="side-item"><i class="ico"></i>Ontvangstbevestiging versturen</div>
+                <div class="side-item"><i class="ico"></i>E-mail versturen</div>
+                <div class="side-item off"><i class="ico"></i>Document maken</div>
+                <div class="tooltip">
+                  Documentcreatie met Epistola is in deze versie alleen beschikbaar voor CMMN-zaken.
+                </div>
+                <div class="side-item"><i class="ico"></i>Document toevoegen</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
