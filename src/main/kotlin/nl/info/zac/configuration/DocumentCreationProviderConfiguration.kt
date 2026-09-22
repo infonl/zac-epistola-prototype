@@ -54,14 +54,8 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     @ConfigProperty(name = ENV_VAR_EPISTOLA_TENANT_ID)
     private val epistolaTenantId: Optional<String>,
 
-    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_CONSUMER_ID)
-    private val epistolaJwtConsumerId: Optional<String>,
-
-    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY)
-    private val epistolaJwtPrivateKey: Optional<String>,
-
-    @ConfigProperty(name = ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH)
-    private val epistolaJwtPrivateKeyPath: Optional<String>
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_API_KEY)
+    private val epistolaApiKey: Optional<String>
 ) {
     companion object {
         const val ENV_VAR_DOCUMENT_CREATION_PROVIDER = "DOCUMENT_CREATION_PROVIDER"
@@ -69,21 +63,22 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         const val ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL = "EPISTOLA_CLIENT_MP_REST_URL"
         const val ENV_VAR_EPISTOLA_TENANT_ID = "EPISTOLA_TENANT_ID"
 
-        // Named after the Epistola client's own MicroProfile Config properties
-        // (epistola.client.jwt.*), which MicroProfile Config reads from exactly these environment
-        // variable names, so adopting that client needs no renaming here.
-        const val ENV_VAR_EPISTOLA_JWT_CONSUMER_ID = "EPISTOLA_CLIENT_JWT_CONSUMER_ID"
-        const val ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY = "EPISTOLA_CLIENT_JWT_PRIVATE_KEY"
-        const val ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH = "EPISTOLA_CLIENT_JWT_PRIVATE_KEY_PATH"
+        // Named after the Epistola client's own MicroProfile Config property (epistola.client.api-key),
+        // which MicroProfile Config reads from exactly this environment variable name, so adopting that
+        // client needs no renaming here.
+        const val ENV_VAR_EPISTOLA_API_KEY = "EPISTOLA_CLIENT_API_KEY"
 
         private val LOG = Logger.getLogger(DocumentCreationProviderConfiguration::class.java.name)
     }
 
-    /** Blank counts as absent, so an empty entry in a `.env` file behaves like leaving the line out. */
-    private val requestedProvider: String? = configuredProvider.getOrNull()
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
+    /**
+     * Blank counts as absent, so an empty entry in a `.env` file behaves like leaving the line out. The
+     * value is kept as written: [DocumentCreationProvider.fromConfigurationValue] trims it itself, and an
+     * error message that shows a stray space is more useful than one that has silently removed it.
+     */
+    private val requestedProvider: String? = configuredProvider.getOrNull()?.takeIf { it.isNotBlank() }
 
+    /** Kept nullable: the error messages below distinguish an unset flag from one explicitly set to false. */
     private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
 
     /**
@@ -94,99 +89,72 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         ?.let { DocumentCreationProvider.fromConfigurationValue(it) ?: DocumentCreationProvider.NONE }
         ?: derivedFromSmartDocumentsFlag()
 
-    fun isSmartDocumentsActive() = activeProvider == DocumentCreationProvider.SMARTDOCUMENTS
-
-    fun isEpistolaActive() = activeProvider == DocumentCreationProvider.EPISTOLA
-
-    fun isDocumentCreationEnabled() = activeProvider != DocumentCreationProvider.NONE
-
     fun onStartup(@Observes @Initialized(ApplicationScoped::class) @Suppress("UNUSED_PARAMETER") event: Any) {
         validate()
         LOG.info {
-            """ZAC document creation configuration:
-            |- $ENV_VAR_DOCUMENT_CREATION_PROVIDER: '${requestedProvider ?: "<not set>"}'
-            |- $ENV_VAR_SMARTDOCUMENTS_ENABLED: '${smartDocumentsFlag ?: "<not set>"}'
-            |- active provider: '$activeProvider'
-            """.trimMargin()
+            "Active document creation provider: '$activeProvider' " +
+                "($ENV_VAR_DOCUMENT_CREATION_PROVIDER='${requestedProvider ?: "<not set>"}', " +
+                "$ENV_VAR_SMARTDOCUMENTS_ENABLED='${smartDocumentsFlag ?: "<not set>"}')"
         }
     }
 
     private fun validate() {
-        validationFailure()?.let { throw InvalidDocumentCreationProviderConfigurationException(it) }
+        verifyRequestedProviderIsSupported()
+        verifySmartDocumentsConfiguration()
+        verifyEpistolaConfiguration()
     }
 
-    @Suppress("ReturnCount")
-    private fun validationFailure(): String? {
+    private fun verifyRequestedProviderIsSupported() {
         if (requestedProvider != null && DocumentCreationProvider.fromConfigurationValue(requestedProvider) == null) {
-            return "$ENV_VAR_DOCUMENT_CREATION_PROVIDER ('$requestedProvider') is not a supported provider. " +
-                "Use one of: ${DocumentCreationProvider.configurationValues()}."
+            throw InvalidDocumentCreationProviderConfigurationException(
+                "$ENV_VAR_DOCUMENT_CREATION_PROVIDER ('$requestedProvider') is not a supported provider. " +
+                    "Use one of: ${DocumentCreationProvider.configurationValues()}."
+            )
         }
-        smartDocumentsFlagMismatch()?.let { return it }
-        missingEpistolaConfiguration()?.let { return it }
-        return ambiguousEpistolaPrivateKey()
     }
 
     /**
      * Rejects a [ENV_VAR_SMARTDOCUMENTS_ENABLED] that does not match an explicitly configured provider.
-     * Only reported when the provider was configured explicitly, because otherwise the flag is what
+     * Only checked when the provider was configured explicitly, because otherwise the flag is what
      * the provider was derived from and the two cannot disagree.
      *
      * Selecting SmartDocuments requires the flag to be `true` rather than merely not `false`: the
      * SmartDocuments service reads that flag itself and stays inert without it, so an installation that
      * left it out would name SmartDocuments as its provider and then fail at the first document.
      */
-    private fun smartDocumentsFlagMismatch(): String? {
-        if (requestedProvider == null) return null
-        return when {
+    private fun verifySmartDocumentsConfiguration() {
+        if (requestedProvider == null) return
+        when {
             activeProvider == DocumentCreationProvider.SMARTDOCUMENTS && smartDocumentsFlag != true ->
-                "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects SmartDocuments but " +
-                    "$ENV_VAR_SMARTDOCUMENTS_ENABLED is '${smartDocumentsFlag ?: "<not set>"}'. Set it to 'true'."
+                throw InvalidDocumentCreationProviderConfigurationException(
+                    "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects SmartDocuments but " +
+                        "$ENV_VAR_SMARTDOCUMENTS_ENABLED is '${smartDocumentsFlag ?: "<not set>"}'. " +
+                        "Set it to 'true'."
+                )
+
             activeProvider != DocumentCreationProvider.SMARTDOCUMENTS && smartDocumentsFlag == true ->
-                "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects $activeProvider but $ENV_VAR_SMARTDOCUMENTS_ENABLED " +
-                    "is 'true'. ZAC supports one document creation provider at a time, so set " +
-                    "$ENV_VAR_SMARTDOCUMENTS_ENABLED to 'false' or remove it."
-            else -> null
+                throw InvalidDocumentCreationProviderConfigurationException(
+                    "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects $activeProvider but " +
+                        "$ENV_VAR_SMARTDOCUMENTS_ENABLED is 'true'. ZAC supports one document creation " +
+                        "provider at a time, so set $ENV_VAR_SMARTDOCUMENTS_ENABLED to 'false' or remove it."
+                )
         }
     }
 
     /** Reported on startup rather than as a failed document generation later. */
-    private fun missingEpistolaConfiguration(): String? {
-        if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
+    private fun verifyEpistolaConfiguration() {
+        if (activeProvider != DocumentCreationProvider.EPISTOLA) return
         val missing = listOf(
             ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL to epistolaRestUrl,
             ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId,
-            ENV_VAR_EPISTOLA_JWT_CONSUMER_ID to epistolaJwtConsumerId
+            ENV_VAR_EPISTOLA_API_KEY to epistolaApiKey
         ).filter { (_, value) -> value.getOrNull()?.isNotBlank() != true }
             .map { (name, _) -> name }
-            .toMutableList()
-        if (!isPrivateKeyConfigured()) {
-            missing.add("$ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY or $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH")
-        }
-        return if (missing.isEmpty()) {
-            null
-        } else {
-            "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects Epistola but the following required " +
-                "environment variables are not set: ${missing.joinToString(", ")}."
-        }
-    }
-
-    private fun isPrivateKeyConfigured() =
-        epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true ||
-            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
-
-    /**
-     * Configuring both an inline key and a key path is rejected rather than resolved, because the two
-     * would disagree silently about which identity signs the token.
-     */
-    private fun ambiguousEpistolaPrivateKey(): String? {
-        if (activeProvider != DocumentCreationProvider.EPISTOLA) return null
-        return if (epistolaJwtPrivateKey.getOrNull()?.isNotBlank() == true &&
-            epistolaJwtPrivateKeyPath.getOrNull()?.isNotBlank() == true
-        ) {
-            "Both $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY and $ENV_VAR_EPISTOLA_JWT_PRIVATE_KEY_PATH are set. " +
-                "Configure exactly one of them."
-        } else {
-            null
+        if (missing.isNotEmpty()) {
+            throw InvalidDocumentCreationProviderConfigurationException(
+                "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects Epistola but the following required " +
+                    "environment variables are not set: ${missing.joinToString(", ")}."
+            )
         }
     }
 

@@ -18,17 +18,13 @@ private fun configuration(
     smartDocumentsEnabled: Boolean? = null,
     epistolaRestUrl: String? = "https://epistola.example.com",
     epistolaTenantId: String? = "zac-gemeente",
-    epistolaJwtConsumerId: String? = "fakeConsumerId",
-    epistolaJwtPrivateKey: String? = "fakePrivateKeyPem",
-    epistolaJwtPrivateKeyPath: String? = null
+    epistolaApiKey: String? = "fakeApiKey"
 ) = DocumentCreationProviderConfiguration(
     configuredProvider = Optional.ofNullable(provider),
     smartDocumentsEnabled = Optional.ofNullable(smartDocumentsEnabled),
     epistolaRestUrl = Optional.ofNullable(epistolaRestUrl),
     epistolaTenantId = Optional.ofNullable(epistolaTenantId),
-    epistolaJwtConsumerId = Optional.ofNullable(epistolaJwtConsumerId),
-    epistolaJwtPrivateKey = Optional.ofNullable(epistolaJwtPrivateKey),
-    epistolaJwtPrivateKeyPath = Optional.ofNullable(epistolaJwtPrivateKeyPath)
+    epistolaApiKey = Optional.ofNullable(epistolaApiKey)
 )
 
 class DocumentCreationProviderConfigurationTest : BehaviorSpec({
@@ -38,8 +34,6 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
             val configuration = configuration(smartDocumentsEnabled = true)
             then("SmartDocuments stays the active provider and startup is accepted") {
                 configuration.activeProvider shouldBe DocumentCreationProvider.SMARTDOCUMENTS
-                configuration.isSmartDocumentsActive() shouldBe true
-                configuration.isDocumentCreationEnabled() shouldBe true
                 shouldNotThrowAny { configuration.onStartup(Any()) }
             }
         }
@@ -48,7 +42,6 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
             val configuration = configuration(smartDocumentsEnabled = false)
             then("no document creation provider is active") {
                 configuration.activeProvider shouldBe DocumentCreationProvider.NONE
-                configuration.isDocumentCreationEnabled() shouldBe false
                 shouldNotThrowAny { configuration.onStartup(Any()) }
             }
         }
@@ -69,8 +62,6 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
         `when`("the configuration is validated on startup") {
             then("Epistola is the active provider and startup is accepted") {
                 configuration.activeProvider shouldBe DocumentCreationProvider.EPISTOLA
-                configuration.isEpistolaActive() shouldBe true
-                configuration.isSmartDocumentsActive() shouldBe false
                 shouldNotThrowAny { configuration.onStartup(Any()) }
             }
         }
@@ -151,8 +142,8 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
         val configuration = configuration(
             provider = "Epistola",
             epistolaRestUrl = null,
-            epistolaJwtConsumerId = "",
-            epistolaTenantId = "tenant"
+            epistolaTenantId = "tenant",
+            epistolaApiKey = ""
         )
         `when`("the configuration is validated on startup") {
             val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
@@ -160,56 +151,10 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
             }
             then("startup fails naming exactly the missing and blank variables") {
                 exception.message!! shouldContain "EPISTOLA_CLIENT_MP_REST_URL"
-                exception.message!! shouldContain "EPISTOLA_CLIENT_JWT_CONSUMER_ID"
+                exception.message!! shouldContain "EPISTOLA_CLIENT_API_KEY"
                 exception.message!!.contains("EPISTOLA_TENANT_ID") shouldBe false
             }
         }
     }
 
-    given("Epistola selected with neither an inline signing key nor a key path") {
-        val configuration = configuration(
-            provider = "Epistola",
-            epistolaJwtPrivateKey = null,
-            epistolaJwtPrivateKeyPath = null
-        )
-        `when`("the configuration is validated on startup") {
-            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
-                configuration.onStartup(Any())
-            }
-            then("startup fails naming both ways of supplying the key") {
-                exception.message!! shouldContain "EPISTOLA_CLIENT_JWT_PRIVATE_KEY or " +
-                    "EPISTOLA_CLIENT_JWT_PRIVATE_KEY_PATH"
-            }
-        }
-    }
-
-    given("Epistola selected with both an inline signing key and a key path") {
-        val configuration = configuration(
-            provider = "Epistola",
-            epistolaJwtPrivateKey = "fakePrivateKeyPem",
-            epistolaJwtPrivateKeyPath = "/run/secrets/epistola-key.pem"
-        )
-        `when`("the configuration is validated on startup") {
-            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
-                configuration.onStartup(Any())
-            }
-            then("startup fails because the two would disagree about which identity signs the token") {
-                exception.message!! shouldContain "Configure exactly one of them"
-            }
-        }
-    }
-
-    given("Epistola selected with the signing key supplied as a mounted path") {
-        val configuration = configuration(
-            provider = "Epistola",
-            epistolaJwtPrivateKey = null,
-            epistolaJwtPrivateKeyPath = "/run/secrets/epistola-key.pem"
-        )
-        `when`("the configuration is validated on startup") {
-            then("Epistola is the active provider and startup is accepted") {
-                configuration.activeProvider shouldBe DocumentCreationProvider.EPISTOLA
-                shouldNotThrowAny { configuration.onStartup(Any()) }
-            }
-        }
-    }
 })
