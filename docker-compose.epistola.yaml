@@ -1,0 +1,30 @@
+#
+# SPDX-FileCopyrightText: 2026 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+#
+# Runs ZAC with Epistola as its document creation provider, against the real Epistola API.
+#
+# The credentials come from the 1Password vault through `.env.tpl`, so nothing is stored here. The
+# tenant, catalog and API key are all required: Epistola carries the catalog in the path of every
+# template call and requires it on every generation request, and ZAC refuses to start without them.
+#
+# Use it through `./start-docker-compose.sh -E`, or directly:
+#   docker compose -f docker-compose.yaml -f docker-compose.epistola.yaml --project-name zac up -d
+#
+# For a stack that does not reach the real Epistola, add the WireMock stand-in on top with
+# `./start-docker-compose.sh -W`; see docker-compose.epistola-wiremock.yaml.
+#
+services:
+  zac:
+    environment:
+      # An explicit provider is authoritative and a SmartDocuments flag that disagrees with it fails
+      # startup, so the flag that .env.tpl sets has to be turned off here as well.
+      - DOCUMENT_CREATION_PROVIDER=EPISTOLA
+      - SMARTDOCUMENTS_ENABLED=false
+      - EPISTOLA_CLIENT_MP_REST_URL=${EPISTOLA_CLIENT_MP_REST_URL}
+      - EPISTOLA_TENANT_ID=${EPISTOLA_TENANT_ID}
+      - EPISTOLA_CATALOG_ID=${EPISTOLA_CATALOG_ID}
+      - EPISTOLA_CLIENT_API_KEY=${EPISTOLA_CLIENT_API_KEY}
+      - EPISTOLA_GENERATION_TIMEOUT_SECONDS=${EPISTOLA_GENERATION_TIMEOUT_SECONDS:-60}

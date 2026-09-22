@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/tenants/[^/]+/documents/[0-9a-fA-F-]{36}"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/pdf",
+      "content-disposition": "attachment; filename=\"epistola-document.pdf\""
+    },
+    "bodyFileName": "epistola-document.pdf"
+  }
+}

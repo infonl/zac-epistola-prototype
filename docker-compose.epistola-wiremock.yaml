@@ -1,0 +1,37 @@
+#
+# SPDX-FileCopyrightText: 2026 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+#
+
+#
+# Points the Epistola stack at a WireMock stand-in instead of the real Epistola API.
+#
+# Layered on top of docker-compose.epistola.yaml, so it only has to replace the connection settings.
+# The mock serves the calls ZAC makes: read a template's data model, start a generation job, poll it,
+# and download the resulting PDF. The job reports IN_PROGRESS on the first poll and COMPLETED on the
+# next, so the stack exercises the asynchronous flow rather than skipping it.
+#
+# Use it for a stack that must run without credentials or without reaching Epistola, through
+# `./start-docker-compose.sh -W`, or directly:
+#   docker compose -f docker-compose.yaml -f docker-compose.epistola.yaml \
+#     -f docker-compose.epistola-wiremock.yaml --project-name zac up -d
+#
+services:
+  epistola-wiremock:
+    image: wiremock/wiremock:3.13.2@sha256:0d4ecb3e4dc8213fd7a4d37d6a78f6e6b553a6d2e15bd51b0999781282ac61b3
+    volumes:
+      - ./scripts/docker-compose/imports/epistola-wiremock/mappings:/home/wiremock/mappings
+      - ./scripts/docker-compose/imports/epistola-wiremock/__files:/home/wiremock/__files
+    entrypoint: [ "/docker-entrypoint.sh", "--global-response-templating", "--disable-gzip", "--verbose" ]
+    ports:
+      - "18085:8080"
+
+  zac:
+    environment:
+      - EPISTOLA_CLIENT_MP_REST_URL=http://epistola-wiremock:8080
+      - EPISTOLA_TENANT_ID=zac-gemeente
+      - EPISTOLA_CATALOG_ID=zac-catalogus
+      - EPISTOLA_CLIENT_API_KEY=fakeEpistolaApiKey
+    depends_on:
+      epistola-wiremock:
+        condition: service_started
