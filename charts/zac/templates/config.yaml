@@ -51,6 +51,9 @@ data:
   DB_HOST: {{ required "Valid .Values.db.host entry required!" .Values.db.host }}
   DB_NAME: {{ required "Valid .Values.db.name entry required!" .Values.db.name }}
   DB_USER: {{ required "Valid .Values.db.user entry required!" .Values.db.user }}
+  {{- if and (eq (upper (.Values.documentCreationProvider | default "")) "SMARTDOCUMENTS") (not .Values.smartDocuments.enabled) }}
+  {{- fail "documentCreationProvider is SMARTDOCUMENTS but smartDocuments.enabled is not true. ZAC reads that flag itself and stays inert without it, so set smartDocuments.enabled to true." }}
+  {{- end }}
   {{- if and (eq (upper (.Values.documentCreationProvider | default "")) "EPISTOLA") .Values.smartDocuments.enabled }}
   {{- fail "documentCreationProvider is EPISTOLA but smartDocuments.enabled is true. ZAC supports one document creation provider at a time; set smartDocuments.enabled to false." }}
   {{- end }}
