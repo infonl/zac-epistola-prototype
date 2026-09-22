@@ -37,8 +37,10 @@ fun createGenerationJobDetail(
 fun createTemplate(
     id: String = "fakeTemplateId",
     name: String = "fakeTemplateName",
-    schema: Any? = null
+    schema: Any? = null,
+    dataModel: Any? = null
 ): TemplateDto = TemplateDto()
     .id(id)
     .name(name)
     .schema(schema)
+    .dataModel(dataModel)

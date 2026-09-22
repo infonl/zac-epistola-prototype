@@ -24,14 +24,26 @@ internal class EpistolaSettings(
     private val apiKey: String?
 ) {
     companion object {
-        /** Epistola identifies a tenant by a slug and rejects anything else on every call. */
-        private val TENANT_ID_PATTERN = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
+        /** Epistola identifies a tenant and a catalog by a slug and rejects anything else on every call. */
+        private val SLUG_PATTERN = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
         private val TENANT_ID_LENGTH = 3..63
+        private val CATALOG_ID_LENGTH = 3..50
     }
 
     fun verify() {
         verifyRequiredSettingsArePresent()
-        verifyTenantIdIsASlug()
+        verifyIsSlug(
+            name = ENV_VAR_EPISTOLA_TENANT_ID,
+            value = tenantId,
+            length = TENANT_ID_LENGTH,
+            example = "acme-corp"
+        )
+        verifyIsSlug(
+            name = ENV_VAR_EPISTOLA_CATALOG_ID,
+            value = catalogId,
+            length = CATALOG_ID_LENGTH,
+            example = "default"
+        )
     }
 
     private fun verifyRequiredSettingsArePresent() {
@@ -50,13 +62,13 @@ internal class EpistolaSettings(
         }
     }
 
-    private fun verifyTenantIdIsASlug() {
-        val tenantId = tenantId?.trim().orEmpty()
-        if (tenantId.length !in TENANT_ID_LENGTH || !TENANT_ID_PATTERN.matches(tenantId)) {
+    private fun verifyIsSlug(name: String, value: String?, length: IntRange, example: String) {
+        val slug = value?.trim().orEmpty()
+        if (slug.length !in length || !SLUG_PATTERN.matches(slug)) {
             throw InvalidDocumentCreationProviderConfigurationException(
-                "$ENV_VAR_EPISTOLA_TENANT_ID ('$tenantId') is not a valid Epistola tenant identifier. " +
-                    "Use a slug of ${TENANT_ID_LENGTH.first} to ${TENANT_ID_LENGTH.last} characters matching " +
-                    "${TENANT_ID_PATTERN.pattern}, for example 'acme-corp'."
+                "$name ('$slug') is not a valid Epistola identifier. " +
+                    "Use a slug of ${length.first} to ${length.last} characters matching " +
+                    "${SLUG_PATTERN.pattern}, for example '$example'."
             )
         }
     }

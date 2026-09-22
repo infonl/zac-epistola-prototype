@@ -30,6 +30,7 @@ import java.util.Optional
 import java.util.UUID
 
 private const val FAKE_TENANT_ID = "fake-tenant"
+private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
@@ -44,6 +45,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
         generationApi = generationApiInstance,
         templatesApi = templatesApiInstance,
         tenantId = Optional.of(FAKE_TENANT_ID),
+        catalogId = Optional.of(FAKE_CATALOG_ID),
         generationTimeoutSeconds = Optional.ofNullable(generationTimeoutSeconds)
     )
 
@@ -82,8 +84,9 @@ class EpistolaClientServiceTest : BehaviorSpec({
                     generatedDocument.content shouldBe pdfContent
                 }
 
-                and("the request carries the template, the data and the correlation id") {
+                and("the request carries the catalog, the template, the data and the correlation id") {
                     with(generateRequestSlot.captured) {
+                        catalogId shouldBe FAKE_CATALOG_ID
                         templateId shouldBe FAKE_TEMPLATE_ID
                         filename shouldBe FAKE_FILE_NAME
                         correlationId shouldBe FAKE_CORRELATION_ID
@@ -221,18 +224,65 @@ class EpistolaClientServiceTest : BehaviorSpec({
     }
 
     context("reading a template schema") {
-        given("a template with a JSON Schema") {
+        val dataModel = mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
+        val schema = mapOf("properties" to mapOf("aanvrager" to emptyMap<String, Any>()))
+
+        given("a template that carries its schema in its data model, as Epistola serves it") {
             every { templatesApiInstance.get() } returns templatesApi
-            val schema = mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
             every {
-                templatesApi.getTemplate(FAKE_TENANT_ID, null, FAKE_TEMPLATE_ID)
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
+            } returns createTemplate(dataModel = dataModel)
+
+            `when`("the schema is read") {
+                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+
+                then("the data model is returned as the contract defines it") {
+                    templateSchema shouldBe dataModel
+                }
+            }
+        }
+
+        given("a template that carries its schema under the older name instead") {
+            every { templatesApiInstance.get() } returns templatesApi
+            every {
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(schema = schema)
 
             `when`("the schema is read") {
                 val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
 
-                then("the schema is returned as the contract defines it") {
+                then("that schema is returned rather than the template counting as having none") {
                     templateSchema shouldBe schema
+                }
+            }
+        }
+
+        given("a template that carries a schema under both names") {
+            every { templatesApiInstance.get() } returns templatesApi
+            every {
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
+            } returns createTemplate(schema = schema, dataModel = dataModel)
+
+            `when`("the schema is read") {
+                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+
+                then("the data model wins, because that is the one Epistola validates against") {
+                    templateSchema shouldBe dataModel
+                }
+            }
+        }
+
+        given("a template that declares no schema at all") {
+            every { templatesApiInstance.get() } returns templatesApi
+            every {
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
+            } returns createTemplate()
+
+            `when`("the schema is read") {
+                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+
+                then("nothing is returned, so the caller decides what an unrestricted template means") {
+                    templateSchema shouldBe null
                 }
             }
         }

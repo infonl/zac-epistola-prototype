@@ -220,6 +220,11 @@ dependencies {
     // runtime this is provided for by the WildFly runtime environment
     // for our unit tests we use the reference implementation
     testImplementation(libs.glassfish.expressly)
+    // RESTEasy's MicroProfile Rest Client and its JSON-B provider, at the versions the WildFly BOMs
+    // pin, so that a unit test can turn a client interface into the very proxy the server builds and
+    // assert the requests it sends. Only WildFly provides these at runtime, hence test scope.
+    testImplementation(libs.jboss.resteasy.microprofile.rest.client)
+    testImplementation(libs.jboss.resteasy.json.binding.provider)
 
     jacocoAgentJarForItest(variantOf(libs.jacoco.agent) { classifier("runtime") })
 }

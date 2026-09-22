@@ -192,7 +192,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
     }
 
     given("Epistola selected with a tenant identifier that is not a slug") {
-        val configuration = configuration(provider = "Epistola", epistolaTenantId = "ZAC_Gemeente")
+        val configuration = epistolaConfiguration(epistolaTenantId = "ZAC_Gemeente")
 
         `when`("the configuration is validated on startup") {
             val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
@@ -207,7 +207,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
     }
 
     given("Epistola selected with a tenant identifier shorter than Epistola accepts") {
-        val configuration = configuration(provider = "Epistola", epistolaTenantId = "ab")
+        val configuration = epistolaConfiguration(epistolaTenantId = "ab")
 
         `when`("the configuration is validated on startup") {
             val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
@@ -216,6 +216,22 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
 
             then("startup fails naming the accepted length") {
                 exception.message!! shouldContain "3 to 63"
+            }
+        }
+    }
+
+    given("Epistola selected with a catalog identifier that is not a slug") {
+        val configuration = epistolaConfiguration(epistolaCatalogId = "ZAC/Catalogus")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails naming the accepted length, which is shorter than the tenant's") {
+                exception.message!! shouldContain "EPISTOLA_CATALOG_ID"
+                exception.message!! shouldContain "ZAC/Catalogus"
+                exception.message!! shouldContain "3 to 50"
             }
         }
     }

@@ -10,13 +10,13 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.COMPLETED
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
-import app.epistola.client.jakarta.model.TemplateDto
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
+import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_CATALOG_ID
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_TENANT_ID
 import nl.info.zac.util.AllOpen
@@ -45,6 +45,9 @@ class EpistolaClientService @Inject constructor(
 
     @ConfigProperty(name = ENV_VAR_EPISTOLA_TENANT_ID)
     private val tenantId: Optional<String>,
+
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_CATALOG_ID)
+    private val catalogId: Optional<String>,
 
     @ConfigProperty(name = ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS)
     private val generationTimeoutSeconds: Optional<Long>
@@ -79,6 +82,7 @@ class EpistolaClientService @Inject constructor(
         val requestId = generationApi.get().generateDocument(
             tenant,
             GenerateDocumentRequest()
+                .catalogId(readCatalogId())
                 .templateId(templateId)
                 .data(data)
                 .filename(fileName)
@@ -92,14 +96,23 @@ class EpistolaClientService @Inject constructor(
     /**
      * The JSON Schema that declares which variables [templateId] accepts.
      *
+     * The contract carries that schema under two names. Epistola fills `dataModel`, which is also the
+     * one its own import and update endpoints validate against, and leaves the older `schema` empty;
+     * a server that still fills `schema` is read as a fallback rather than being treated as a template
+     * without a schema at all.
+     *
      * Returned as the raw schema object the contract defines, because ZAC reads only the declared
      * property names from it.
      */
-    fun readTemplateSchema(templateId: String, catalogId: String? = null): Any? =
-        readTemplate(templateId, catalogId).schema
+    fun readTemplateSchema(templateId: String): Any? =
+        readTemplate(templateId).let { it.dataModel ?: it.schema }
 
-    fun readTemplate(templateId: String, catalogId: String? = null): TemplateDto =
-        templatesApi.get().getTemplate(readTenantId(), catalogId, templateId)
+    /**
+     * The catalog is not a parameter: Epistola carries it as a path segment on every template call and
+     * ZAC has exactly one, so a per-call override could only ever be wrong or absent.
+     */
+    fun readTemplate(templateId: String) =
+        templatesApi.get().getTemplate(readTenantId(), readCatalogId(), templateId)
 
     /**
      * Polls until the job reports its single item as finished, waiting longer after every
@@ -173,4 +186,8 @@ class EpistolaClientService @Inject constructor(
     private fun readTenantId(): String =
         tenantId.getOrNull()?.takeIf { it.isNotBlank() }
             ?: throw IllegalStateException("$ENV_VAR_EPISTOLA_TENANT_ID is not set.")
+
+    private fun readCatalogId(): String =
+        catalogId.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("$ENV_VAR_EPISTOLA_CATALOG_ID is not set.")
 }

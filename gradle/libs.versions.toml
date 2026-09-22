@@ -136,6 +136,8 @@ eclipse-microprofile-fault-tolerance-api = { group = "org.eclipse.microprofile.f
 hibernate-validator = { group = "org.hibernate.validator", name = "hibernate-validator" }
 jakarta-jakartaee = { group = "jakarta.platform", name = "jakarta.jakartaee-api", version.ref = "jakarta-jakartaee" }
 jboss-resteasy-multipart-provider = { group = "org.jboss.resteasy", name = "resteasy-multipart-provider" }
+jboss-resteasy-json-binding-provider = { group = "org.jboss.resteasy", name = "resteasy-json-binding-provider" }
+jboss-resteasy-microprofile-rest-client = { group = "org.jboss.resteasy.microprofile", name = "microprofile-rest-client" }
 wildfly-security-elytron-http-oidc = { group = "org.wildfly.security", name = "wildfly-elytron-http-oidc" }
 # ~dependencies provided by WildFly
 
