@@ -84,9 +84,9 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | db.password | string | `""` |  |
 | db.user | string | `""` |  |
 | documentCreationProvider | string | `""` | Selects the document creation integration ZAC uses. One of: SMARTDOCUMENTS, EPISTOLA, NONE (case-insensitive). ZAC supports one provider at a time; configuring two is rejected on startup. When left empty, the provider is derived from `smartDocuments.enabled`, so existing installations keep working unchanged. |
-| epistola.apiKey | string | `""` | Static API key issued per consumer by an Epistola administrator, who also records that consumer's permissions and allowed tenants. Injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA. This is what the contract calls the supported method; the Bearer JWT alternative, whether self-signed or issued by an OAuth 2.0 identity provider, is marked experimental because Epistola Suite may not implement the consumer model it relies on yet. |
-| epistola.catalogId | string | `""` | Epistola catalog identifier that holds the templates ZAC generates from. Epistola carries it in the path of every template call and requires it on every generation request, so there is no default. Required when documentCreationProvider is EPISTOLA. |
-| epistola.generationTimeoutSeconds | string | `""` | How long ZAC waits for an Epistola generation job before giving up, in seconds. Generation is asynchronous, so ZAC polls the job and only then downloads the document. Defaults to 60 when left empty. |
+| epistola.apiKey | string | `""` | Epistola API key, issued per consumer by an Epistola administrator. Injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA. |
+| epistola.catalogId | string | `""` | Epistola catalog identifier that holds the templates ZAC generates from. Required when documentCreationProvider is EPISTOLA. |
+| epistola.generationTimeoutSeconds | string | `""` | Seconds ZAC waits for an Epistola generation job before giving up. Defaults to 60 when left empty. |
 | epistola.tenantId | string | `""` | Epistola tenant identifier that scopes the available templates. Required when documentCreationProvider is EPISTOLA. |
 | epistola.url | string | `""` | URL to the Epistola API. Required when documentCreationProvider is EPISTOLA. |
 | extraDeploy | list | `[]` | Extra objects to deploy (value evaluated as a template) |

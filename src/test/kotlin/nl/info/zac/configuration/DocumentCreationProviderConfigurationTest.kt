@@ -17,10 +17,10 @@ import java.util.Optional
 private fun configuration(
     provider: String? = null,
     smartDocumentsEnabled: Boolean? = null,
-    epistolaRestUrl: String? = "https://epistola.example.com",
-    epistolaTenantId: String? = "zac-gemeente",
-    epistolaCatalogId: String? = "zac-catalogus",
-    epistolaApiKey: String? = "fakeApiKey"
+    epistolaRestUrl: String? = null,
+    epistolaTenantId: String? = null,
+    epistolaCatalogId: String? = null,
+    epistolaApiKey: String? = null
 ) = DocumentCreationProviderConfiguration(
     configuredProvider = Optional.ofNullable(provider),
     smartDocumentsEnabled = Optional.ofNullable(smartDocumentsEnabled),
@@ -28,6 +28,21 @@ private fun configuration(
     epistolaTenantId = Optional.ofNullable(epistolaTenantId),
     epistolaCatalogId = Optional.ofNullable(epistolaCatalogId),
     epistolaApiKey = Optional.ofNullable(epistolaApiKey)
+)
+
+private fun epistolaConfiguration(
+    smartDocumentsEnabled: Boolean? = null,
+    epistolaRestUrl: String? = "https://epistola.example.com",
+    epistolaTenantId: String? = "zac-gemeente",
+    epistolaCatalogId: String? = "zac-catalogus",
+    epistolaApiKey: String? = "fakeApiKey"
+) = configuration(
+    provider = "Epistola",
+    smartDocumentsEnabled = smartDocumentsEnabled,
+    epistolaRestUrl = epistolaRestUrl,
+    epistolaTenantId = epistolaTenantId,
+    epistolaCatalogId = epistolaCatalogId,
+    epistolaApiKey = epistolaApiKey
 )
 
 class DocumentCreationProviderConfigurationTest : BehaviorSpec({
@@ -62,7 +77,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
     }
 
     given("DOCUMENT_CREATION_PROVIDER set to Epistola with all Epistola settings present") {
-        val configuration = configuration(provider = "Epistola")
+        val configuration = epistolaConfiguration()
         `when`("the configuration is validated on startup") {
             then("Epistola is the active provider and startup is accepted") {
                 configuration.activeProvider shouldBe DocumentCreationProvider.EPISTOLA
@@ -88,7 +103,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
     }
 
     given("both providers configured at once") {
-        val configuration = configuration(provider = "Epistola", smartDocumentsEnabled = true)
+        val configuration = epistolaConfiguration(smartDocumentsEnabled = true)
         `when`("the configuration is validated on startup") {
             val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
                 configuration.onStartup(Any())
@@ -147,6 +162,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
             provider = "Epistola",
             epistolaRestUrl = null,
             epistolaTenantId = "tenant",
+            epistolaCatalogId = "catalogus",
             epistolaApiKey = ""
         )
         `when`("the configuration is validated on startup") {
@@ -162,7 +178,7 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
     }
 
     given("Epistola selected without a catalog identifier") {
-        val configuration = configuration(provider = "Epistola", epistolaCatalogId = null)
+        val configuration = epistolaConfiguration(epistolaCatalogId = null)
 
         `when`("the configuration is validated on startup") {
             val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
