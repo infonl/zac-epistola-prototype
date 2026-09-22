@@ -54,6 +54,9 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     @ConfigProperty(name = ENV_VAR_EPISTOLA_TENANT_ID)
     private val epistolaTenantId: Optional<String>,
 
+    @ConfigProperty(name = ENV_VAR_EPISTOLA_CATALOG_ID)
+    private val epistolaCatalogId: Optional<String>,
+
     @ConfigProperty(name = ENV_VAR_EPISTOLA_API_KEY)
     private val epistolaApiKey: Optional<String>
 ) {
@@ -62,6 +65,8 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         const val ENV_VAR_SMARTDOCUMENTS_ENABLED = "SMARTDOCUMENTS_ENABLED"
         const val ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL = "EPISTOLA_CLIENT_MP_REST_URL"
         const val ENV_VAR_EPISTOLA_TENANT_ID = "EPISTOLA_TENANT_ID"
+        const val ENV_VAR_EPISTOLA_CATALOG_ID = "EPISTOLA_CATALOG_ID"
+        const val ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS = "EPISTOLA_GENERATION_TIMEOUT_SECONDS"
 
         // Named after the Epistola client's own MicroProfile Config property (epistola.client.api-key),
         // which MicroProfile Config reads from exactly this environment variable name, so adopting that
@@ -147,6 +152,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         val missing = listOf(
             ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL to epistolaRestUrl,
             ENV_VAR_EPISTOLA_TENANT_ID to epistolaTenantId,
+            ENV_VAR_EPISTOLA_CATALOG_ID to epistolaCatalogId,
             ENV_VAR_EPISTOLA_API_KEY to epistolaApiKey
         ).filter { (_, value) -> value.getOrNull()?.isNotBlank() != true }
             .map { (name, _) -> name }

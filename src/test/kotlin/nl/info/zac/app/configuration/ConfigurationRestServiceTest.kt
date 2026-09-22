@@ -26,6 +26,7 @@ class ConfigurationRestServiceTest : BehaviorSpec({
         smartDocumentsEnabled = Optional.empty(),
         epistolaRestUrl = Optional.of("https://epistola.example.com"),
         epistolaTenantId = Optional.of("zac-gemeente"),
+        epistolaCatalogId = Optional.of("zac-catalogus"),
         epistolaApiKey = Optional.of("fakeApiKey")
     )
     val configurationRestService = ConfigurationRestService(

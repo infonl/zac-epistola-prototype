@@ -18,12 +18,14 @@ private fun configuration(
     smartDocumentsEnabled: Boolean? = null,
     epistolaRestUrl: String? = "https://epistola.example.com",
     epistolaTenantId: String? = "zac-gemeente",
+    epistolaCatalogId: String? = "zac-catalogus",
     epistolaApiKey: String? = "fakeApiKey"
 ) = DocumentCreationProviderConfiguration(
     configuredProvider = Optional.ofNullable(provider),
     smartDocumentsEnabled = Optional.ofNullable(smartDocumentsEnabled),
     epistolaRestUrl = Optional.ofNullable(epistolaRestUrl),
     epistolaTenantId = Optional.ofNullable(epistolaTenantId),
+    epistolaCatalogId = Optional.ofNullable(epistolaCatalogId),
     epistolaApiKey = Optional.ofNullable(epistolaApiKey)
 )
 
@@ -153,6 +155,20 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
                 exception.message!! shouldContain "EPISTOLA_CLIENT_MP_REST_URL"
                 exception.message!! shouldContain "EPISTOLA_CLIENT_API_KEY"
                 exception.message!!.contains("EPISTOLA_TENANT_ID") shouldBe false
+            }
+        }
+    }
+
+    given("Epistola selected without a catalog identifier") {
+        val configuration = configuration(provider = "Epistola", epistolaCatalogId = null)
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails, because Epistola requires a catalog on every call it is used for") {
+                exception.message!! shouldContain "EPISTOLA_CATALOG_ID"
             }
         }
     }
