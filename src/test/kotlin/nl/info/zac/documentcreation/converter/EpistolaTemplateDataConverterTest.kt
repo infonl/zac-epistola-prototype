@@ -32,10 +32,23 @@ private fun objectSchema(vararg properties: Pair<String, Any>) = mapOf("properti
 private fun leafSchema(vararg names: String) =
     mapOf("properties" to names.associateWith { mapOf("type" to "string") })
 
-/**
- * A schema that declares every property the Kotlin model has, so that the converter is exercised
- * against the whole model rather than against a list kept up to date by hand.
- */
+private fun arraySchema(itemSchema: Any) = mapOf("type" to "array", "items" to itemSchema)
+
+private fun referenceSchema(reference: String) = mapOf("\$ref" to reference)
+
+private fun startformulierDataSchema(dataSchema: Any, vararg definitions: Pair<String, Any>) =
+    objectSchema("startformulier" to objectSchema("data" to dataSchema)) + mapOf("\$defs" to definitions.toMap())
+
+private fun createDataWithStartformulier(data: Map<String, Any>) =
+    createData(startformulier = createStartformulierData(data = data))
+
+private fun DocumentCreationData.toPayload(schema: Any) =
+    toEpistolaTemplateData(templateId = FAKE_TEMPLATE_ID, templateSchema = schema)
+
+@Suppress("UNCHECKED_CAST")
+private fun Map<String, Any>.startformulierData() =
+    (this["startformulier"] as Map<String, Any>?)?.get("data") as Map<String, Any>?
+
 private fun schemaDeclaringEveryPropertyOf(vararg sections: Pair<String, KClass<*>>) =
     objectSchema(
         *sections.map { (name, modelClass) ->
@@ -214,6 +227,7 @@ class EpistolaTemplateDataConverterTest : BehaviorSpec({
                 }
             }
         }
+
         given("a template that declares the startformulier data as a free-form object") {
             val documentCreationData = createData(
                 startformulier = createStartformulierData(
@@ -236,6 +250,140 @@ class EpistolaTemplateDataConverterTest : BehaviorSpec({
                             "data" to mapOf("voorletters" to "fakeVoorletters", "bsn" to "fakeBsn")
                         )
                     )
+                }
+            }
+        }
+
+        given("a startformulier list whose item schema declares only some of the fields of each item") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf(
+                    "kinderen" to listOf(
+                        mapOf("naam" to "fakeNaam1", "bsn" to "fakeBsn1"),
+                        mapOf("naam" to "fakeNaam2", "bsn" to "fakeBsn2")
+                    )
+                )
+            )
+            val schema = startformulierDataSchema(objectSchema("kinderen" to arraySchema(leafSchema("naam"))))
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("every item keeps only the declared fields") {
+                    payload.startformulierData() shouldBe mapOf(
+                        "kinderen" to listOf(mapOf("naam" to "fakeNaam1"), mapOf("naam" to "fakeNaam2"))
+                    )
+                }
+            }
+        }
+
+        given("a startformulier list declared as an array without an item schema") {
+            val kinderen = listOf(mapOf("naam" to "fakeNaam1", "bsn" to "fakeBsn1"))
+            val documentCreationData = createDataWithStartformulier(mapOf("kinderen" to kinderen))
+            val schema = startformulierDataSchema(objectSchema("kinderen" to mapOf("type" to "array")))
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the whole list is sent, because the template declared no fields to narrow its items to") {
+                    payload.startformulierData() shouldBe mapOf("kinderen" to kinderen)
+                }
+            }
+        }
+
+        given("a template that declares the startformulier data through a reference to a definition") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf("voorletters" to "fakeVoorletters", "bsn" to "fakeBsn")
+            )
+            val schema = startformulierDataSchema(
+                referenceSchema("#/\$defs/aanvraag"),
+                "aanvraag" to leafSchema("voorletters")
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("only the fields of the referenced definition are sent") {
+                    payload.startformulierData() shouldBe mapOf("voorletters" to "fakeVoorletters")
+                }
+            }
+        }
+
+        given("a template that combines a referenced definition with fields of its own through allOf") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf("voorletters" to "fakeVoorletters", "email" to "fakeEmail", "bsn" to "fakeBsn")
+            )
+            val schema = startformulierDataSchema(
+                leafSchema("voorletters") + mapOf("allOf" to listOf(referenceSchema("#/\$defs/contactgegevens"))),
+                "contactgegevens" to leafSchema("email")
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the fields of both are sent and nothing else") {
+                    payload.startformulierData() shouldBe mapOf(
+                        "voorletters" to "fakeVoorletters",
+                        "email" to "fakeEmail"
+                    )
+                }
+            }
+        }
+
+        given("a template that declares alternative shapes for the startformulier data through oneOf") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf("bsn" to "fakeBsn", "kvkNummer" to "fakeKvkNummer", "telefoonnummer" to "fakeTelefoonnummer")
+            )
+            val schema = startformulierDataSchema(
+                mapOf("oneOf" to listOf(leafSchema("bsn"), leafSchema("kvkNummer")))
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the fields of every alternative are sent, and only those") {
+                    payload.startformulierData() shouldBe mapOf(
+                        "bsn" to "fakeBsn",
+                        "kvkNummer" to "fakeKvkNummer"
+                    )
+                }
+            }
+        }
+
+        given("a template whose schema refers to definitions that ZAC cannot resolve") {
+            val documentCreationData = createData()
+            val schema = objectSchema(
+                "zaak" to objectSchema("toelichting" to referenceSchema("https://example.com/schemas/richtext.json")),
+                "startformulier" to objectSchema("data" to referenceSchema("https://example.com/schemas/aanvraag.json")),
+                "aanvrager" to referenceSchema("#/\$defs/doesNotExist")
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("a single value is still sent, because there is nothing inside it to narrow") {
+                    payload["zaak"] shouldBe mapOf("toelichting" to "fakeToelichting")
+                }
+
+                and("an object is left out rather than sent whole, because ZAC cannot tell which of its fields are declared") {
+                    payload shouldNotContainKey "startformulier"
+                    payload shouldNotContainKey "aanvrager"
+                }
+            }
+        }
+
+        given("a template whose schema contains a reference that leads back to itself") {
+            val documentCreationData = createData()
+            val schema = objectSchema("zaak" to referenceSchema("#/\$defs/zaak")) + mapOf(
+                "\$defs" to mapOf(
+                    "zaak" to leafSchema("identificatie") + mapOf("allOf" to listOf(referenceSchema("#/\$defs/zaak")))
+                )
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the declared fields are sent") {
+                    payload shouldContainExactly mapOf("zaak" to mapOf("identificatie" to "fakeIdentificatie"))
                 }
             }
         }
