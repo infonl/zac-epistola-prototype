@@ -73,11 +73,8 @@ class DocumentCreationDataService @Inject constructor(
         )
 
     /**
-     * The same data, plus the zaak location and the zaaktype-specific eigenschappen.
-     *
-     * Those two are added here rather than in [createData] so that the payload an existing
-     * integration receives is unchanged by this issue. Both cost an extra call to the zaakregistratie,
-     * which is the second reason not to make every provider pay for them.
+     * Kept apart from [createData] so that the SmartDocuments payload stays as it is, and does not pay
+     * for the extra call to the zaakregistratie that the eigenschappen need.
      */
     fun createEpistolaData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
         createData(loggedInUser = loggedInUser, zaak = zaak, taskId = taskId).let {
@@ -89,10 +86,6 @@ class DocumentCreationDataService @Inject constructor(
             )
         }
 
-    /**
-     * Eigenschappen without a name cannot be addressed by a template, and a name occurring twice
-     * would silently drop one of the two, so both are left out and reported instead.
-     */
     private fun readEigenschappen(zaak: Zaak): Map<String, String>? =
         zrcClientService.listZaakeigenschappen(zaak.uuid)
             .mapNotNull { zaakEigenschap ->

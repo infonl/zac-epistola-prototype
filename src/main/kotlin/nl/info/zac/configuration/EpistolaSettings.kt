@@ -10,13 +10,6 @@ import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_TENANT_ID
 import nl.info.zac.configuration.exception.InvalidDocumentCreationProviderConfigurationException
 
-/**
- * What ZAC needs in order to talk to Epistola, and what makes that configuration usable.
- *
- * Kept apart from [DocumentCreationProviderConfiguration] so that the rules for one provider do not
- * grow inside the class that decides which provider is active. The checks run on startup, because
- * each of them would otherwise surface as a failed document for the first behandelaar who tries one.
- */
 internal class EpistolaSettings(
     private val restUrl: String?,
     private val tenantId: String?,

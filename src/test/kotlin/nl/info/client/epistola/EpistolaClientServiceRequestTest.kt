@@ -32,11 +32,6 @@ private const val FAKE_DOCUMENT_ID = "3d9f8e7a-6b5c-4d3e-8f1a-0b9c8d7e6f5a"
 private const val FAKE_REQUEST_ID = "2f1c9d64-5d8e-4a1b-9c0f-1a2b3c4d5e6f"
 private const val FAKE_PDF_CONTENT = "fakePdfContent"
 
-/**
- * Drives the proxies RESTEasy builds from Epistola's own annotations against a local HTTP server. A
- * spec that mocks those client interfaces asserts nothing about the request that leaves ZAC, which is
- * where a path segment ZAC never fills goes unnoticed.
- */
 class EpistolaClientServiceRequestTest : BehaviorSpec({
     val epistolaServer = FakeEpistolaServer()
     val epistolaClientProducer = EpistolaClientProducer(

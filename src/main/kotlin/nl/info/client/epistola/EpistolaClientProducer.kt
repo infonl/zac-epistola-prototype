@@ -20,14 +20,9 @@ import java.util.Optional
 import kotlin.jvm.optionals.getOrNull
 
 /**
- * Builds Epistola's API clients.
- *
- * Epistola's client interfaces come from a jar, so ZAC cannot annotate them with
- * `@RegisterRestClient` the way it does for the clients it generates itself. They are built
- * programmatically instead, which also keeps the timeouts and the credential in one place.
- *
- * The producer methods run on first injection rather than on startup, so an installation that runs
- * SmartDocuments — and therefore has none of this configured — never reaches them.
+ * Epistola's client interfaces come from a jar, so ZAC cannot annotate them with `@RegisterRestClient`
+ * and builds them here instead. The producers run on first injection, not on startup, so an
+ * installation that runs SmartDocuments and has none of this configured never reaches them.
  */
 @ApplicationScoped
 @NoArgConstructor
@@ -46,10 +41,7 @@ class EpistolaClientProducer @Inject constructor(
 
         private const val PRODUCT_NAME = "ZAC"
 
-        /**
-         * ZAC does not carry its version at runtime outside a packaged deployment, and Epistola
-         * uses this only to attribute traffic, so an unknown version is better than a wrong one.
-         */
+        /** Epistola uses the version only to attribute traffic, so an unknown one beats a wrong one. */
         private const val UNKNOWN_VERSION = "unknown"
     }
 

@@ -6,10 +6,6 @@ package nl.info.client.epistola.model
 
 import java.util.UUID
 
-/**
- * A rendered document, read into memory because the client writes it to a temporary file that ZAC
- * deletes as soon as it has the bytes.
- */
 data class EpistolaGeneratedDocument(
     val documentId: UUID,
     val fileName: String,

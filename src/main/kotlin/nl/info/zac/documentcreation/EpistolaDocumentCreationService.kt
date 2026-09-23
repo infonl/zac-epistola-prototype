@@ -17,12 +17,8 @@ import nl.info.zac.util.NoArgConstructor
 import java.util.logging.Logger
 
 /**
- * Creates a document for a zaak with Epistola.
- *
- * Ties together the three steps that belong to one document: gather the zaak data, reduce it to what
- * the chosen template declares, and have Epistola render it. Storing the result in the zaakregistratie
- * is deliberately not part of this — that is the caller's, so that this stays usable for a preview or
- * a retry that must not produce a second document in the dossier.
+ * Leaves storing the document in the zaakregistratie to the caller, so that a preview or a retry does
+ * not add a second document to the dossier.
  */
 @ApplicationScoped
 @NoArgConstructor
@@ -36,11 +32,6 @@ class EpistolaDocumentCreationService @Inject constructor(
         private val LOG = Logger.getLogger(EpistolaDocumentCreationService::class.java.name)
     }
 
-    /**
-     * The zaak's UUID is sent as the correlation id rather than its identificatie: Epistola echoes it
-     * back and keeps it, both identify the zaak just as well from ZAC, and the UUID carries no meaning
-     * outside it.
-     */
     fun createDocument(
         zaak: Zaak,
         templateId: String,

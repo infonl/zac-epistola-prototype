@@ -29,11 +29,8 @@ import java.util.logging.Logger
 import kotlin.jvm.optionals.getOrNull
 
 /**
- * Generates a document with Epistola and hands back its bytes.
- *
- * Generation is asynchronous: the request is accepted, a job runs, and the document can be
- * downloaded once that job reports it. ZAC waits for the job inside the call that started it, so a
- * behandelaar gets either a document or an error, and never an unfinished request to come back to.
+ * Epistola generates asynchronously. ZAC waits for the job inside the call that started it, so a
+ * behandelaar gets a document or an error, and never an unfinished request to come back to.
  */
 @ApplicationScoped
 @NoArgConstructor
@@ -66,12 +63,7 @@ class EpistolaClientService @Inject constructor(
         private val LOG = Logger.getLogger(EpistolaClientService::class.java.name)
     }
 
-    /**
-     * Renders [templateId] with [data] and returns the result.
-     *
-     * [correlationId] is echoed back by Epistola on the job item, which is what lets a document in
-     * their audit trail be traced back to the zaak it was generated for.
-     */
+    /** Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak. */
     fun generateDocument(
         templateId: String,
         data: Map<String, Any>,
@@ -93,32 +85,13 @@ class EpistolaClientService @Inject constructor(
         return downloadDocument(tenant, awaitCompletedItem(tenant, requestId), fileName)
     }
 
-    /**
-     * The JSON Schema that declares which variables [templateId] accepts.
-     *
-     * The contract carries that schema under two names. Epistola fills `dataModel`, which is also the
-     * one its own import and update endpoints validate against, and leaves the older `schema` empty;
-     * a server that still fills `schema` is read as a fallback rather than being treated as a template
-     * without a schema at all.
-     *
-     * Returned as the raw schema object the contract defines, because ZAC reads only the declared
-     * property names from it.
-     */
     fun readTemplateSchema(templateId: String): Any? =
         readTemplate(templateId).let { it.dataModel ?: it.schema }
 
-    /**
-     * The catalog is not a parameter: Epistola carries it as a path segment on every template call and
-     * ZAC has exactly one, so a per-call override could only ever be wrong or absent.
-     */
+    /** ZAC uses exactly one catalog, so it comes from configuration rather than from the caller. */
     fun readTemplate(templateId: String) =
         templatesApi.get().getTemplate(readTenantId(), readCatalogId(), templateId)
 
-    /**
-     * Polls until the job reports its single item as finished, waiting longer after every
-     * unsuccessful poll so that a slow job costs few requests while a quick one is still picked up
-     * promptly.
-     */
     @Suppress("ReturnCount")
     private fun awaitCompletedItem(tenant: String, requestId: UUID): DocumentGenerationItemDto {
         val deadline = System.nanoTime() + generationTimeout().toNanos()
@@ -144,10 +117,6 @@ class EpistolaClientService @Inject constructor(
         }
     }
 
-    /**
-     * The client materialises the download into a temporary file, so ZAC reads it and removes it
-     * again; leaving it behind would accumulate documents on the application server's disk.
-     */
     private fun downloadDocument(
         tenant: String,
         item: DocumentGenerationItemDto,

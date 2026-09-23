@@ -138,9 +138,7 @@ dependencies {
     implementation(libs.flowable.cmmn.engine.configurator)
     implementation(libs.slf4j.jdk14)
     implementation(libs.auth0.java.jwt)
-    // Epistola's own Jakarta EE client, generated from their OpenAPI contract for exactly this stack.
-    // It declares no runtime dependencies of its own: every API it uses (JAX-RS, JSON-B, MicroProfile
-    // Rest Client and Config) is supplied by WildFly.
+    // Epistola's own client; it has no runtime dependencies beyond the APIs WildFly supplies
     implementation(libs.epistola.client.jakarta)
     implementation(libs.javax.cache.api)
     implementation(libs.google.guava)
@@ -220,9 +218,8 @@ dependencies {
     // runtime this is provided for by the WildFly runtime environment
     // for our unit tests we use the reference implementation
     testImplementation(libs.glassfish.expressly)
-    // RESTEasy's MicroProfile Rest Client and its JSON-B provider, at the versions the WildFly BOMs
-    // pin, so that a unit test can turn a client interface into the very proxy the server builds and
-    // assert the requests it sends. Only WildFly provides these at runtime, hence test scope.
+    // lets a unit test build the same RESTEasy proxy WildFly builds and assert the request it sends;
+    // at runtime WildFly provides these
     testImplementation(libs.jboss.resteasy.microprofile.rest.client)
     testImplementation(libs.jboss.resteasy.json.binding.provider)
 

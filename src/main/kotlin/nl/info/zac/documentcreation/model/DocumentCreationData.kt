@@ -16,11 +16,8 @@ private const val DATE_FORMAT = "dd-MM-yyyy"
 private const val POINT_COORDINATE_COUNT = 2
 
 /**
- * The zaak data that ZAC offers to a document template, independent of which document creation
- * provider renders it.
- *
- * The JSON-B names below are the variable names a template author writes, so a template written
- * against one provider addresses the same fields under the other.
+ * The JSON-B names below are the variable names a template author writes, for either provider, so
+ * renaming one breaks existing templates.
  */
 data class DocumentCreationData(
     @field:JsonbProperty("aanvrager")
@@ -105,22 +102,14 @@ data class ZaakData(
 
     val zaaktype: String? = null,
 
-    /**
-     * Only filled for providers whose templates can address it. Leaving it null keeps it out of the
-     * serialized payload, so adding it did not change what an existing integration receives.
-     */
+    /** Only filled for Epistola. Left null, it stays out of the SmartDocuments payload. */
     val zaakgeometrie: ZaakGeometrieData? = null,
 
-    /** The zaaktype-specific eigenschappen of the zaak, by name. Filled on the same terms as [zaakgeometrie]. */
+    /** Filled on the same terms as [zaakgeometrie]. */
     val eigenschappen: Map<String, String>? = null
 )
 
-/**
- * A zaak location in the terms a letter needs — a readable coordinate pair rather than GeoJSON.
- *
- * ZAC supports POINT geometries only, so anything else carries its type and no coordinates instead
- * of a shape a template has no way to render.
- */
+/** ZAC supports POINT geometries only, so any other geometry carries just its type. */
 data class ZaakGeometrieData(
     val type: String,
     val latitude: Double? = null,
@@ -144,10 +133,7 @@ fun ResultaatItem.toHuisnummer(): String? =
         this.adres.binnenlandsAdres.huisletter
     )
 
-/**
- * GeoJSON orders a point's coordinates longitude first, which is the reverse of how they are
- * written in a letter, so they are named here rather than passed on as a pair.
- */
+/** GeoJSON puts the longitude first. */
 fun GeoJSONGeometry.toZaakGeometrieData() =
     if (type == GeometryTypeEnum.POINT && coordinates.size >= POINT_COORDINATE_COUNT) {
         ZaakGeometrieData(
