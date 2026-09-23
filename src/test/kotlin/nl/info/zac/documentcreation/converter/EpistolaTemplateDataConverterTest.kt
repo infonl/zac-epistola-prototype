@@ -22,7 +22,9 @@ import nl.info.zac.documentcreation.model.ZaakData
 import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.documentcreation.model.createStartformulierData
 import nl.info.zac.documentcreation.model.createZaakData
+import java.time.LocalDate
 import kotlin.reflect.KClass
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 
 private const val FAKE_TEMPLATE_ID = "fakeTemplateId"
@@ -49,10 +51,13 @@ private fun DocumentCreationData.toPayload(schema: Any) =
 private fun Map<String, Any>.startformulierData() =
     (this["startformulier"] as Map<String, Any>?)?.get("data") as Map<String, Any>?
 
+private fun KProperty1<*, *>.declaredSchema() =
+    mapOf("type" to if (returnType.classifier in setOf(String::class, LocalDate::class)) "string" else "object")
+
 private fun schemaDeclaringEveryPropertyOf(vararg sections: Pair<String, KClass<*>>) =
     objectSchema(
         *sections.map { (name, modelClass) ->
-            name to leafSchema(*modelClass.memberProperties.map { it.name }.toTypedArray())
+            name to mapOf("properties" to modelClass.memberProperties.associate { it.name to it.declaredSchema() })
         }.toTypedArray()
     )
 
@@ -384,6 +389,77 @@ class EpistolaTemplateDataConverterTest : BehaviorSpec({
 
                 then("the declared fields are sent") {
                     payload shouldContainExactly mapOf("zaak" to mapOf("identificatie" to "fakeIdentificatie"))
+                }
+            }
+        }
+
+        given("startformulier fields declared as a single value or without a type, that hold an object") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf(
+                    "voorletters" to "fakeVoorletters",
+                    "adres" to mapOf("straat" to "fakeStraat", "bsn" to "fakeBsn"),
+                    "bijlage" to mapOf("naam" to "fakeNaam", "bsn" to "fakeBsn")
+                )
+            )
+            val schema = startformulierDataSchema(
+                objectSchema(
+                    "voorletters" to mapOf("type" to "string"),
+                    "adres" to mapOf("type" to "string"),
+                    "bijlage" to mapOf("description" to "fakeDescription")
+                )
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the objects are left out, because the template did not ask for an object there") {
+                    payload.startformulierData() shouldBe mapOf("voorletters" to "fakeVoorletters")
+                }
+            }
+        }
+
+        given("a startformulier list whose item schema is a reference that ZAC cannot resolve") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf(
+                    "voorletters" to "fakeVoorletters",
+                    "kinderen" to listOf(mapOf("naam" to "fakeNaam1", "bsn" to "fakeBsn1"))
+                )
+            )
+            val schema = startformulierDataSchema(
+                objectSchema(
+                    "voorletters" to mapOf("type" to "string"),
+                    "kinderen" to arraySchema(referenceSchema("https://example.com/schemas/kind.json"))
+                )
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the list is left out rather than sent empty") {
+                    payload.startformulierData() shouldBe mapOf("voorletters" to "fakeVoorletters")
+                }
+            }
+        }
+
+        given("a startformulier list with one item that does not match the declared item schema") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf(
+                    "voorletters" to "fakeVoorletters",
+                    "namen" to listOf("fakeNaam1", mapOf("naam" to "fakeNaam2", "bsn" to "fakeBsn2"))
+                )
+            )
+            val schema = startformulierDataSchema(
+                objectSchema(
+                    "voorletters" to mapOf("type" to "string"),
+                    "namen" to arraySchema(mapOf("type" to "string"))
+                )
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the whole list is left out, so a document never shows a list with an item silently missing") {
+                    payload.startformulierData() shouldBe mapOf("voorletters" to "fakeVoorletters")
                 }
             }
         }

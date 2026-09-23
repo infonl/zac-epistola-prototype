@@ -12,6 +12,9 @@ import java.util.logging.Logger
 private const val SCHEMA_PROPERTIES = "properties"
 private const val SCHEMA_ITEMS = "items"
 private const val SCHEMA_REFERENCE = "\$ref"
+private const val SCHEMA_TYPE = "type"
+private const val SCHEMA_TYPE_OBJECT = "object"
+private const val SCHEMA_TYPE_ARRAY = "array"
 private const val LOCAL_REFERENCE_PREFIX = "#"
 private const val JSON_POINTER_SEPARATOR = "/"
 private val SCHEMA_COMBINATIONS = listOf("allOf", "anyOf", "oneOf")
@@ -63,26 +66,42 @@ private class TemplateSchemaAllowList(private val templateId: String, private va
 
     private fun retainDeclared(value: Any, schemas: List<Any?>, path: String): Any? {
         val shape = shapeOf(schemas)
-        val isNarrowed = when (value) {
-            is Map<*, *> -> shape.hasDeclaredProperties
-            is List<*> -> shape.itemSchemas.isNotEmpty()
-            else -> true
-        }
-        return when {
-            !isNarrowed && shape.unresolvedReferences.isNotEmpty() -> {
-                LOG.warning {
-                    "Left '$path' out of the payload for Epistola template '$templateId': its schema refers " +
-                        "to ${shape.unresolvedReferences}, which ZAC cannot resolve."
-                }
-                null
+        return when (value) {
+            is Map<*, *> -> when {
+                shape.hasDeclaredProperties ->
+                    retainDeclaredProperties(data = value.asStringKeyedMap(), shape = shape, path = "$path.")
+                shape.isDeclaredWholeAs(SCHEMA_TYPE_OBJECT) -> value
+                else -> leaveOut(path = path, shape = shape, expectedType = SCHEMA_TYPE_OBJECT)
             }
-            value is Map<*, *> && isNarrowed ->
-                retainDeclaredProperties(data = value.asStringKeyedMap(), shape = shape, path = "$path.")
-            value is List<*> && isNarrowed -> value.filterNotNull().mapNotNull {
-                retainDeclared(value = it, schemas = shape.itemSchemas, path = "$path[]")
+            is List<*> -> when {
+                shape.itemSchemas.isNotEmpty() -> retainDeclaredItems(items = value, shape = shape, path = path)
+                shape.isDeclaredWholeAs(SCHEMA_TYPE_ARRAY) -> value
+                else -> leaveOut(path = path, shape = shape, expectedType = SCHEMA_TYPE_ARRAY)
             }
             else -> value
         }
+    }
+
+    /** A list with an item left out would render as complete in the document, so it is left out as a whole. */
+    private fun retainDeclaredItems(items: List<*>, shape: SchemaShape, path: String): List<Any>? {
+        val retainedItems = mutableListOf<Any>()
+        for (item in items.filterNotNull()) {
+            retainedItems += retainDeclared(value = item, schemas = shape.itemSchemas, path = "$path[]") ?: return null
+        }
+        return retainedItems
+    }
+
+    private fun leaveOut(path: String, shape: SchemaShape, expectedType: String): Any? {
+        LOG.warning {
+            "Left '$path' out of the payload for Epistola template '$templateId': " +
+                if (shape.unresolvedReferences.isNotEmpty()) {
+                    "its schema refers to ${shape.unresolvedReferences}, which ZAC cannot resolve."
+                } else {
+                    "ZAC holds an $expectedType there, and the template neither declares its fields nor " +
+                        "declares it as type '$expectedType'."
+                }
+        }
+        return null
     }
 
     private fun shapeOf(schemas: List<Any?>): SchemaShape {
@@ -95,6 +114,7 @@ private class TemplateSchemaAllowList(private val templateId: String, private va
                 .filter { it.key is String }
                 .groupBy(keySelector = { it.key as String }, valueTransform = { it.value }),
             itemSchemas = components.schemas.mapNotNull { it[SCHEMA_ITEMS] as? Map<*, *> },
+            declaredTypes = components.schemas.flatMap { it[SCHEMA_TYPE].asTypeNames() }.toSet(),
             unresolvedReferences = components.unresolvedReferences
         )
     }
@@ -152,8 +172,17 @@ private class SchemaShape(
     val hasDeclaredProperties: Boolean,
     val propertySchemas: Map<String, List<Any?>>,
     val itemSchemas: List<Any?>,
+    val declaredTypes: Set<String>,
     val unresolvedReferences: List<String>
-)
+) {
+    fun isDeclaredWholeAs(type: String) = type in declaredTypes && unresolvedReferences.isEmpty()
+}
+
+private fun Any?.asTypeNames(): List<String> = when (this) {
+    is String -> listOf(this)
+    is List<*> -> filterIsInstance<String>()
+    else -> emptyList()
+}
 
 private fun Map<*, *>.asStringKeyedMap(): Map<String, Any> =
     mapNotNull { (key, value) -> if (key is String && value != null) key to value else null }.toMap()
