@@ -463,5 +463,47 @@ class EpistolaTemplateDataConverterTest : BehaviorSpec({
                 }
             }
         }
+
+        given("a startformulier list holding an empty item, whose item schema does not allow one") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf(
+                    "voorletters" to "fakeVoorletters",
+                    "kinderen" to listOf(mapOf("naam" to "fakeNaam1"), null)
+                )
+            )
+            val schema = startformulierDataSchema(
+                objectSchema(
+                    "voorletters" to mapOf("type" to "string"),
+                    "kinderen" to arraySchema(leafSchema("naam"))
+                )
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the whole list is left out rather than sent without the empty item") {
+                    payload.startformulierData() shouldBe mapOf("voorletters" to "fakeVoorletters")
+                }
+            }
+        }
+
+        given("a startformulier list holding an empty item, whose item schema declares type null") {
+            val documentCreationData = createDataWithStartformulier(
+                mapOf("kinderen" to listOf(mapOf("naam" to "fakeNaam1", "bsn" to "fakeBsn1"), null))
+            )
+            val schema = startformulierDataSchema(
+                objectSchema("kinderen" to arraySchema(leafSchema("naam") + mapOf("type" to listOf("object", "null"))))
+            )
+
+            `when`("the payload is built") {
+                val payload = documentCreationData.toPayload(schema)
+
+                then("the empty item keeps its place and the other item keeps only its declared fields") {
+                    payload.startformulierData() shouldBe mapOf(
+                        "kinderen" to listOf(mapOf("naam" to "fakeNaam1"), null)
+                    )
+                }
+            }
+        }
     }
 })

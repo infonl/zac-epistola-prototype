@@ -15,6 +15,7 @@ private const val SCHEMA_REFERENCE = "\$ref"
 private const val SCHEMA_TYPE = "type"
 private const val SCHEMA_TYPE_OBJECT = "object"
 private const val SCHEMA_TYPE_ARRAY = "array"
+private const val SCHEMA_TYPE_NULL = "null"
 private const val LOCAL_REFERENCE_PREFIX = "#"
 private const val JSON_POINTER_SEPARATOR = "/"
 private val SCHEMA_COMBINATIONS = listOf("allOf", "anyOf", "oneOf")
@@ -71,36 +72,36 @@ private class TemplateSchemaAllowList(private val templateId: String, private va
                 shape.hasDeclaredProperties ->
                     retainDeclaredProperties(data = value.asStringKeyedMap(), shape = shape, path = "$path.")
                 shape.isDeclaredWholeAs(SCHEMA_TYPE_OBJECT) -> value
-                else -> leaveOut(path = path, shape = shape, expectedType = SCHEMA_TYPE_OBJECT)
+                else -> leaveOut(path = path, reason = shape.reasonNotToSendWholeAs(SCHEMA_TYPE_OBJECT))
             }
             is List<*> -> when {
                 shape.itemSchemas.isNotEmpty() -> retainDeclaredItems(items = value, shape = shape, path = path)
                 shape.isDeclaredWholeAs(SCHEMA_TYPE_ARRAY) -> value
-                else -> leaveOut(path = path, shape = shape, expectedType = SCHEMA_TYPE_ARRAY)
+                else -> leaveOut(path = path, reason = shape.reasonNotToSendWholeAs(SCHEMA_TYPE_ARRAY))
             }
             else -> value
         }
     }
 
     /** A list with an item left out would render as complete in the document, so it is left out as a whole. */
-    private fun retainDeclaredItems(items: List<*>, shape: SchemaShape, path: String): List<Any>? {
-        val retainedItems = mutableListOf<Any>()
-        for (item in items.filterNotNull()) {
-            retainedItems += retainDeclared(value = item, schemas = shape.itemSchemas, path = "$path[]") ?: return null
+    private fun retainDeclaredItems(items: List<*>, shape: SchemaShape, path: String): List<Any?>? {
+        if (null in items && SCHEMA_TYPE_NULL !in shapeOf(shape.itemSchemas).declaredTypes) {
+            return leaveOut(
+                path = path,
+                reason = "it holds an empty item, and its item schema does not declare type '$SCHEMA_TYPE_NULL'."
+            )
         }
-        return retainedItems
+        val retainedItems = mutableListOf<Any?>()
+        val isEveryItemRetained = items.all { item ->
+            val retainedItem = item?.let { retainDeclared(value = it, schemas = shape.itemSchemas, path = "$path[]") }
+            retainedItems.add(retainedItem)
+            item == null || retainedItem != null
+        }
+        return retainedItems.takeIf { isEveryItemRetained }
     }
 
-    private fun leaveOut(path: String, shape: SchemaShape, expectedType: String): Any? {
-        LOG.warning {
-            "Left '$path' out of the payload for Epistola template '$templateId': " +
-                if (shape.unresolvedReferences.isNotEmpty()) {
-                    "its schema refers to ${shape.unresolvedReferences}, which ZAC cannot resolve."
-                } else {
-                    "ZAC holds an $expectedType there, and the template neither declares its fields nor " +
-                        "declares it as type '$expectedType'."
-                }
-        }
+    private fun leaveOut(path: String, reason: String): Nothing? {
+        LOG.warning { "Left '$path' out of the payload for Epistola template '$templateId': $reason" }
         return null
     }
 
@@ -176,6 +177,13 @@ private class SchemaShape(
     val unresolvedReferences: List<String>
 ) {
     fun isDeclaredWholeAs(type: String) = type in declaredTypes && unresolvedReferences.isEmpty()
+
+    fun reasonNotToSendWholeAs(type: String) =
+        if (unresolvedReferences.isNotEmpty()) {
+            "its schema refers to $unresolvedReferences, which ZAC cannot resolve."
+        } else {
+            "ZAC holds an $type there, and the template neither declares its fields nor declares it as type '$type'."
+        }
 }
 
 private fun Any?.asTypeNames(): List<String> = when (this) {
