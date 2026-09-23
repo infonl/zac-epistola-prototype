@@ -6,7 +6,7 @@
 #
 # Runs ZAC with Epistola as its document creation provider, against the real Epistola API.
 #
-# The credentials come from the 1Password vault through `.env.tpl`, so nothing is stored here. The
+# The credentials come from the 1Password vault through `.env.epistola.tpl`, so nothing is stored here. The
 # tenant, catalog and API key are all required: Epistola carries the catalog in the path of every
 # template call and requires it on every generation request, and ZAC refuses to start without them.
 #

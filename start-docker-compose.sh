@@ -195,7 +195,11 @@ if [ "$disableOnePassword" = "false" ]; then
     echo "1Password CLI ('op') not found. Only using environment variables set manually."
   elif op vault get Dimpact; then
     echo "Using 1Password CLI tools to retrieve secrets from vault 'Dimpact'..."
-    op_script='op run --env-file=./.env.tpl --no-masking --'
+    op_env_files="--env-file=./.env.tpl"
+    if [ "$epistolaProvider" = "true" ] && [ "$epistolaWireMock" = "false" ]; then
+      op_env_files="$op_env_files --env-file=./.env.epistola.tpl"
+    fi
+    op_script="op run $op_env_files --no-masking --"
   else
     echo "No access to 1Password vault 'Dimpact'. Only using environment variables set manually."
   fi
