@@ -172,9 +172,10 @@ epistola:
    # Required when documentCreationProvider is EPISTOLA.
   apiKey: ""
    # -- Epistola tenant identifier that scopes the available templates. A slug of 3 to 63
-   # characters matching ^[a-z][a-z0-9]*(-[a-z0-9]+)*$, for example "acme-corp". Required when documentCreationProvider is EPISTOLA.
+   # characters matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, for example "acme-corp". Required when documentCreationProvider is EPISTOLA.
   tenantId: ""
-   # -- Epistola catalog identifier that holds the templates ZAC generates from. Required when documentCreationProvider is EPISTOLA.
+   # -- Epistola catalog identifier that holds the templates ZAC generates from. A slug of 3 to 50
+   # characters matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, for example "default". Required when documentCreationProvider is EPISTOLA.
   catalogId: ""
    # -- Seconds ZAC waits for an Epistola generation job before giving up. Defaults to 60 when left empty.
   generationTimeoutSeconds: ""
