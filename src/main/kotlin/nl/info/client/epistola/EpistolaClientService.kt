@@ -106,13 +106,14 @@ class EpistolaClientService @Inject constructor(
                     else -> Unit
                 }
             }
-            if (System.nanoTime() >= deadline) {
+            val remainingTime = Duration.ofNanos(deadline - System.nanoTime())
+            if (remainingTime.isNegative || remainingTime.isZero) {
                 throw EpistolaDocumentGenerationTimeoutException(
                     "Epistola generation request '$requestId' did not complete within " +
                         "${generationTimeout().toSeconds()} seconds."
                 )
             }
-            sleep(pollDelay)
+            sleep(minOf(pollDelay, remainingTime))
             pollDelay = minOf(pollDelay.multipliedBy(POLL_DELAY_FACTOR), MAXIMUM_POLL_DELAY)
         }
     }
@@ -144,7 +145,7 @@ class EpistolaClientService @Inject constructor(
 
     private fun sleep(duration: Duration) =
         try {
-            Thread.sleep(duration.toMillis())
+            Thread.sleep(duration)
         } catch (interruptedException: InterruptedException) {
             Thread.currentThread().interrupt()
             throw EpistolaDocumentGenerationTimeoutException(

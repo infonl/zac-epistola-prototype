@@ -4,6 +4,9 @@
  */
 package nl.info.client.epistola
 
+import io.kotest.matchers.comparables.shouldBeLessThan
+import kotlin.time.measureTime
+import kotlin.time.Duration.Companion.seconds
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
@@ -190,6 +193,36 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
                 then("waiting stops and the request is named") {
                     exception.message shouldContain requestId.toString()
+                }
+            }
+        }
+
+        given("a job that never finishes, with a timeout that the back-off does not divide evenly") {
+            every { generationApiInstance.get() } returns generationApi
+            val requestId = UUID.randomUUID()
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
+                items = listOf(createDocumentGenerationItem(status = IN_PROGRESS))
+            )
+
+            `when`("the configured timeout of one second passes") {
+                lateinit var epistolaDocumentGenerationTimeoutException: EpistolaDocumentGenerationTimeoutException
+                val waitingTime = measureTime {
+                    epistolaDocumentGenerationTimeoutException = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
+                        createService(generationTimeoutSeconds = 1L).generateDocument(
+                            templateId = FAKE_TEMPLATE_ID,
+                            data = emptyMap(),
+                            fileName = FAKE_FILE_NAME,
+                            correlationId = FAKE_CORRELATION_ID
+                        )
+                    }
+                }
+
+                then("waiting stops at the timeout instead of sleeping out the next full back-off") {
+                    epistolaDocumentGenerationTimeoutException.message shouldContain requestId.toString()
+                    waitingTime shouldBeLessThan 1.4.seconds
                 }
             }
         }
