@@ -63,7 +63,7 @@ internal class EpistolaSettings(
     }
 
     private fun verifyIsSlug(name: String, value: String?, length: IntRange, example: String) {
-        val slug = value?.trim().orEmpty()
+        val slug = value.orEmpty()
         if (slug.length !in length || !SLUG_PATTERN.matches(slug)) {
             throw InvalidDocumentCreationProviderConfigurationException(
                 "$name ('$slug') is not a valid Epistola identifier. " +

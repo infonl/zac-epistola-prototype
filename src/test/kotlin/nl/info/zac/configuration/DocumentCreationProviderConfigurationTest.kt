@@ -220,6 +220,21 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
         }
     }
 
+    given("Epistola selected with a tenant identifier that carries trailing whitespace") {
+        val configuration = epistolaConfiguration(epistolaTenantId = "zac-gemeente ")
+
+        `when`("the configuration is validated on startup") {
+            val invalidDocumentCreationProviderConfigurationException =
+                shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                    configuration.onStartup(Any())
+                }
+
+            then("startup fails, because ZAC sends the identifier to Epistola exactly as it is configured") {
+                invalidDocumentCreationProviderConfigurationException.message shouldContain "'zac-gemeente '"
+            }
+        }
+    }
+
     given("Epistola selected with a catalog identifier that is not a slug") {
         val configuration = epistolaConfiguration(epistolaCatalogId = "ZAC/Catalogus")
 
