@@ -13,6 +13,7 @@ import jakarta.enterprise.inject.Produces
 import jakarta.inject.Inject
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_API_KEY
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL
+import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import org.eclipse.microprofile.config.inject.ConfigProperty
 import java.time.Duration
@@ -26,6 +27,7 @@ import kotlin.jvm.optionals.getOrNull
  */
 @ApplicationScoped
 @NoArgConstructor
+@AllOpen
 class EpistolaClientProducer @Inject constructor(
     // No parameter may carry a default value, or Kotlin generates a second constructor carrying
     // this one's annotations and Weld cannot choose between them.
