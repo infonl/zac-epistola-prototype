@@ -18,8 +18,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty
 import java.time.Duration
 
 /**
- * Epistola's client interfaces come from a jar, so ZAC cannot annotate them with `@RegisterRestClient`
- * and builds them here instead.
+ * Epistola's interfaces carry `@RegisterRestClient` without a `configKey`, so WildFly would configure them from
+ * properties named after each interface. ZAC builds them here from the settings it validates on startup
+ * instead, and [EpistolaClient] tells the two apart.
  */
 @ApplicationScoped
 @NoArgConstructor
