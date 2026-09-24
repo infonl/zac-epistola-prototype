@@ -238,7 +238,9 @@ export class EpistolaTemplatesFormComponent {
     return this.templateNamesById().get(templateId) ?? templateId;
   }
 
-  protected vertrouwelijkheidaanduiding(informatieObjectTypeUuid: string | null) {
+  protected vertrouwelijkheidaanduiding(
+    informatieObjectTypeUuid: string | null,
+  ) {
     return this.informatieobjecttypesQuery
       .data()
       ?.find(({ uuid }) => uuid === informatieObjectTypeUuid)
