@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, en scherm 1 bij de bouw van #3 op 24 september |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de foutmelding van scherm 4 dezelfde dag |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -147,7 +147,7 @@ Twee mislukkingen die andere woorden nodig hebben, omdat ze het systeem in een a
 
 | Situatie | Melding |
 |---|---|
-| Epistola onbereikbaar | **Genereren mislukt.** Epistola is niet bereikbaar. Probeer het later opnieuw of neem contact op met de beheerder. *(referentie: 7f3a91c4)* |
+| Epistola onbereikbaar | **Genereren mislukt.** Het document kon niet worden aangemaakt. Probeer het later opnieuw of neem contact op met de beheerder. *(referentie: 7f3a91c4)* |
 | Gegenereerd, opslag mislukt | **Document gegenereerd, maar opslag in Open Zaak is mislukt.** Het document is niet aan de zaak gekoppeld en moet opnieuw worden gegenereerd. *(referentie: 91ba02de)* |
 
 ### Aantekeningen
@@ -158,6 +158,9 @@ Twee mislukkingen die andere woorden nodig hebben, omdat ze het systeem in een a
 2. **Een correlatiereferentie, nooit een stacktrace.** Daarmee kan support de logregel vinden; #8 vereist
    dat de log zelf detail draagt zonder BSN of andere persoonsgegevens in platte tekst.
 3. **Fouten verschijnen binnen de dialoog**, die nog openstaat omdat het genereren hem blokkeerde.
+4. **De melding noemt de provider niet**, net zomin als de rest van de zaakkant (zie het ontwerpbesluit
+   hieronder). Tot 24 september stond hier "Epistola is niet bereikbaar". De tekst sluit nu aan op de melding
+   die #4 heeft ingebouwd.
 
 ---
 

@@ -31,10 +31,10 @@ voorlopig alleen als artifact, gelinkt vanuit hun issue.
 | Scope | Alleen CMMN-zaken, alleen PDF |
 | Client | De officiële Jakarta EE-client van Epistola wordt overgenomen, niet zelf gegenereerd |
 | Generatie | Asynchroon: indienen, de job pollen, downloaden — alles binnen de al geauthenticeerde aanroep |
-| Authenticatie | Een statische API key. Self-signed JWT en OAuth 2.0 client credentials zijn vastgelegd als afgewezen alternatieven, met OAuth als productiepad |
+| Authenticatie | Een API key van de tenant, met de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER`. Sinds contract 1.3.1 is dat Epistola's ondersteunde methode; de twee JWT-methoden zijn experimenteel |
 | Templategroepen | Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder |
 | Autorisatie | Het bestaande recht `creeren_document` wordt hergebruikt, er komt geen Epistola-specifiek recht |
-| Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee |
+| Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee. Datums in ISO 8601 |
 
 De onderbouwing van elk van deze besluiten staat in het
 [technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md).
