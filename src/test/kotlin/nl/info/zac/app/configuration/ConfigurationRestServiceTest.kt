@@ -27,7 +27,8 @@ class ConfigurationRestServiceTest : BehaviorSpec({
         epistolaRestUrl = Optional.of("https://epistola.example.com"),
         epistolaTenantId = Optional.of("zac-gemeente"),
         epistolaCatalogId = Optional.of("zac-catalogus"),
-        epistolaApiKey = Optional.of("fakeApiKey")
+        epistolaApiKey = Optional.of("fakeApiKey"),
+        epistolaGenerationTimeoutSeconds = 60L
     )
     val configurationRestService = ConfigurationRestService(
         configurationService,

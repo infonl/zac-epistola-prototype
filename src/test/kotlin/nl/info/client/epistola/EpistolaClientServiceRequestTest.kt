@@ -4,8 +4,6 @@
  */
 package nl.info.client.epistola
 
-import app.epistola.client.jakarta.api.GenerationApi
-import app.epistola.client.jakarta.api.TemplatesApi
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import io.kotest.assertions.throwables.shouldThrow
@@ -14,14 +12,11 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.checkUnnecessaryStub
-import io.mockk.every
-import io.mockk.mockk
-import jakarta.enterprise.inject.Instance
-import nl.info.zac.configuration.DocumentCreationProviderConfiguration.Companion.ENV_VAR_EPISTOLA_CATALOG_ID
+import nl.info.zac.configuration.createEpistolaSettings
 import org.json.JSONObject
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.util.Optional
+import java.time.Duration
 
 private const val FAKE_TENANT_ID = "fake-tenant"
 private const val FAKE_CATALOG_ID = "fake-catalog"
@@ -31,24 +26,26 @@ private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
 private const val FAKE_DOCUMENT_ID = "3d9f8e7a-6b5c-4d3e-8f1a-0b9c8d7e6f5a"
 private const val FAKE_REQUEST_ID = "2f1c9d64-5d8e-4a1b-9c0f-1a2b3c4d5e6f"
 private const val FAKE_PDF_CONTENT = "fakePdfContent"
+private const val FAKE_ZAC_VERSION = "fakeZacVersion"
 
 class EpistolaClientServiceRequestTest : BehaviorSpec({
     val epistolaServer = FakeEpistolaServer()
-    val epistolaClientProducer = EpistolaClientProducer(
-        baseUri = Optional.of(epistolaServer.baseUri),
-        apiKey = Optional.of("fakeEpistolaApiKey")
+    val epistolaSettings = createEpistolaSettings(
+        restUrl = epistolaServer.baseUri,
+        tenantId = FAKE_TENANT_ID,
+        catalogId = FAKE_CATALOG_ID,
+        generationTimeout = Duration.ZERO
     )
-    val generationApi = epistolaClientProducer.generationApi()
+    val epistolaClientProducer = EpistolaClientProducer(
+        epistolaSettings = epistolaSettings,
+        zacVersion = FAKE_ZAC_VERSION
+    )
     val templatesApi = epistolaClientProducer.templatesApi()
-    val generationApiInstance = mockk<Instance<GenerationApi>>()
-    val templatesApiInstance = mockk<Instance<TemplatesApi>>()
 
-    fun createService(catalogId: String? = FAKE_CATALOG_ID) = EpistolaClientService(
-        generationApi = generationApiInstance,
-        templatesApi = templatesApiInstance,
-        tenantId = Optional.of(FAKE_TENANT_ID),
-        catalogId = Optional.ofNullable(catalogId),
-        generationTimeoutSeconds = Optional.of(0L)
+    fun createService() = EpistolaClientService(
+        generationApi = epistolaClientProducer.generationApi(),
+        templatesApi = templatesApi,
+        epistolaSettings = epistolaSettings
     )
 
     afterEach { checkUnnecessaryStub() }
@@ -56,8 +53,6 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 
     context("reading a template schema") {
         given("a configured tenant and catalog") {
-            every { templatesApiInstance.get() } returns templatesApi
-
             `when`("the schema is read") {
                 epistolaServer.clearRecordedRequests()
                 val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
@@ -70,21 +65,9 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                 and("the data model the template declares is returned") {
                     templateSchema shouldBe mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
                 }
-            }
-        }
 
-        given("no configured catalog") {
-            every { templatesApiInstance.get() } returns templatesApi
-
-            `when`("the schema is read") {
-                epistolaServer.clearRecordedRequests()
-                val illegalStateException = shouldThrow<IllegalStateException> {
-                    createService(catalogId = null).readTemplateSchema(FAKE_TEMPLATE_ID)
-                }
-
-                then("the missing setting is named and Epistola is never called") {
-                    illegalStateException.message shouldBe "$ENV_VAR_EPISTOLA_CATALOG_ID is not set."
-                    epistolaServer.requestPaths.shouldBeEmpty()
+                and("the request names ZAC and its version as the client that sent it") {
+                    epistolaServer.requestUserAgents.single() shouldContain "ZAC/$FAKE_ZAC_VERSION"
                 }
             }
         }
@@ -92,8 +75,6 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 
     context("generating a document") {
         given("a configured tenant and catalog") {
-            every { generationApiInstance.get() } returns generationApi
-
             `when`("a document is generated") {
                 epistolaServer.clearRecordedRequests()
                 val generatedDocument = createService().generateDocument(
@@ -134,11 +115,13 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 private class FakeEpistolaServer {
     val requestPaths = mutableListOf<String>()
     val requestBodies = mutableListOf<String>()
+    val requestUserAgents = mutableListOf<String>()
 
     private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
         createContext("/") { exchange ->
             val path = exchange.requestURI.path
             requestPaths += path
+            exchange.requestHeaders.getFirst("User-Agent")?.let { requestUserAgents += it }
             exchange.requestBody.readBytes().takeIf { it.isNotEmpty() }?.let {
                 requestBodies += it.toString(StandardCharsets.UTF_8)
             }
@@ -152,6 +135,7 @@ private class FakeEpistolaServer {
     fun clearRecordedRequests() {
         requestPaths.clear()
         requestBodies.clear()
+        requestUserAgents.clear()
     }
 
     fun stop() = server.stop(0)

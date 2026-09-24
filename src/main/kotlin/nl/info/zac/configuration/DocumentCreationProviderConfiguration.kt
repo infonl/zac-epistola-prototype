@@ -7,12 +7,14 @@ package nl.info.zac.configuration
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.context.Initialized
 import jakarta.enterprise.event.Observes
+import jakarta.enterprise.inject.Produces
 import jakarta.inject.Inject
 import nl.info.zac.configuration.exception.InvalidDocumentCreationProviderConfigurationException
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import org.eclipse.microprofile.config.inject.ConfigProperty
+import java.time.Duration
 import java.util.Optional
 import java.util.logging.Logger
 import kotlin.jvm.optionals.getOrNull
@@ -57,7 +59,13 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     private val epistolaCatalogId: Optional<String>,
 
     @ConfigProperty(name = ENV_VAR_EPISTOLA_API_KEY)
-    private val epistolaApiKey: Optional<String>
+    private val epistolaApiKey: Optional<String>,
+
+    @ConfigProperty(
+        name = ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS,
+        defaultValue = DEFAULT_EPISTOLA_GENERATION_TIMEOUT_SECONDS
+    )
+    private val epistolaGenerationTimeoutSeconds: Long
 ) {
     companion object {
         const val ENV_VAR_DOCUMENT_CREATION_PROVIDER = "DOCUMENT_CREATION_PROVIDER"
@@ -66,6 +74,12 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         const val ENV_VAR_EPISTOLA_TENANT_ID = "EPISTOLA_TENANT_ID"
         const val ENV_VAR_EPISTOLA_CATALOG_ID = "EPISTOLA_CATALOG_ID"
         const val ENV_VAR_EPISTOLA_GENERATION_TIMEOUT_SECONDS = "EPISTOLA_GENERATION_TIMEOUT_SECONDS"
+
+        /**
+         * Long enough for the letters ZAC generates, short enough that a stuck job does not hold a
+         * request thread until the browser gives up on it.
+         */
+        const val DEFAULT_EPISTOLA_GENERATION_TIMEOUT_SECONDS = "60"
 
         // Named after the Epistola client's own MicroProfile Config property (epistola.client.api-key),
         // which MicroProfile Config reads from exactly this environment variable name, so adopting that
@@ -80,13 +94,6 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     /** Kept nullable: the error messages below distinguish an unset flag from one explicitly set to false. */
     private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
 
-    private val epistolaSettings = EpistolaSettings(
-        restUrl = epistolaRestUrl.getOrNull(),
-        tenantId = epistolaTenantId.getOrNull(),
-        catalogId = epistolaCatalogId.getOrNull(),
-        apiKey = epistolaApiKey.getOrNull()
-    )
-
     /**
      * An unrecognised value resolves to [DocumentCreationProvider.NONE] so that construction stays free
      * of side effects; [onStartup] reports it and refuses to start.
@@ -94,6 +101,16 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     val activeProvider: DocumentCreationProvider = requestedProvider
         ?.let { DocumentCreationProvider.fromConfigurationValue(it) ?: DocumentCreationProvider.NONE }
         ?: derivedFromSmartDocumentsFlag()
+
+    /** The same validation runs on startup when Epistola is the active provider, so it fails there first. */
+    @Produces
+    fun epistolaSettings() = EpistolaSettings.validated(
+        restUrl = epistolaRestUrl.getOrNull(),
+        tenantId = epistolaTenantId.getOrNull(),
+        catalogId = epistolaCatalogId.getOrNull(),
+        apiKey = epistolaApiKey.getOrNull(),
+        generationTimeout = Duration.ofSeconds(epistolaGenerationTimeoutSeconds)
+    )
 
     fun onStartup(@Observes @Initialized(ApplicationScoped::class) @Suppress("UNUSED_PARAMETER") event: Any) {
         validate()
@@ -143,10 +160,8 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         }
     }
 
-    /** Reported on startup rather than as a failed document generation later. */
     private fun verifyEpistolaConfiguration() {
-        if (activeProvider != DocumentCreationProvider.EPISTOLA) return
-        epistolaSettings.verify()
+        if (activeProvider == DocumentCreationProvider.EPISTOLA) epistolaSettings()
     }
 
     private fun derivedFromSmartDocumentsFlag() =

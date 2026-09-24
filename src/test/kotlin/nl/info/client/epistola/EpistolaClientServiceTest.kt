@@ -4,9 +4,6 @@
  */
 package nl.info.client.epistola
 
-import io.kotest.matchers.comparables.shouldBeLessThan
-import kotlin.time.measureTime
-import kotlin.time.Duration.Companion.seconds
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
@@ -14,6 +11,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.IN
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.checkUnnecessaryStub
@@ -21,16 +19,18 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
-import jakarta.enterprise.inject.Instance
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
 import nl.info.client.epistola.model.createTemplate
+import nl.info.zac.configuration.createEpistolaSettings
 import java.nio.file.Files
-import java.util.Optional
+import java.time.Duration
 import java.util.UUID
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 private const val FAKE_TENANT_ID = "fake-tenant"
 private const val FAKE_CATALOG_ID = "fake-catalog"
@@ -41,22 +41,21 @@ private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
 class EpistolaClientServiceTest : BehaviorSpec({
     val generationApi = mockk<GenerationApi>()
     val templatesApi = mockk<TemplatesApi>()
-    val generationApiInstance = mockk<Instance<GenerationApi>>()
-    val templatesApiInstance = mockk<Instance<TemplatesApi>>()
 
-    fun createService(generationTimeoutSeconds: Long? = 0L) = EpistolaClientService(
-        generationApi = generationApiInstance,
-        templatesApi = templatesApiInstance,
-        tenantId = Optional.of(FAKE_TENANT_ID),
-        catalogId = Optional.of(FAKE_CATALOG_ID),
-        generationTimeoutSeconds = Optional.ofNullable(generationTimeoutSeconds)
+    fun createService(generationTimeout: Duration = Duration.ZERO) = EpistolaClientService(
+        generationApi = generationApi,
+        templatesApi = templatesApi,
+        epistolaSettings = createEpistolaSettings(
+            tenantId = FAKE_TENANT_ID,
+            catalogId = FAKE_CATALOG_ID,
+            generationTimeout = generationTimeout
+        )
     )
 
     afterEach { checkUnnecessaryStub() }
 
     context("generating a document") {
         given("a job that completes on the first poll") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
             val documentId = UUID.randomUUID()
             val pdfContent = "fakePdfContent".toByteArray()
@@ -104,7 +103,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a job that is still running on the first poll and completes on the second") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
             val documentId = UUID.randomUUID()
             val downloadedFile = Files.createTempFile("epistola", ".pdf").toFile()
@@ -119,7 +117,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             every { generationApi.downloadDocument(FAKE_TENANT_ID, documentId) } returns downloadedFile
 
             `when`("the document is generated") {
-                val generatedDocument = createService(generationTimeoutSeconds = 30L).generateDocument(
+                val generatedDocument = createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
                     templateId = FAKE_TEMPLATE_ID,
                     data = emptyMap(),
                     fileName = FAKE_FILE_NAME,
@@ -134,7 +132,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a job that reports its item as failed") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
 
             every {
@@ -171,7 +168,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a job that never finishes") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
 
             every {
@@ -198,7 +194,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a job that never finishes, with a timeout that the back-off does not divide evenly") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
             every {
                 generationApi.generateDocument(FAKE_TENANT_ID, any())
@@ -211,7 +206,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 lateinit var epistolaDocumentGenerationTimeoutException: EpistolaDocumentGenerationTimeoutException
                 val waitingTime = measureTime {
                     epistolaDocumentGenerationTimeoutException = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
-                        createService(generationTimeoutSeconds = 1L).generateDocument(
+                        createService(generationTimeout = Duration.ofSeconds(1)).generateDocument(
                             templateId = FAKE_TEMPLATE_ID,
                             data = emptyMap(),
                             fileName = FAKE_FILE_NAME,
@@ -228,7 +223,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a job that reports a completed item without a document id") {
-            every { generationApiInstance.get() } returns generationApi
             val requestId = UUID.randomUUID()
             val itemId = UUID.randomUUID()
 
@@ -261,7 +255,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         val schema = mapOf("properties" to mapOf("aanvrager" to emptyMap<String, Any>()))
 
         given("a template that carries its schema in its data model, as Epistola serves it") {
-            every { templatesApiInstance.get() } returns templatesApi
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(dataModel = dataModel)
@@ -276,7 +269,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a template that carries its schema under the older name instead") {
-            every { templatesApiInstance.get() } returns templatesApi
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(schema = schema)
@@ -291,7 +283,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a template that carries a schema under both names") {
-            every { templatesApiInstance.get() } returns templatesApi
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(schema = schema, dataModel = dataModel)
@@ -306,7 +297,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
 
         given("a template that declares no schema at all") {
-            every { templatesApiInstance.get() } returns templatesApi
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate()
