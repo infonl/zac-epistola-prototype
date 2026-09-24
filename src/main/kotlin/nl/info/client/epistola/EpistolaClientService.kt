@@ -11,6 +11,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.COMPLETED
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
+import app.epistola.client.jakarta.model.TemplateSummaryDto
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.ws.rs.ProcessingException
@@ -44,6 +45,9 @@ class EpistolaClientService @Inject constructor(
         private val FIRST_POLL_DELAY: Duration = Duration.ofMillis(500)
         private val MAXIMUM_POLL_DELAY: Duration = Duration.ofSeconds(5)
         private const val POLL_DELAY_FACTOR = 2L
+
+        /** The largest page size Epistola's contract allows. */
+        private const val TEMPLATE_PAGE_SIZE = 100
 
         private val LOG = Logger.getLogger(EpistolaClientService::class.java.name)
     }
@@ -79,6 +83,26 @@ class EpistolaClientService @Inject constructor(
             )
         }
         return downloadDocument(tenant, finishedItem, fileName)
+    }
+
+    /** Epistola returns at most [TEMPLATE_PAGE_SIZE] templates per request, so a larger catalog is read page by page. */
+    fun listTemplates(): List<TemplateSummaryDto> {
+        val templates = mutableListOf<TemplateSummaryDto>()
+        var pageNumber = 0
+        do {
+            val templateListResponse = templatesApi.listTemplates(
+                epistolaSettings.tenantId,
+                epistolaSettings.catalogId,
+                null,
+                pageNumber,
+                TEMPLATE_PAGE_SIZE,
+                null,
+                null
+            )
+            templates += templateListResponse.items.orEmpty()
+            pageNumber++
+        } while (pageNumber < (templateListResponse.page?.totalPages ?: 0))
+        return templates
     }
 
     fun readTemplateSchema(templateId: String): Any? =

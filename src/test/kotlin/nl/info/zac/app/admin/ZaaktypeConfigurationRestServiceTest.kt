@@ -8,6 +8,7 @@ package nl.info.zac.app.admin
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
 import io.mockk.just
@@ -29,12 +30,16 @@ import nl.info.zac.app.admin.converter.RestZaaktypeConfigurationConverter
 import nl.info.zac.app.admin.model.createRestZaaktypeConfiguration
 import nl.info.zac.app.admin.model.createRestZaaktypeOverzicht
 import nl.info.zac.configuration.ConfigurationService
+import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.rest.createRestEpistolaTemplate
+import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplateGroup
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_PRODUCTAANVRAAGTYPE_ALREADY_IN_USE
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_USER_NOT_IN_GROUP
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.identity.exception.UserNotInGroupException
 import nl.info.zac.policy.PolicyService
+import nl.info.zac.policy.exception.PolicyException
 import nl.info.zac.smartdocuments.SmartDocumentsTemplatesService
 import nl.info.zac.smartdocuments.exception.SmartDocumentsConfigurationException
 import java.util.UUID
@@ -52,6 +57,7 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
     val zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>()
     val caseDefinitionConverter = mockk<RESTCaseDefinitionConverter>()
     val smartDocumentsTemplatesService = mockk<SmartDocumentsTemplatesService>()
+    val epistolaTemplatesService = mockk<EpistolaTemplatesService>()
     val policyService = mockk<PolicyService>()
     val identityService = mockk<IdentityService>()
     val zaaktypeConfigurationRestService = ZaaktypeConfigurationRestService(
@@ -67,6 +73,7 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
         zaaktypeCmmnConfigurationConverter = zaaktypeCmmnConfigurationConverter,
         caseDefinitionConverter = caseDefinitionConverter,
         smartDocumentsTemplatesService = smartDocumentsTemplatesService,
+        epistolaTemplatesService = epistolaTemplatesService,
         policyService = policyService,
         identityService = identityService,
     )
@@ -186,6 +193,75 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
 
             then("exception is thrown") {
                 exception.message shouldBe "Validation failed. No SmartDocuments templates available"
+            }
+        }
+    }
+
+    context("Epistola templates") {
+        given("a beheerder") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val restEpistolaTemplates = listOf(createRestEpistolaTemplate())
+            val restMappedEpistolaTemplateGroups = listOf(createRestMappedEpistolaTemplateGroup())
+            every { policyService.readOverigeRechten().beheren } returns true
+            every { epistolaTemplatesService.listTemplates() } returns restEpistolaTemplates
+            every {
+                epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, restMappedEpistolaTemplateGroups)
+            } just runs
+
+            `when`("the Epistola templates are listed and a mapping is stored") {
+                val listedEpistolaTemplates = zaaktypeConfigurationRestService.listEpistolaTemplates()
+                zaaktypeConfigurationRestService.storeEpistolaTemplatesMapping(
+                    zaaktypeUuid = zaaktypeUuid,
+                    restMappedEpistolaTemplateGroups = restMappedEpistolaTemplateGroups
+                )
+
+                then("both reach the Epistola templates service") {
+                    listedEpistolaTemplates shouldBe restEpistolaTemplates
+                    verify(exactly = 1) {
+                        epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, restMappedEpistolaTemplateGroups)
+                    }
+                }
+            }
+        }
+
+        given("a user who is not a beheerder") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val restMappedEpistolaTemplateGroups = listOf(createRestMappedEpistolaTemplateGroup())
+            every { policyService.readOverigeRechten().beheren } returns false
+
+            `when`("the Epistola templates are listed") {
+                val policyException = shouldThrow<PolicyException> {
+                    zaaktypeConfigurationRestService.listEpistolaTemplates()
+                }
+
+                then("the listing is refused") {
+                    policyException shouldNotBe null
+                }
+            }
+
+            `when`("a mapping is stored") {
+                val policyException = shouldThrow<PolicyException> {
+                    zaaktypeConfigurationRestService.storeEpistolaTemplatesMapping(
+                        zaaktypeUuid = zaaktypeUuid,
+                        restMappedEpistolaTemplateGroups = restMappedEpistolaTemplateGroups
+                    )
+                }
+
+                then("the mapping is refused and not stored") {
+                    policyException shouldNotBe null
+                    verify(exactly = 0) { epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, any()) }
+                }
+            }
+
+            `when`("the mapping of a zaaktype is read") {
+                every {
+                    epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
+                } returns restMappedEpistolaTemplateGroups
+                val templateMapping = zaaktypeConfigurationRestService.getEpistolaTemplatesMapping(zaaktypeUuid)
+
+                then("it is returned, because the document creation dialog needs it for every behandelaar") {
+                    templateMapping shouldBe restMappedEpistolaTemplateGroups
+                }
             }
         }
     }

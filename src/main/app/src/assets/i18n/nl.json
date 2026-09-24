@@ -847,6 +847,7 @@
   "msg.error.epistola.generation.failed": "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder.",
   "msg.error.epistola.generation.timed-out": "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw.",
   "msg.error.epistola.template.without-schema": "De gekozen sjabloon geeft niet aan welke zaakgegevens hij kan gebruiken. Neem contact op met de beheerder.",
+  "msg.error.epistola.template.mapping-invalid": "De sjablooninstellingen konden niet worden opgeslagen. Controleer of elke sjabloongroep een unieke naam heeft en elk sjabloon één keer voorkomt, met een documenttype.",
   "msg.error.smartdocuments.not.configured": "SmartDocuments is niet geconfigureerd.",
   "msg.error.smartdocuments.disabled": "SmartDocuments is uitgeschakeld.",
   "msg.error.validation.generic": "Er zijn fouten gevonden in de ingevoerde gegevens. Controleer de velden en probeer het opnieuw.",

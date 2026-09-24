@@ -43,6 +43,9 @@ import nl.info.zac.app.admin.model.RestZaaktypeConfiguration
 import nl.info.zac.app.zaak.model.RestResultaattype
 import nl.info.zac.app.zaak.model.toRestResultaatTypes
 import nl.info.zac.configuration.ConfigurationService
+import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.rest.RestEpistolaTemplate
+import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.policy.PolicyService
@@ -76,6 +79,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     private val zaaktypeBpmnConfigurationBeheerService: ZaaktypeBpmnConfigurationBeheerService,
     private val caseDefinitionConverter: RESTCaseDefinitionConverter,
     private val smartDocumentsTemplatesService: SmartDocumentsTemplatesService,
+    private val epistolaTemplatesService: EpistolaTemplatesService,
     private val policyService: PolicyService,
     private val identityService: IdentityService
 ) {
@@ -332,6 +336,37 @@ class ZaaktypeConfigurationRestService @Inject constructor(
         val smartDocumentsTemplates = smartDocumentsTemplatesService.listTemplates()
         restTemplateGroups isSubsetOf smartDocumentsTemplates
         smartDocumentsTemplatesService.storeTemplatesMapping(restTemplateGroups, zaaktypeUuid)
+    }
+
+    @GET
+    @Path("epistola-templates")
+    fun listEpistolaTemplates(): List<RestEpistolaTemplate> {
+        assertPolicy(policyService.readOverigeRechten().beheren)
+        return epistolaTemplatesService.listTemplates()
+    }
+
+    /**
+     * Not limited to beheerders: the document creation dialog reads which templates a zaak of this zaaktype
+     * offers, as it does for SmartDocuments.
+     */
+    @GET
+    @Path("{zaaktypeUuid}/epistola-templates-mapping")
+    fun getEpistolaTemplatesMapping(
+        @PathParam("zaaktypeUuid") zaaktypeUuid: UUID
+    ): List<RestMappedEpistolaTemplateGroup> =
+        epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
+
+    @POST
+    @Path("{zaaktypeUuid}/epistola-templates-mapping")
+    fun storeEpistolaTemplatesMapping(
+        @PathParam("zaaktypeUuid") zaaktypeUuid: UUID,
+        restMappedEpistolaTemplateGroups: List<RestMappedEpistolaTemplateGroup>
+    ) {
+        assertPolicy(policyService.readOverigeRechten().beheren)
+        epistolaTemplatesService.storeTemplateMapping(
+            zaaktypeUuid = zaaktypeUuid,
+            templateGroups = restMappedEpistolaTemplateGroups
+        )
     }
 
     private fun createHardcodedZaakTerminationReasons() =

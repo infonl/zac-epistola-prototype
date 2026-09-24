@@ -71,6 +71,9 @@ abstract class ZaaktypeConfiguration {
     @Column(name = "smartdocuments_ingeschakeld")
     var smartDocumentsEnabled: Boolean = false
 
+    @Column(name = "epistola_ingeschakeld")
+    var epistolaEnabled: Boolean = false
+
     @field:NotNull
     @Column(name = "creatiedatum", nullable = false)
     var creatiedatum: ZonedDateTime? = null
