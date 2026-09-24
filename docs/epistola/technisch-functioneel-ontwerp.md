@@ -469,7 +469,7 @@ vraag bij Epistola ([§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat)).
 
 Er zijn drie, elk voor iets anders:
 
-- **De testserver van Epistola** (tenant `demo`), bereikt met `./start-docker-compose.sh -l -E`. Hiertegen is
+- **De testserver van Epistola** (`demo.epistola.app`, met een eigen tenant en de catalogus `default`), bereikt met `./start-docker-compose.sh -l -E`. Hiertegen is
   op 24 september de hele keten binnen WildFly doorlopen, via de geïnjecteerde beans: template lezen,
   allow-list, genereren, downloaden.
 - **Een WireMock-stand-in** (`-W`), voor werken zonder Epistola. Die spiegelt wat de echte server teruggeeft,
