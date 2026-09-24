@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026 |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, en scherm 1 bij de bouw van #3 op 24 september |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -21,40 +21,55 @@ volledig genoeg om zonder de mockups te bouwen — die zijn er voor de vorm, nie
 ## 1 · Admin — Epistola documentsjablonen per zaaktype
 
 > Mockup: [`wireframes/1-admin.html`](wireframes/1-admin.html) ·
-> Route: `/admin/parameters` → zaaktype → Documentcreatie
+> Route: `/admin/parameters` → CMMN-zaaktype → stap *Koppelingen*
 
 Spiegelt `smart-documents-form.component`: een kaart die alleen verschijnt wanneer de provider actief is,
-een schuifknop per zaaktype, en een lijst met templates die elk aan een informatieobjecttype gekoppeld zijn.
+een schuifknop per zaaktype, en sjablonen die elk aan een informatieobjecttype gekoppeld zijn. Anders dan
+bij SmartDocuments bouwt de beheerder de groepen zelf op, omdat Epistola er geen levert.
 
 ### Opbouw
 
 | Element | Type | Gedrag |
 |---|---|---|
-| Kaart *Epistola documentsjablonen* | `mat-card` | Volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
+| Kaart *Epistola documentsjablonen* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
 | Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder is verborgen zolang hij uit staat |
-| Groepskop | tekst, één niveau | Een templategroep die de beheerder zelf in ZAC heeft gemaakt |
-| Selectievakje per template | `mat-checkbox` | Of dit template voor dit zaaktype beschikbaar is |
-| Templatenaam | tekst | Live opgehaald bij Epistola; er wordt geen naam opgeslagen |
-| Informatieobjecttype | `mat-select` | Verplicht zodra het template is aangevinkt. Bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6) |
+| Sjabloongroep | tekstveld, één niveau | De naam die de beheerder de groep geeft. Verplicht, en uniek binnen het zaaktype, ongeacht hoofdletters en spaties |
+| Sjabloongroep verwijderen | icoonknop | Verwijdert de groep, met de sjablonen erin |
+| Sjabloonnaam | tekst | Live opgehaald bij Epistola; er wordt geen naam opgeslagen |
+| Documenttype | `mat-select` | Verplicht. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6) |
 | Vertrouwelijkheid | read-only tekst | Afgeleid van het gekozen informatieobjecttype, niet apart in te stellen |
+| Sjabloon verwijderen | icoonknop | Haalt het sjabloon uit de groep; daarna is het weer te kiezen voor een groep |
+| Sjabloon toevoegen | `mat-select` per groep | Biedt alleen de sjablonen die nog in geen enkele groep van dit zaaktype staan |
+| Sjabloongroep toevoegen | knop | Voegt een lege groep toe |
 
 ### Aantekeningen
 
-1. **De kaart is volledig afwezig** wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is — dezelfde
-   `*ngIf="enabledGlobally"`-guard die SmartDocuments gebruikt. Een beheerder ziet nooit twee
-   providerkaarten tegelijk.
+1. **De kaart is volledig afwezig** wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is. Een beheerder
+   ziet nooit twee providerkaarten tegelijk. Bij een BPMN-zaaktype ontbreekt de kaart altijd: #7 beperkt
+   Epistola tot CMMN, dus instellen zou daar niets doen.
 2. **De schuifknop** schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder blijft verborgen
    zolang hij uit staat.
 3. **Groepen zijn een platte lijst, geen uitklapbare boom.** SmartDocuments gebruikt `mat-tree` omdat zijn
    groepen nesten. Epistola heeft helemaal geen groepen, dus dit zijn die van ZAC zelf: de beheerder maakt
-   ze hier aan en zet er platte Epistola-templates in, één niveau diep.
-4. **Informatieobjecttype per template** — een `mat-select`, precies zoals SmartDocuments het doet. Dit is
+   een groep, geeft hem een naam en zet er platte Epistola-sjablonen in, één niveau diep.
+4. **Geen selectievakje per sjabloon.** De eerste versie van deze wireframe had er wel een, zoals
+   SmartDocuments. Daar levert de provider de boom en vinkt de beheerder aan wat beschikbaar is. Bij
+   Epistola is er geen boom om in aan te vinken: een sjabloon staat in een groep, of het is niet
+   beschikbaar. *Sjabloon toevoegen* en de verwijderknop vervangen het selectievakje. Aangepast bij de bouw
+   van #3.
+5. **Een sjabloon staat hoogstens één keer in een zaaktype.** Zo hangt het informatieobjecttype waaronder
+   een document wordt opgeslagen nooit af van de groep die de behandelaar opent. *Sjabloon toevoegen* biedt
+   daarom alleen sjablonen die nog nergens staan, en de backend weigert een dubbel sjabloon ook.
+6. **Informatieobjecttype per sjabloon**: een `mat-select`, precies zoals SmartDocuments het doet. Dit is
    wat #6 nodig heeft om de PDF in Open Zaak te registreren.
-5. **Vertrouwelijkheidaanduiding is read-only** en afgeleid van het gekozen informatieobjecttype. Geen
+7. **Vertrouwelijkheidaanduiding is read-only** en afgeleid van het gekozen informatieobjecttype. Geen
    nieuw idee: zo gedraagt de SmartDocuments-rij zich al.
+8. **Opslaan wacht op het zaaktype.** De sjablooninstellingen worden pas opgeslagen nadat het zaaktype zelf
+   is opgeslagen, omdat ze bij die zaaktypeconfiguratie horen. Een ongeldige instelling (een groep zonder
+   naam, een sjabloon zonder documenttype) houdt de knop *Opslaan* van de hele stap uitgeschakeld.
 
-Het selectievakje, de naam, de informatieobjecttype-select en de afgeleide vertrouwelijkheid reproduceren
-`smart-documents-form-item.component.html` veld voor veld.
+De sjabloonnaam, de documenttype-select en de afgeleide vertrouwelijkheid reproduceren
+`smart-documents-form-item.component.html` veld voor veld; het selectievakje niet (aantekening 4).
 
 ---
 
@@ -182,6 +197,10 @@ Beslist op 21 september: Epistola heeft helemaal geen templategroepen — zijn t
 tenant — dus de beheerder maakt de groepen hier in ZAC en zet er platte Epistola-templates in. Eén niveau
 is genoeg, het scherm blijft een lijst, en de groeptabel heeft geen zelfverwijzende `parent_id` nodig
 (#3, [datamodel](datamodel.md)).
+
+Bij de bouw van #3 viel het selectievakje per sjabloon weg. Het veronderstelde een boom die de provider
+levert, zoals bij SmartDocuments, en die heeft Epistola niet. De beheerder voegt nu een sjabloon aan een
+groep toe in plaats van het aan te vinken (scherm 1, aantekening 4).
 
 ---
 

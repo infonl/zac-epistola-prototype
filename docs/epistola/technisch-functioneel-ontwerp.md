@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 24 september 2026 — bijgewerkt naar wat #4 heeft gebouwd ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)) |
+| Stand | 24 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)) en #3 hebben gebouwd |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -433,9 +433,10 @@ Er zijn drie, elk voor iets anders:
 
 ### Nog open
 
-- **Wordt de templatenaam in ZAC opgeslagen?** SmartDocuments slaat alleen het id op, waardoor ZAC geen
-  lijst kan tonen als de provider onbereikbaar is en verweesde mappings onzichtbaar blijven. Dat getrouw
-  spiegelen reproduceert de zwakte; de naam opslaan kost een waarde die kan verouderen.
+- **Wordt de templatenaam in ZAC opgeslagen?** Gebouwd zonder (#3), in de lijn die ZAC zelf koos: `V98`
+  (#6978, 7 september) verwijderde de SmartDocuments-namen, omdat ze toch altijd live worden opgehaald. De
+  zwakte blijft: zonder Epistola toont het beheerscherm geen sjablonen. Ligt ter bevestiging bij de
+  stakeholders (#21); een `naam`-kolom is dan één migratie ([datamodel](datamodel.md)).
 - **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel, en de
   allow-list uit [§3](#3--datamapping) kan daar niets aan versmallen. Vastgelegd in een test; vraagt een
   besluit van de stakeholders.

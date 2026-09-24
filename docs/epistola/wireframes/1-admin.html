@@ -16,13 +16,14 @@
       <h1>1 · Admin — Epistola documentsjablonen per zaaktype</h1>
       <p class="subtitle">
         Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 1. Spiegelt
-        <code>smart-documents-form.component</code>.
+        <code>smart-documents-form.component</code>, maar de beheerder bouwt de groepen zelf op: Epistola
+        levert er geen.
       </p>
 
       <div class="frame">
         <div class="frame-bar">
           <i class="dot"></i>
-          <span class="path">/admin/parameters &rarr; zaaktype &rarr; Documentcreatie</span>
+          <span class="path">/admin/parameters &rarr; CMMN-zaaktype &rarr; Koppelingen</span>
         </div>
         <div class="frame-body">
           <div class="card">
@@ -36,33 +37,42 @@
               <div class="toggle"><i></i></div>
             </div>
             <div class="divider"></div>
-
-            <div class="grp">▾ Vergunningen</div>
+            <div class="grp">▾ Sjabloongroep</div>
             <div class="row">
-              <i class="chk on"></i>
+              <span class="box name">Vergunningen</span>
+              <span class="box ro">verwijder groep</span>
+            </div>
+            <div class="row">
               <span class="name">Besluit evenementenvergunning</span>
               <span class="box">Besluit <i class="caret">▾</i></span>
               <span class="box ro">Vertrouwelijk</span>
+              <span class="box ro">verwijder</span>
             </div>
             <div class="row">
-              <i class="chk on"></i>
               <span class="name">Ontvangstbevestiging aanvraag</span>
               <span class="box">Bijlage <i class="caret">▾</i></span>
               <span class="box ro">Openbaar</span>
+              <span class="box ro">verwijder</span>
             </div>
             <div class="row">
-              <i class="chk"></i>
-              <span class="name">Verlenging beslistermijn</span>
-              <span class="box">— kies — <i class="caret">▾</i></span>
-              <span class="box ro">—</span>
+              <span class="box name">+ Sjabloon toevoegen <i class="caret">▾</i></span>
             </div>
-
-            <div class="grp">▾ Handhaving</div>
+            <div class="grp">▾ Sjabloongroep</div>
             <div class="row">
-              <i class="chk"></i>
+              <span class="box name">Handhaving</span>
+              <span class="box ro">verwijder groep</span>
+            </div>
+            <div class="row">
               <span class="name">Voornemen tot handhaving</span>
               <span class="box">— kies — <i class="caret">▾</i></span>
               <span class="box ro">—</span>
+              <span class="box ro">verwijder</span>
+            </div>
+            <div class="row">
+              <span class="box name">+ Sjabloon toevoegen <i class="caret">▾</i></span>
+            </div>
+            <div class="btnrow">
+              <span class="btn">+ Sjabloongroep toevoegen</span>
             </div>
           </div>
         </div>
