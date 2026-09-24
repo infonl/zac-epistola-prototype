@@ -845,7 +845,7 @@
   "msg.error.zrc.client.exception": "Er heeft zich helaas een technische fout voorgedaan. Er kunnen geen zaken worden opgehaald.",
   "msg.error.ztc.client.exception": "Er heeft zich helaas een technische fout voorgedaan. Er kunnen geen zaaktypes worden opgehaald.",
   "msg.error.epistola.generation.failed": "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder.",
-  "msg.error.epistola.generation.timed-out": "Het aanmaken van het document duurt langer dan verwacht. Controleer later of het document alsnog is toegevoegd.",
+  "msg.error.epistola.generation.timed-out": "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw.",
   "msg.error.epistola.template.without-schema": "De gekozen sjabloon geeft niet aan welke zaakgegevens hij kan gebruiken. Neem contact op met de beheerder.",
   "msg.error.smartdocuments.not.configured": "SmartDocuments is niet geconfigureerd.",
   "msg.error.smartdocuments.disabled": "SmartDocuments is uitgeschakeld.",

@@ -4,6 +4,7 @@
  */
 package nl.info.client.epistola
 
+import app.epistola.client.jakarta.api.ApiException
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
@@ -16,7 +17,9 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
@@ -176,6 +179,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
                 items = listOf(createDocumentGenerationItem(status = IN_PROGRESS))
             )
+            every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } just runs
 
             `when`("the configured timeout passes") {
                 val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
@@ -190,6 +194,37 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 then("waiting stops and the request is named") {
                     exception.message shouldContain requestId.toString()
                 }
+
+                and("the job is cancelled, so trying again does not leave a second document at Epistola") {
+                    verify(exactly = 1) { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) }
+                }
+            }
+        }
+
+        given("a job that never finishes and that Epistola refuses to cancel") {
+            val requestId = UUID.randomUUID()
+
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
+                items = listOf(createDocumentGenerationItem(status = IN_PROGRESS))
+            )
+            every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } throws ApiException()
+
+            `when`("the configured timeout passes") {
+                val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
+                    createService().generateDocument(
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap(),
+                        fileName = FAKE_FILE_NAME,
+                        correlationId = FAKE_CORRELATION_ID
+                    )
+                }
+
+                then("the behandelaar still learns that it took too long, not that cancelling failed") {
+                    exception.message shouldContain requestId.toString()
+                }
             }
         }
 
@@ -201,6 +236,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
                 items = listOf(createDocumentGenerationItem(status = IN_PROGRESS))
             )
+            every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } just runs
 
             `when`("the configured timeout of one second passes") {
                 lateinit var epistolaDocumentGenerationTimeoutException: EpistolaDocumentGenerationTimeoutException

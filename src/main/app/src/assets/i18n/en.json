@@ -845,7 +845,7 @@
   "msg.error.zrc.client.exception": "Unfortunately a technical error has occurred. No zaken could be retrieved.",
   "msg.error.ztc.client.exception": "Unfortunately a technical error has occurred. No zaaktypes could be retrieved.",
   "msg.error.epistola.generation.failed": "The document could not be created. Try again or contact your administrator.",
-  "msg.error.epistola.generation.timed-out": "Creating the document is taking longer than expected. Check later whether the document was added after all.",
+  "msg.error.epistola.generation.timed-out": "Creating the document took too long and was stopped. Try again.",
   "msg.error.epistola.template.without-schema": "The selected template does not declare which case data it accepts. Contact your administrator.",
   "msg.error.smartdocuments.not.configured": "SmartDocuments is not configured.",
   "msg.error.smartdocuments.disabled": "SmartDocuments is disabled.",

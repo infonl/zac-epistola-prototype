@@ -4,6 +4,7 @@
  */
 package nl.info.client.epistola
 
+import app.epistola.client.jakarta.api.ApiException
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto
@@ -12,6 +13,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FA
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import jakarta.ws.rs.ProcessingException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
@@ -65,7 +67,13 @@ class EpistolaClientService @Inject constructor(
         ).requestId
         LOG.fine { "Epistola accepted generation request '$requestId' for template '$templateId'" }
 
-        return downloadDocument(tenant, awaitCompletedItem(tenant, requestId), fileName)
+        val completedItem = try {
+            awaitCompletedItem(tenant, requestId)
+        } catch (epistolaDocumentGenerationTimeoutException: EpistolaDocumentGenerationTimeoutException) {
+            cancelGenerationJob(tenant, requestId)
+            throw epistolaDocumentGenerationTimeoutException
+        }
+        return downloadDocument(tenant, completedItem, fileName)
     }
 
     fun readTemplateSchema(templateId: String): Any? =
@@ -98,6 +106,19 @@ class EpistolaClientService @Inject constructor(
             }
             sleep(minOf(pollDelay, remainingTime))
             pollDelay = minOf(pollDelay.multipliedBy(POLL_DELAY_FACTOR), MAXIMUM_POLL_DELAY)
+        }
+    }
+
+    /** Left running, the job would still render a document that nobody downloads, one more on every retry. */
+    private fun cancelGenerationJob(tenant: String, requestId: UUID) {
+        try {
+            generationApi.cancelGenerationJob(tenant, requestId)
+        } catch (apiException: ApiException) {
+            LOG.warning {
+                "Could not cancel Epistola generation request '$requestId': HTTP ${apiException.response?.status}"
+            }
+        } catch (processingException: ProcessingException) {
+            LOG.warning { "Could not cancel Epistola generation request '$requestId': ${processingException.message}" }
         }
     }
 
