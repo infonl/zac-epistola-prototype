@@ -77,6 +77,36 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             }
         }
 
+        given("an Epistola server that sends a template's slug next to its deprecated id") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates() } returns listOf(
+                createTemplateSummary(id = "fake-deprecated-id", slug = "fake-template-slug", name = "fakeName")
+            )
+
+            `when`("the templates are listed") {
+                val templates = epistolaTemplatesService.listTemplates()
+
+                then("the template is identified by its slug") {
+                    templates shouldBe listOf(RestEpistolaTemplate(id = "fake-template-slug", name = "fakeName"))
+                }
+            }
+        }
+
+        given("an Epistola server from before contract 1.3.0, which sends only a template's id") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates() } returns listOf(
+                createTemplateSummary(id = "fake-template-id", slug = null, name = "fakeName")
+            )
+
+            `when`("the templates are listed") {
+                val templates = epistolaTemplatesService.listTemplates()
+
+                then("the template is identified by its id") {
+                    templates shouldBe listOf(RestEpistolaTemplate(id = "fake-template-id", name = "fakeName"))
+                }
+            }
+        }
+
         given("SmartDocuments is the active provider") {
             givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
 
