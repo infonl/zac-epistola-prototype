@@ -172,7 +172,7 @@ de bouw van #3.
 ### Geen opgeslagen naam: de richting die ZAC zelf koos
 
 Deze vraag lag open bij de stakeholders (#21). Bij de bouw van #3 bleek dat het ZAC-team hem voor
-SmartDocuments al beantwoord heeft: `V98__remove_smartdocuments_naam_column.sql` (#6978, 7 september 2026)
+SmartDocuments al beantwoord heeft: `V98__remove_smartdocuments_naam_column.sql` ([infonl/dimpact-zaakafhandelcomponent#6978](https://github.com/infonl/dimpact-zaakafhandelcomponent/pull/6978), 7 september 2026)
 verwijderde de `naam`-kolommen, omdat de naam altijd live bij de provider wordt opgehaald en de kolom
 "dead weight" was.
 

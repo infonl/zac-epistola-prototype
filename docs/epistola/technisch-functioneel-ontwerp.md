@@ -434,7 +434,7 @@ Er zijn drie, elk voor iets anders:
 ### Nog open
 
 - **Wordt de templatenaam in ZAC opgeslagen?** Gebouwd zonder (#3), in de lijn die ZAC zelf koos: `V98`
-  (#6978, 7 september) verwijderde de SmartDocuments-namen, omdat ze toch altijd live worden opgehaald. De
+  ([infonl/dimpact-zaakafhandelcomponent#6978](https://github.com/infonl/dimpact-zaakafhandelcomponent/pull/6978), 7 september) verwijderde de SmartDocuments-namen, omdat ze toch altijd live worden opgehaald. De
   zwakte blijft: zonder Epistola toont het beheerscherm geen sjablonen. Ligt ter bevestiging bij de
   stakeholders (#21); een `naam`-kolom is dan één migratie ([datamodel](datamodel.md)).
 - **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel, en de
