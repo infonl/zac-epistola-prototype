@@ -7,7 +7,10 @@ package nl.info.client.epistola.model
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.GenerationJobDetail
 import app.epistola.client.jakarta.model.GenerationJobResponse
+import app.epistola.client.jakarta.model.PageMeta
 import app.epistola.client.jakarta.model.TemplateDto
+import app.epistola.client.jakarta.model.TemplateListResponse
+import app.epistola.client.jakarta.model.TemplateSummaryDto
 import java.util.UUID
 
 fun createGenerationJobResponse(
@@ -44,3 +47,21 @@ fun createTemplate(
     .name(name)
     .schema(schema)
     .dataModel(dataModel)
+
+fun createTemplateSummary(
+    id: String = "fake-template-id",
+    slug: String? = id,
+    name: String = "fakeTemplateName"
+): TemplateSummaryDto = TemplateSummaryDto()
+    .id(id)
+    .slug(slug)
+    .tenantId("fake-tenant")
+    .name(name)
+
+fun createTemplateListResponse(
+    items: List<TemplateSummaryDto> = listOf(createTemplateSummary()),
+    pageNumber: Int = 0,
+    totalPages: Int? = 1
+): TemplateListResponse = TemplateListResponse()
+    .items(items)
+    .page(PageMeta().number(pageNumber).totalPages(totalPages))

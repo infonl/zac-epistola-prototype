@@ -36,6 +36,7 @@ enum class ErrorCode(val value: String) {
     ERROR_CODE_EPISTOLA_GENERATION_FAILED("msg.error.epistola.generation.failed"),
     ERROR_CODE_EPISTOLA_GENERATION_TIMED_OUT("msg.error.epistola.generation.timed-out"),
     ERROR_CODE_EPISTOLA_TEMPLATE_WITHOUT_SCHEMA("msg.error.epistola.template.without-schema"),
+    ERROR_CODE_EPISTOLA_TEMPLATE_MAPPING_INVALID("msg.error.epistola.template.mapping-invalid"),
     ERROR_CODE_SMARTDOCUMENTS_NOT_CONFIGURED("msg.error.smartdocuments.not.configured"),
     ERROR_CODE_SMARTDOCUMENTS_DISABLED("msg.error.smartdocuments.disabled"),
     ERROR_CODE_VALIDATION_GENERIC("msg.error.validation.generic"),

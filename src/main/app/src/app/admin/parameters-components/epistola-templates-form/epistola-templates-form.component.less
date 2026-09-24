@@ -1,0 +1,56 @@
+/*
+ * SPDX-FileCopyrightText: 2026 INFO.nl
+ * SPDX-License-Identifier: EUPL-1.2+
+ */
+
+// The height of a filled mat-form-field. Rows align to the top, so an error under one field does not move
+// the others, and the text and buttons beside a field are centred on the field itself.
+@field-height: 56px;
+
+mat-card {
+  margin: 5px 0;
+}
+
+.form-disabled-feedback {
+  margin: 10px 0;
+}
+
+.template-group {
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 1px solid #d8d8d8;
+}
+
+.template-group-header,
+.template {
+  align-items: flex-start;
+  gap: 16px;
+
+  .mat-mdc-icon-button {
+    margin-top: ((@field-height - 48px) / 2);
+  }
+}
+
+.template {
+  padding-left: 16px;
+
+  // Wide enough for "Vertrouwelijkheidaanduiding" as an unfloated label, which needs about 215px.
+  mat-form-field {
+    width: 270px;
+  }
+}
+
+.template-name {
+  display: flex;
+  align-items: center;
+  min-height: @field-height;
+}
+
+.add-template {
+  margin-left: 16px;
+  width: 270px;
+}
+
+.add-template-group {
+  margin-top: 16px;
+}

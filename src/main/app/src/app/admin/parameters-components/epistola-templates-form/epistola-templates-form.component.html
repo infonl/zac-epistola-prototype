@@ -1,0 +1,182 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<mat-card>
+  <mat-card-content>
+    <form [formGroup]="form" class="flex-col">
+      <div class="flex-row items-center">
+        <section class="flex-1">
+          <h2>{{ "title.epistola.form" | translate }}</h2>
+          <p>{{ "title.admin.parameters.step.epistola" | translate }}</p>
+        </section>
+        <mat-slide-toggle
+          formControlName="enabledForZaaktype"
+          color="primary"
+          [aria-label]="'title.epistola.form' | translate"
+        ></mat-slide-toggle>
+      </div>
+      <mat-divider class="my-3"></mat-divider>
+      @if (form.controls.enabledForZaaktype.value) {
+        <div formArrayName="templateGroups" class="flex-col">
+          @for (
+            templateGroup of form.controls.templateGroups.controls;
+            track templateGroup;
+            let templateGroupIndex = $index
+          ) {
+            <section
+              class="template-group flex-col"
+              role="group"
+              [formGroupName]="templateGroupIndex"
+              [attr.aria-label]="
+                templateGroup.controls.name.value ||
+                ('epistola.sjabloongroep.nieuw' | translate)
+              "
+            >
+              <div class="template-group-header flex-row">
+                <mat-form-field class="flex-1" subscriptSizing="dynamic">
+                  <mat-label>{{
+                    "epistola.sjabloongroep" | translate
+                  }}</mat-label>
+                  <input matInput formControlName="name" required />
+                  @if (templateGroup.controls.name.hasError("required")) {
+                    <mat-error>{{ "verplicht" | translate }}</mat-error>
+                  } @else if (
+                    templateGroup.controls.name.hasError("duplicateName")
+                  ) {
+                    <mat-error>{{
+                      "msg.epistola.sjabloongroep.naam-bestaat-al" | translate
+                    }}</mat-error>
+                  }
+                </mat-form-field>
+                @let removeTemplateGroupLabel =
+                  "actie.sjabloongroep.verwijderen"
+                    | translate: { naam: templateGroup.controls.name.value };
+                <button
+                  type="button"
+                  mat-icon-button
+                  [attr.aria-label]="removeTemplateGroupLabel"
+                  [title]="removeTemplateGroupLabel"
+                  (click)="removeTemplateGroup(templateGroupIndex)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div formArrayName="templates" class="flex-col">
+                @for (
+                  template of templateGroup.controls.templates.controls;
+                  track template;
+                  let templateIndex = $index
+                ) {
+                  @let name = templateName(template.controls.id.value);
+                  @let vertrouwelijkheid =
+                    vertrouwelijkheidaanduiding(
+                      template.controls.informatieObjectTypeUUID.value
+                    );
+                  <div
+                    class="template flex-row"
+                    role="group"
+                    [formGroupName]="templateIndex"
+                    [attr.aria-label]="name"
+                  >
+                    <span class="template-name flex-1">{{ name }}</span>
+                    <mat-form-field subscriptSizing="dynamic">
+                      <mat-label>{{
+                        "informatieobjectTypeOmschrijving" | translate
+                      }}</mat-label>
+                      <mat-select
+                        formControlName="informatieObjectTypeUUID"
+                        required
+                        [placeholder]="
+                          'informatieobjectType.-kies-' | translate
+                        "
+                      >
+                        @for (
+                          informatieobjecttype of informatieobjecttypesQuery.data() ??
+                            [];
+                          track informatieobjecttype.uuid
+                        ) {
+                          <mat-option [value]="informatieobjecttype.uuid">{{
+                            informatieobjecttype.omschrijving
+                          }}</mat-option>
+                        }
+                      </mat-select>
+                      @if (
+                        template.controls.informatieObjectTypeUUID.hasError(
+                          "required"
+                        )
+                      ) {
+                        <mat-error>{{ "verplicht" | translate }}</mat-error>
+                      }
+                    </mat-form-field>
+                    <mat-form-field subscriptSizing="dynamic">
+                      <mat-label>{{
+                        "vertrouwelijkheidaanduiding" | translate
+                      }}</mat-label>
+                      <input
+                        matInput
+                        disabled
+                        [value]="
+                          vertrouwelijkheid
+                            ? ('vertrouwelijkheidaanduiding.' +
+                                vertrouwelijkheid | translate)
+                            : ''
+                        "
+                      />
+                    </mat-form-field>
+                    @let removeTemplateLabel =
+                      "actie.sjabloon.verwijderen" | translate: { naam: name };
+                    <button
+                      type="button"
+                      mat-icon-button
+                      [attr.aria-label]="removeTemplateLabel"
+                      [title]="removeTemplateLabel"
+                      (click)="removeTemplate(templateGroup, templateIndex)"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                } @empty {
+                  <p class="form-disabled-feedback">
+                    {{ "msg.epistola.sjabloongroep.leeg" | translate }}
+                  </p>
+                }
+              </div>
+              @if (unplacedTemplates().length) {
+                <mat-form-field class="add-template" subscriptSizing="dynamic">
+                  <mat-label>{{
+                    "actie.sjabloon.toevoegen" | translate
+                  }}</mat-label>
+                  <mat-select
+                    (selectionChange)="addTemplate(templateGroup, $event)"
+                  >
+                    @for (template of unplacedTemplates(); track template.id) {
+                      <mat-option [value]="template.id">{{
+                        template.name
+                      }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+            </section>
+          }
+        </div>
+        @if (templatesQuery.isSuccess() && !templatesQuery.data().length) {
+          <p class="form-disabled-feedback">
+            {{ "msg.epistola.sjablonen.geen" | translate }}
+          </p>
+        }
+        <div class="add-template-group">
+          <button type="button" mat-raised-button (click)="addTemplateGroup()">
+            {{ "actie.sjabloongroep.toevoegen" | translate }}
+          </button>
+        </div>
+      } @else {
+        <div class="form-disabled-feedback">
+          {{ "msg.epistola.form.disabled" | translate }}
+        </div>
+      }
+    </form>
+  </mat-card-content>
+</mat-card>

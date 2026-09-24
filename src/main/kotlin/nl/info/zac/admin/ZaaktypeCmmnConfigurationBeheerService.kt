@@ -24,6 +24,7 @@ import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.CREATIEDATUM_VARI
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.PRODUCTAANVRAAGTYPE_VARIABLE_NAME
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZAAKTYPE_OMSCHRIJVING_VARIABLE_NAME
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZAAKTYPE_UUID_VARIABLE_NAME
+import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_PRODUCTAANVRAAGTYPE_ALREADY_IN_USE
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.smartdocuments.SmartDocumentsTemplatesService
@@ -46,6 +47,7 @@ class ZaaktypeCmmnConfigurationBeheerService @Inject constructor(
     private val ztcClientService: ZtcClientService,
     private val zaaktypeCmmnConfigurationService: ZaaktypeCmmnConfigurationService,
     private val smartDocumentsTemplatesService: SmartDocumentsTemplatesService,
+    private val epistolaTemplatesService: EpistolaTemplatesService,
     private val zaaktypeHelperService: ZaaktypeHelperService,
 ) {
     companion object {
@@ -188,6 +190,10 @@ class ZaaktypeCmmnConfigurationBeheerService @Inject constructor(
                         previousZaaktypeCmmnConfigurationUuid,
                         newZaaktypeCmmnConfigurationUuid
                     )
+                    epistolaTemplatesService.copyTemplateMapping(
+                        previousZaaktypeUuid = previousZaaktypeCmmnConfigurationUuid,
+                        newZaaktypeUuid = newZaaktypeCmmnConfigurationUuid
+                    )
                     storeZaaktypeCmmnConfiguration(zaaktypeCmmnConfiguration)
                 }
             }
@@ -240,6 +246,7 @@ class ZaaktypeCmmnConfigurationBeheerService @Inject constructor(
             afrondenMail = previousZaaktypeCmmnConfiguration.afrondenMail
             productaanvraagtype = previousZaaktypeCmmnConfiguration.productaanvraagtype
             smartDocumentsEnabled = previousZaaktypeCmmnConfiguration.smartDocumentsEnabled
+            epistolaEnabled = previousZaaktypeCmmnConfiguration.epistolaEnabled
             uiterlijkeEinddatumAfdoeningWaarschuwing =
                 previousZaaktypeCmmnConfiguration.uiterlijkeEinddatumAfdoeningWaarschuwing
             creatiedatum = ZonedDateTime.now()

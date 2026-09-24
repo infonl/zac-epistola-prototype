@@ -79,5 +79,11 @@ data class RestZaaktypeConfiguration(
      */
     var zaakAfzenders: List<RestZaakAfzender> = emptyList(),
 
-    var smartDocuments: RestSmartDocuments
+    var smartDocuments: RestSmartDocuments,
+
+    /**
+     * Always set in a response. A request without it, from a client that predates Epistola, keeps the stored
+     * setting rather than switching Epistola off for the zaaktype.
+     */
+    var epistola: RestEpistola? = null
 )

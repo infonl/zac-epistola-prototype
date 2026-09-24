@@ -28,6 +28,8 @@ import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
 import nl.info.client.epistola.model.createTemplate
+import nl.info.client.epistola.model.createTemplateListResponse
+import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.createEpistolaSettings
 import java.nio.file.Files
 import java.time.Duration
@@ -376,6 +378,58 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
                 then("nothing is returned, so the caller decides what an unrestricted template means") {
                     templateSchema shouldBe null
+                }
+            }
+        }
+    }
+
+    context("listing templates") {
+        given("a catalog that fits on one page") {
+            val templateSummary = createTemplateSummary()
+            every {
+                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
+            } returns createTemplateListResponse(items = listOf(templateSummary), totalPages = 1)
+
+            `when`("the templates are listed") {
+                val templates = createService().listTemplates()
+
+                then("the one page is read, at the largest page size Epistola allows") {
+                    templates shouldBe listOf(templateSummary)
+                    verify(exactly = 1) { templatesApi.listTemplates(any(), any(), any(), any(), any(), any(), any()) }
+                }
+            }
+        }
+
+        given("a catalog spread over two pages") {
+            val firstTemplateSummary = createTemplateSummary(id = "fake-template-1")
+            val secondTemplateSummary = createTemplateSummary(id = "fake-template-2")
+            every {
+                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
+            } returns createTemplateListResponse(items = listOf(firstTemplateSummary), pageNumber = 0, totalPages = 2)
+            every {
+                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 1, 100, null, null)
+            } returns createTemplateListResponse(items = listOf(secondTemplateSummary), pageNumber = 1, totalPages = 2)
+
+            `when`("the templates are listed") {
+                val templates = createService().listTemplates()
+
+                then("the templates of both pages are returned, so none past the first page is left out") {
+                    templates shouldBe listOf(firstTemplateSummary, secondTemplateSummary)
+                }
+            }
+        }
+
+        given("an empty catalog whose response carries no page information") {
+            every {
+                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
+            } returns createTemplateListResponse(items = emptyList(), totalPages = null)
+
+            `when`("the templates are listed") {
+                val templates = createService().listTemplates()
+
+                then("no templates are returned and no further page is requested") {
+                    templates shouldBe emptyList()
+                    verify(exactly = 1) { templatesApi.listTemplates(any(), any(), any(), any(), any(), any(), any()) }
                 }
             }
         }
