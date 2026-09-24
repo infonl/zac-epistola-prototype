@@ -154,9 +154,11 @@ lijkt.
   doorvoerprobleem, en juist door de hele uitwisseling binnen het geauthenticeerde verzoek te houden blijft
   de eigenschap uit figuur 1 overeind.
 
-Het pollen is begrensd: voorbij een timeout annuleert ZAC de job en faalt de aanroep met een herhaalbare
-melding, in plaats van een requestthread onbeperkt vast te houden. Het annuleren is nodig: een job die blijft
-lopen, rendert alsnog een document dat niemand ophaalt, en elke nieuwe poging zou er één bij zetten. Het collectormodel is het gedocumenteerde pad voor
+Het pollen is begrensd: voorbij een timeout faalt de aanroep met een herhaalbare melding, in plaats van een
+requestthread onbeperkt vast te houden. Zodra ZAC stopt met wachten zonder document, bij de timeout maar ook
+bij een fout tijdens het pollen, annuleert het de job. Dat is nodig: een job die blijft lopen, rendert alsnog
+een document dat niemand ophaalt, en elke nieuwe poging zou er één bij zetten. De requestthread blijft zo lang
+wel bezet. Of het endpoint hem vrijgeeft met `@Suspended AsyncResponse`, beslist #5. Het collectormodel is het gedocumenteerde pad voor
 productieschaal en bulkgeneratie, en hoort bij de verbetervoorstellen (#20) en niet bij het prototype.
 
 ### Besluit — de officiële Jakarta-client wordt overgenomen
@@ -444,6 +446,7 @@ behandelaar aanroept komt in #5, en het eerste criterium van #8 is precies de ve
 | Data breekt het contract van het template: een verplicht veld ontbreekt, of een waarde heeft het verkeerde type | Epistola neemt de job aan en laat hem mislukken, met de JSON Pointer van het veld: `Data validation failed: /zaak: required property 'identificatie' not found`. ZAC geeft die reden door. Niet herhaalbaar | Nu de algemene melding "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder." Het doel is een melding die het template noemt en geen nieuwe poging aanraadt | Afgevangen in #4. Een eigen melding is #8 |
 | Template zonder schema | ZAC weigert het vóór het indienen ([§3](#3--datamapping)) | "De gekozen sjabloon geeft niet aan welke zaakgegevens hij kan gebruiken." | Afgevangen in #4 |
 | Job loopt niet af binnen de timeout | ZAC annuleert de job. Weigert Epistola dat, dan logt ZAC het request-id | "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw." | Afgevangen in #4 |
+| Pollen mislukt, bijvoorbeeld een 503 of een verbroken verbinding | ZAC annuleert de job en geeft de fout door | Een generieke fout | Annuleren in #4, de melding is #8 |
 | Job mislukt bij het renderen | Er is niets opgeslagen. ZAC geeft Epistola's reden door | De algemene melding hierboven | Afgevangen in #4 |
 | 400 bij het indienen | Een verzoek dat ZAC verkeerd opbouwt, bijvoorbeeld zonder `catalogId` | Een generieke fout; het detail hoort in de log | #8 — nu een generieke 500 |
 | 401 / 403 | De API key is afgewezen, verlopen of ingetrokken, of mist een van de twee rollen | Een generieke fout; het detail hoort in de log | #8 — nu een generieke 500 |
