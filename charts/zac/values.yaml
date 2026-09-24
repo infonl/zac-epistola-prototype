@@ -168,8 +168,8 @@ documentCreationProvider: ""
 epistola:
    # -- URL to the Epistola API. Required when documentCreationProvider is EPISTOLA.
   url: ""
-   # -- Epistola API key, issued per consumer by an Epistola administrator. Injected as a Kubernetes Secret.
-   # Required when documentCreationProvider is EPISTOLA.
+   # -- Epistola API key for the tenant, issued by an Epistola tenant manager with the roles DOCUMENT_GENERATOR
+   # and CONTENT_VIEWER. Injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA.
   apiKey: ""
    # -- Epistola tenant identifier that scopes the available templates. A slug of 3 to 63
    # characters matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, for example "acme-corp". Required when documentCreationProvider is EPISTOLA.
