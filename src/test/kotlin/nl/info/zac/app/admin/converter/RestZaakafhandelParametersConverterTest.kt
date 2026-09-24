@@ -24,11 +24,13 @@ import nl.info.zac.admin.ZaaktypeCmmnConfigurationBeheerService
 import nl.info.zac.admin.model.ZaakafhandelparametersStatusMailOption
 import nl.info.zac.admin.model.createZaaktypeBpmnConfiguration
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
+import nl.info.zac.app.admin.model.RestEpistola
 import nl.info.zac.app.admin.model.RestSmartDocuments
 import nl.info.zac.app.admin.model.RestZaakAfzender
 import nl.info.zac.app.admin.model.createRestZaaktypeConfiguration
 import nl.info.zac.app.admin.model.createRestZaakbeeindigParameter
 import nl.info.zac.app.zaak.model.toRestResultaatType
+import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.smartdocuments.SmartDocumentsService
 import java.time.LocalDate
 
@@ -39,18 +41,20 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
     val ztcClientService = mockk<ZtcClientService>()
     val zaaktypeCmmnConfigurationService = mockk<ZaaktypeCmmnConfigurationBeheerService>()
     val smartDocumentsService = mockk<SmartDocumentsService>()
+    val epistolaTemplatesService = mockk<EpistolaTemplatesService>()
 
     val restZaaktypeConfigurationConverter = RestZaaktypeConfigurationConverter(
-        caseDefinitionConverter,
-        zaakbeeindigParameterConverter,
-        restHumanTaskParametersConverter,
-        ztcClientService,
-        zaaktypeCmmnConfigurationService,
-        smartDocumentsService
+        caseDefinitionConverter = caseDefinitionConverter,
+        zaakbeeindigParameterConverter = zaakbeeindigParameterConverter,
+        humanTaskParametersConverter = restHumanTaskParametersConverter,
+        ztcClientService = ztcClientService,
+        zaaktypeCmmnConfigurationBeheerService = zaaktypeCmmnConfigurationService,
+        smartDocumentsService = smartDocumentsService,
+        epistolaTemplatesService = epistolaTemplatesService
     )
 
     given("ZaakafhandelParameters CMMN with minimal content") {
-        val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration()
+        val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration().apply { epistolaEnabled = true }
         val zaakType = createZaakType().apply {
             beginGeldigheid = LocalDate.now().minusDays(1)
         }
@@ -66,6 +70,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
             zaakbeeindigParameterConverter.convertZaakbeeindigParameters(zaaktypeCmmnConfiguration.getZaakbeeindigParameters())
         } returns listOf(restZaakbeeindigParameter)
         every { smartDocumentsService.isEnabled() } returns true
+        every { epistolaTemplatesService.isEpistolaActive() } returns false
         every {
             caseDefinitionConverter.convertToRESTCaseDefinition(
                 zaaktypeCmmnConfiguration.caseDefinitionID,
@@ -122,6 +127,10 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
                         enabledGlobally = true,
                         enabledForZaaktype = false
                     )
+                    epistola shouldBe RestEpistola(
+                        enabledGlobally = false,
+                        enabledForZaaktype = true
+                    )
                 }
             }
         }
@@ -161,6 +170,50 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
                     productaanvraagtype shouldBe null
                     smartDocumentsEnabled shouldBe false
                 }
+            }
+        }
+    }
+
+    given("a REST zaaktype configuration that switches Epistola on") {
+        val restZaaktypeConfiguration = createRestZaaktypeConfiguration().apply {
+            caseDefinition = RESTCaseDefinition()
+            zaakNietOntvankelijkResultaattype = createResultaatType().toRestResultaatType()
+            epistola = RestEpistola(enabledGlobally = true, enabledForZaaktype = true)
+        }
+        every {
+            zaaktypeCmmnConfigurationService.fetchZaaktypeCmmnConfiguration(restZaaktypeConfiguration.zaaktype.uuid)
+        } returns createZaaktypeCmmnConfiguration()
+        every { restHumanTaskParametersConverter.convertRESTHumanTaskParameters(any()) } returns emptyList()
+
+        `when`("converted to DB model representation") {
+            val zaaktypeCmmnConfiguration = restZaaktypeConfigurationConverter.toZaaktypeCmmnConfiguration(
+                restZaaktypeConfiguration
+            )
+
+            then("Epistola is enabled for the zaaktype") {
+                zaaktypeCmmnConfiguration.epistolaEnabled shouldBe true
+            }
+        }
+    }
+
+    given("a REST zaaktype configuration without Epistola settings, for a zaaktype with Epistola enabled") {
+        val restZaaktypeConfiguration = createRestZaaktypeConfiguration().apply {
+            caseDefinition = RESTCaseDefinition()
+            zaakNietOntvankelijkResultaattype = createResultaatType().toRestResultaatType()
+            epistola = null
+        }
+        every {
+            zaaktypeCmmnConfigurationService.fetchZaaktypeCmmnConfiguration(restZaaktypeConfiguration.zaaktype.uuid)
+        } returns createZaaktypeCmmnConfiguration().apply { epistolaEnabled = true }
+        every { restHumanTaskParametersConverter.convertRESTHumanTaskParameters(any()) } returns emptyList()
+
+        `when`("converted to DB model representation") {
+            val zaaktypeCmmnConfiguration = restZaaktypeConfigurationConverter.toZaaktypeCmmnConfiguration(
+                restZaaktypeConfiguration
+            )
+
+            then("Epistola stays enabled, so a client that predates Epistola does not switch it off") {
+                zaaktypeCmmnConfiguration.epistolaEnabled shouldBe true
             }
         }
     }
@@ -232,6 +285,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
             zaakbeeindigParameterConverter.convertZaakbeeindigParameters(zaaktypeCmmnConfiguration.getZaakbeeindigParameters())
         } returns emptyList()
         every { smartDocumentsService.isEnabled() } returns true
+        every { epistolaTemplatesService.isEpistolaActive() } returns true
         every {
             caseDefinitionConverter.convertToRESTCaseDefinition(zaaktypeCmmnConfiguration.caseDefinitionID, true)
         } returns null

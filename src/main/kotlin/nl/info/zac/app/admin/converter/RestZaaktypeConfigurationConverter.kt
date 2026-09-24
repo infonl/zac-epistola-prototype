@@ -24,6 +24,7 @@ import nl.info.zac.app.admin.model.toAutomaticEmailConfirmation
 import nl.info.zac.app.admin.model.toRestAutomaticEmailConfirmation
 import nl.info.zac.app.admin.model.toRestBetrokkeneKoppelingen
 import nl.info.zac.app.admin.model.toRestBrpDoelbindingen
+import nl.info.zac.app.admin.model.toRestEpistola
 import nl.info.zac.app.admin.model.toRestSmartDocuments
 import nl.info.zac.app.admin.model.toRestZaakAfzenders
 import nl.info.zac.app.admin.model.toRestZaaktypeOverzicht
@@ -32,6 +33,7 @@ import nl.info.zac.app.admin.model.toZaaktypeBetrokkenParameters
 import nl.info.zac.app.admin.model.toZaaktypeBrpParameters
 import nl.info.zac.app.admin.model.toZaaktypeCompletionParametersList
 import nl.info.zac.app.zaak.model.toRestResultaatType
+import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.smartdocuments.SmartDocumentsService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -47,6 +49,7 @@ class RestZaaktypeConfigurationConverter @Inject constructor(
     val ztcClientService: ZtcClientService,
     val zaaktypeCmmnConfigurationBeheerService: ZaaktypeCmmnConfigurationBeheerService,
     val smartDocumentsService: SmartDocumentsService,
+    val epistolaTemplatesService: EpistolaTemplatesService,
 ) {
     @Suppress("LongMethod")
     fun toRestZaaktypeConfiguration(
@@ -80,6 +83,7 @@ class RestZaaktypeConfigurationConverter @Inject constructor(
             },
             productaanvraagtype = zaaktypeCmmnConfiguration.productaanvraagtype,
             smartDocuments = zaaktypeCmmnConfiguration.toRestSmartDocuments(smartDocumentsService.isEnabled()),
+            epistola = zaaktypeCmmnConfiguration.toRestEpistola(epistolaTemplatesService.isEpistolaActive()),
             betrokkeneKoppelingen = zaaktypeCmmnConfiguration.getBetrokkeneParameters()
                 .toRestBetrokkeneKoppelingen(),
             brpDoelbindingen = zaaktypeCmmnConfiguration.getBrpParameters()
@@ -121,6 +125,7 @@ class RestZaaktypeConfigurationConverter @Inject constructor(
             defaultBehandelaarId = restZaaktypeConfiguration.defaultBehandelaarId
             einddatumGeplandWaarschuwing = restZaaktypeConfiguration.einddatumGeplandWaarschuwing
             smartDocumentsEnabled = restZaaktypeConfiguration.smartDocuments.enabledForZaaktype
+            restZaaktypeConfiguration.epistola?.let { epistolaEnabled = it.enabledForZaaktype }
             creatiedatum = restZaaktypeConfiguration.creatiedatum ?: ZonedDateTime.now()
         }.also {
             it.setHumanTaskParametersCollection(

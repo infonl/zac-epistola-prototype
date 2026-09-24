@@ -1,0 +1,43 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/tenants/[a-z][a-z0-9]*(-[a-z0-9]+)*/catalogs/[a-z][a-z0-9]*(-[a-z0-9]+)*/templates"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.epistola.v1+json"
+    },
+    "jsonBody": {
+      "items": [
+        {
+          "id": "zac-standaardbrief",
+          "tenantId": "{{request.pathSegments.[1]}}",
+          "name": "Standaardbrief",
+          "createdAt": "2026-09-01T08:00:00Z",
+          "lastModified": "2026-09-01T08:00:00Z"
+        },
+        {
+          "id": "ontvangstbevestiging-aanvraag",
+          "tenantId": "{{request.pathSegments.[1]}}",
+          "name": "Ontvangstbevestiging aanvraag",
+          "createdAt": "2026-09-01T08:00:00Z",
+          "lastModified": "2026-09-01T08:00:00Z"
+        },
+        {
+          "id": "verlenging-beslistermijn",
+          "tenantId": "{{request.pathSegments.[1]}}",
+          "name": "Verlenging beslistermijn",
+          "createdAt": "2026-09-01T08:00:00Z",
+          "lastModified": "2026-09-01T08:00:00Z"
+        }
+      ],
+      "page": {
+        "number": 0,
+        "size": 100,
+        "totalElements": 3,
+        "totalPages": 1
+      }
+    }
+  }
+}
