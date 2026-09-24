@@ -12,6 +12,7 @@ import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import jakarta.json.bind.JsonbBuilder
 import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingException
 import java.time.LocalDate
 import kotlin.reflect.KClass
@@ -92,10 +93,14 @@ class EpistolaTemplateDataTest : BehaviorSpec({
                     aanvrager.keys shouldContainExactlyInAnyOrder AanvragerData::class.memberProperties.map { it.name }
                 }
 
-                and("a date is written in the format a template renders") {
+                and("a date is sent in ISO 8601, which a template that declares it as 'format: date' requires") {
                     @Suppress("UNCHECKED_CAST")
                     val zaak = payload["zaak"] as Map<String, Any>
-                    zaak["startdatum"] shouldBe "01-01-2026"
+                    zaak["startdatum"] shouldBe "2026-01-01"
+                }
+
+                and("the SmartDocuments deposit keeps the day-month-year format its templates render") {
+                    JsonbBuilder.create().toJson(documentCreationData) shouldContain "\"startdatum\":\"01-01-2026\""
                 }
 
                 and("the zaak location is named rather than passed on as a coordinate pair") {

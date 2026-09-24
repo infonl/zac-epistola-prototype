@@ -5,6 +5,8 @@
 package nl.info.zac.documentcreation.model
 
 import jakarta.json.bind.JsonbBuilder
+import jakarta.json.bind.JsonbConfig
+import jakarta.json.bind.adapter.JsonbAdapter
 import jakarta.json.bind.annotation.JsonbDateFormat
 import jakarta.json.bind.annotation.JsonbProperty
 import net.atos.zac.util.StringUtil
@@ -18,9 +20,18 @@ private const val POINT_COORDINATE_COUNT = 2
 
 /**
  * Serializing and reading back is what keeps the two providers in step: the Epistola payload is produced
- * by the same JSON-B annotations that produce the SmartDocuments deposit.
+ * by the same JSON-B annotations that produce the SmartDocuments deposit. Dates are the exception: Epistola's
+ * editor declares a date as `format: date`, Epistola then rejects anything but ISO 8601, and a template
+ * formats it for display with `$formatDate`.
  */
-private val JSONB = JsonbBuilder.create()
+private val EPISTOLA_JSONB = JsonbBuilder.create(JsonbConfig().withAdapters(IsoLocalDateAdapter()))
+
+/** A configured adapter takes precedence over the `@JsonbDateFormat` that SmartDocuments needs. */
+private class IsoLocalDateAdapter : JsonbAdapter<LocalDate, String> {
+    override fun adaptToJson(localDate: LocalDate): String = localDate.toString()
+
+    override fun adaptFromJson(isoDate: String): LocalDate = LocalDate.parse(isoDate)
+}
 
 /**
  * The JSON-B names below are the variable names a template author writes, for either provider, so
@@ -48,7 +59,7 @@ fun DocumentCreationData.toEpistolaTemplateData(templateId: String, templateSche
 
 @Suppress("UNCHECKED_CAST")
 private fun DocumentCreationData.toPayloadMap(): Map<String, Any> =
-    JSONB.fromJson(JSONB.toJson(this), Map::class.java) as Map<String, Any>
+    EPISTOLA_JSONB.fromJson(EPISTOLA_JSONB.toJson(this), Map::class.java) as Map<String, Any>
 
 data class AanvragerData(
     val naam: String? = null,
