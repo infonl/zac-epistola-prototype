@@ -1,0 +1,35 @@
+{
+  "scenarioName": "epistola-document-generation",
+  "newScenarioState": "generation-started",
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/tenants/[a-z][a-z0-9]*(-[a-z0-9]+)*/documents/generate",
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.catalogId",
+          "matches": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.templateId",
+          "matches": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 202,
+    "headers": {
+      "Content-Type": "application/vnd.epistola.v1+json"
+    },
+    "jsonBody": {
+      "requestId": "2f1c9d64-5d8e-4a1b-9c0f-1a2b3c4d5e6f",
+      "status": "PENDING",
+      "jobType": "SINGLE",
+      "totalCount": 1,
+      "createdAt": "2026-09-22T09:00:00Z"
+    }
+  }
+}

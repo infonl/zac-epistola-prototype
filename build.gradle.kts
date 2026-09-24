@@ -138,6 +138,8 @@ dependencies {
     implementation(libs.flowable.cmmn.engine.configurator)
     implementation(libs.slf4j.jdk14)
     implementation(libs.auth0.java.jwt)
+    // Epistola's own client; it has no runtime dependencies beyond the APIs WildFly supplies
+    implementation(libs.epistola.client.jakarta)
     implementation(libs.javax.cache.api)
     implementation(libs.google.guava)
     implementation(libs.flyway.core)
@@ -216,6 +218,10 @@ dependencies {
     // runtime this is provided for by the WildFly runtime environment
     // for our unit tests we use the reference implementation
     testImplementation(libs.glassfish.expressly)
+    // lets a unit test build the same RESTEasy proxy WildFly builds and assert the request it sends;
+    // at runtime WildFly provides these
+    testImplementation(libs.jboss.resteasy.microprofile.rest.client)
+    testImplementation(libs.jboss.resteasy.json.binding.provider)
 
     jacocoAgentJarForItest(variantOf(libs.jacoco.agent) { classifier("runtime") })
 }

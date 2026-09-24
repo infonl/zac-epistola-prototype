@@ -1,0 +1,27 @@
+{
+  "scenarioName": "epistola-document-generation",
+  "requiredScenarioState": "generation-started",
+  "newScenarioState": "generation-completed",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/tenants/[^/]+/documents/jobs/[^/]+"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.epistola.v1+json"
+    },
+    "jsonBody": {
+      "items": [
+        {
+          "id": "7c6b5a49-3e2d-4c1b-8a09-f8e7d6c5b4a3",
+          "templateId": "zac-standaardbrief",
+          "status": "IN_PROGRESS",
+          "filename": "epistola-document.pdf",
+          "createdAt": "2026-09-22T09:00:00Z",
+          "startedAt": "2026-09-22T09:00:01Z"
+        }
+      ]
+    }
+  }
+}

@@ -16,13 +16,14 @@ import nl.info.client.brp.model.generated.Persoon
 import nl.info.client.brp.model.generated.VerblijfadresBinnenland
 import nl.info.client.kvk.KvkClientService
 import nl.info.client.or.`object`.ObjectsClientService
-import nl.info.client.smartdocuments.model.document.AanvragerData
-import nl.info.client.smartdocuments.model.document.Data
-import nl.info.client.smartdocuments.model.document.GebruikerData
-import nl.info.client.smartdocuments.model.document.StartformulierData
-import nl.info.client.smartdocuments.model.document.TaskData
-import nl.info.client.smartdocuments.model.document.ZaakData
-import nl.info.client.smartdocuments.model.document.toAanvragerDataBedrijf
+import nl.info.zac.documentcreation.model.AanvragerData
+import nl.info.zac.documentcreation.model.DocumentCreationData
+import nl.info.zac.documentcreation.model.GebruikerData
+import nl.info.zac.documentcreation.model.StartformulierData
+import nl.info.zac.documentcreation.model.TaskData
+import nl.info.zac.documentcreation.model.ZaakData
+import nl.info.zac.documentcreation.model.toZaakGeometrieData
+import nl.info.zac.documentcreation.model.toAanvragerDataBedrijf
 import nl.info.client.zgw.shared.ZgwApiService
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
@@ -43,6 +44,7 @@ import nl.info.zac.util.NoArgConstructor
 import java.net.URI
 import java.util.Objects
 import java.util.UUID
+import java.util.logging.Logger
 
 @NoArgConstructor
 @Suppress("LongParameterList", "TooManyFunctions")
@@ -57,14 +59,47 @@ class DocumentCreationDataService @Inject constructor(
     private val identityService: IdentityService,
     private val productaanvraagService: ProductaanvraagService
 ) {
+    companion object {
+        private val LOG = Logger.getLogger(DocumentCreationDataService::class.java.name)
+    }
+
     fun createData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
-        Data(
+        DocumentCreationData(
             aanvragerData = createAanvragerData(zaak, loggedInUser),
             gebruikerData = createGebruikerData(loggedInUser),
             startformulierData = createStartformulierData(zaak.url),
             taskData = taskId?.let { createTaskData(it) },
             zaakData = createZaakData(zaak)
         )
+
+    /**
+     * Kept apart from [createData] so that the SmartDocuments payload stays as it is, and does not pay
+     * for the extra call to the zaakregistratie that the eigenschappen need.
+     */
+    fun createEpistolaData(loggedInUser: LoggedInUser, zaak: Zaak, taskId: String? = null) =
+        createData(loggedInUser = loggedInUser, zaak = zaak, taskId = taskId).let {
+            it.copy(
+                zaakData = it.zaakData.copy(
+                    zaakgeometrie = zaak.zaakgeometrie?.toZaakGeometrieData(),
+                    eigenschappen = readEigenschappen(zaak)
+                )
+            )
+        }
+
+    private fun readEigenschappen(zaak: Zaak): Map<String, String>? =
+        zrcClientService.listZaakeigenschappen(zaak.uuid)
+            .mapNotNull { zaakEigenschap ->
+                zaakEigenschap.naam?.takeIf { it.isNotBlank() }?.let { it to zaakEigenschap.waarde.orEmpty() }
+            }
+            .groupBy({ it.first }, { it.second })
+            .onEach { (naam, waarden) ->
+                if (waarden.size > 1) {
+                    LOG.warning { "Zaak '${zaak.identificatie}' has ${waarden.size} eigenschappen named '$naam'" }
+                }
+            }
+            .filterValues { it.size == 1 }
+            .mapValues { (_, waarden) -> waarden.first() }
+            .takeIf { it.isNotEmpty() }
 
     private fun createGebruikerData(loggedInUser: LoggedInUser) =
         GebruikerData(
