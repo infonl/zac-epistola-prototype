@@ -15,4 +15,6 @@ data class RestEpistolaTemplate(
     var name: String
 )
 
-fun TemplateSummaryDto.toRestEpistolaTemplate() = RestEpistolaTemplate(id = id, name = name)
+/** Servers before Epistola's contract 1.3.0 send only the deprecated `id`, which carries the same value as `slug`. */
+@Suppress("DEPRECATION")
+fun TemplateSummaryDto.toRestEpistolaTemplate() = RestEpistolaTemplate(id = slug ?: id, name = name)

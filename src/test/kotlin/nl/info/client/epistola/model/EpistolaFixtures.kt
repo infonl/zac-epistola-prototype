@@ -50,9 +50,11 @@ fun createTemplate(
 
 fun createTemplateSummary(
     id: String = "fake-template-id",
+    slug: String? = id,
     name: String = "fakeTemplateName"
 ): TemplateSummaryDto = TemplateSummaryDto()
     .id(id)
+    .slug(slug)
     .tenantId("fake-tenant")
     .name(name)
 

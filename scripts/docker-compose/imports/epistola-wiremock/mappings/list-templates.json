@@ -12,6 +12,7 @@
       "items": [
         {
           "id": "zac-standaardbrief",
+          "slug": "zac-standaardbrief",
           "tenantId": "{{request.pathSegments.[1]}}",
           "name": "Standaardbrief",
           "createdAt": "2026-09-01T08:00:00Z",
@@ -19,6 +20,7 @@
         },
         {
           "id": "ontvangstbevestiging-aanvraag",
+          "slug": "ontvangstbevestiging-aanvraag",
           "tenantId": "{{request.pathSegments.[1]}}",
           "name": "Ontvangstbevestiging aanvraag",
           "createdAt": "2026-09-01T08:00:00Z",
@@ -26,6 +28,7 @@
         },
         {
           "id": "verlenging-beslistermijn",
+          "slug": "verlenging-beslistermijn",
           "tenantId": "{{request.pathSegments.[1]}}",
           "name": "Verlenging beslistermijn",
           "createdAt": "2026-09-01T08:00:00Z",
