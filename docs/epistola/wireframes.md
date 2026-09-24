@@ -2,9 +2,8 @@
 
 | | |
 |---|---|
-| Bron | [Epistola Wireframes](https://claude.ai/artifact/Bc3htgzQq8tVKGj6jCYXYV) — het artifact is leidend, dit is de kopie |
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026 |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026 |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -16,10 +15,6 @@ kennen.
 De getekende schermen staan als los te openen HTML-mockups in [`wireframes/`](wireframes/). GitHub toont
 die niet inline; download ze of open ze lokaal in een browser. De schermbeschrijvingen hieronder zijn
 volledig genoeg om zonder de mockups te bouwen — die zijn er voor de vorm, niet voor de inhoud.
-
-> **Let op de issuenummers.** Dit document is oorspronkelijk geschreven vóór de hernummering van 17
-> september, toen de backlog naar de coderepository verhuisde en elk nummer één opschoof. De nummers
-> hieronder zijn de **huidige**: waar het artifact #4, #5, #6 en #7 noemt, staat hier #5, #6, #7 en #8.
 
 ---
 
@@ -160,8 +155,8 @@ dialoogvelden — alleen de templates erachter verschillen.
 
 Daarom blijft het "Document maken" in plaats van het "Genereer document" uit #5. Welke documentengine een
 installatie draait is een beslissing van de beheerder; die in de zaakzijbalk tonen zou elke behandelaar een
-onderscheid laten leren dat niets aan hun werk verandert. Het waard om met stakeholders te bevestigen,
-omdat het van de formulering van het issue afwijkt.
+onderscheid laten leren dat niets aan hun werk verandert. Het wijkt af van de formulering van het issue,
+en is samen met de rest van deze wireframes met de stakeholders besproken.
 
 ### Vertrouwelijkheid is al opgelost door een bestaand patroon
 

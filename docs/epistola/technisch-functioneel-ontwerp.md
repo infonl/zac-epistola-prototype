@@ -2,9 +2,8 @@
 
 | | |
 |---|---|
-| Bron | [Epistola Integration Design](https://claude.ai/artifact/6EWJFfafVnHZqobPqsmYQ6) — het artifact is leidend, dit is de kopie |
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | v4 — na het stakeholderoverleg van 21 september 2026 |
+| Stand | 24 september 2026 — bijgewerkt naar wat #4 heeft gebouwd ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -62,7 +61,9 @@ zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verander
 #2 heeft de abstractie op configuratieniveau opgeleverd: `DOCUMENT_CREATION_PROVIDER` kiest één provider en
 de applicatie weigert bij het opstarten een tegenstrijdige opzet. Het codepad is nog niet abstract —
 `DocumentCreationService` injecteert `SmartDocumentsService` rechtstreeks, en het REST-endpoint kijkt nog
-naar `isSmartDocumentsEnabled(zaaktypeUuid)`. Dat is het werk van dit ontwerp.
+naar `isSmartDocumentsEnabled(zaaktypeUuid)`. Dat is het werk van dit ontwerp. #4 heeft de Epistola-kant
+gebouwd als een losse `EpistolaDocumentCreationService`. De gedeelde interface hieronder komt er met het
+endpoint uit #5.
 
 De moeilijkheid zit niet in het injecteren van twee implementaties. Die zit erin dat de twee providers
 werkelijk verschillende *interactievormen* hebben, en een interface die dat ontkent gaat lekken.
@@ -127,7 +128,7 @@ REST-laag één keer expliciet vertakt en de compiler afdwingt dat beide gevalle
 
 | Interface-operatie | SmartDocuments | Epistola |
 |---|---|---|
-| `listTemplateGroups()` | `GET sdapi/structure`, geneste boom | `GET /tenants/{tenantId}/templates` — een platte lijst; de groepering is van ZAC ([§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat)) |
+| `listTemplateGroups()` | `GET sdapi/structure`, geneste boom | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` — een platte lijst; de groepering is van ZAC ([§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat)) |
 | `createDocument(zaak, taskId, templateId, metadata)` | `Outcome.RedirectToWizard(uri)` | `Outcome.Generated(pdf)` — na indienen, pollen en downloaden binnen de aanroep |
 | `downloadDocument(fileId)` | Nodig — de wizard levert het bestand later op | Intern aan de implementatie, niet op de interface |
 | `informatieobjecttypeFor(zaaktype, template)` | Identiek: opgelost uit ZAC's eigen mappingtabel, niet bij de provider | Idem |
@@ -172,6 +173,11 @@ foutafhandeling, poll-backoff — die een gegenereerde client je niet geeft. Zel
 overdoen en er daarna van af gaan wijken. De omgevingsvariabelen in #2 zijn al naar de
 configuratieproperties van deze client vernoemd, dus overnemen kost geen hernoeming.
 
+Eén gevolg bleek pas binnen WildFly. De interfaces van de client dragen `@RegisterRestClient`, dus WildFly's
+MicroProfile Rest Client registreert er ook zelf een bean voor, zonder ZAC's configuratie. Naast de producer
+van ZAC is dat een dubbelzinnige afhankelijkheid (`WELD-001409`). Daarom kiest de qualifier
+`@EpistolaClient` expliciet de client die ZAC zelf bouwt.
+
 ### Figuur 2 — waar de naad komt te liggen
 
 ```mermaid
@@ -209,7 +215,7 @@ bereikt daarmee beide providers, en er één vergeten te mappen laat de build fa
 
 | Groep | Velden | Bron, opgehaald tijdens generatie |
 |---|---|---|
-| `zaakData` | `identificatie`, `zaaktype`, `omschrijving`, `toelichting`, `startdatum`, `einddatum`, `einddatumGepland`, `uiterlijkeEinddatumAfdoening`, `registratiedatum`, `status`, `resultaat`, `behandelaar`, `groep`, `communicatiekanaal`, `vertrouwelijkheidaanduiding`, `opschortingReden`, `verlengingReden` | Open Zaak ZRC + ZTC |
+| `zaakData` | `identificatie`, `zaaktype`, `omschrijving`, `toelichting`, `startdatum`, `einddatum`, `einddatumGepland`, `uiterlijkeEinddatumAfdoening`, `registratiedatum`, `status`, `resultaat`, `behandelaar`, `groep`, `communicatiekanaal`, `vertrouwelijkheidaanduiding`, `opschortingReden`, `verlengingReden`, `besluit` | Open Zaak ZRC + ZTC. `besluit` staat in het model maar wordt nooit gevuld, ook niet voor SmartDocuments (zie #4) |
 | `zaakData` — alleen Epistola | `zaakgeometrie` (`type`, `latitude`, `longitude`), `eigenschappen` (naam → waarde) | Open Zaak ZRC. Toegevoegd in #4 en apart verzameld, zodat de payload die SmartDocuments krijgt onveranderd blijft. ZAC ondersteunt alleen POINT-geometrieën; al het andere draagt zijn type en geen coördinaten, omdat een template geen polygoon kan renderen. Eigenschappen die een naam delen, of die er niet zijn, worden weggelaten en gelogd — een template kan ze niet eenduidig aanspreken |
 | `aanvragerData` | `naam`, `straat`, `huisnummer`, `postcode`, `woonplaats` | BRP via het BSN van de initiator, of KvK voor een vestiging / rechtspersoon. **Het BSN zelf is de zoeksleutel en wordt nooit doorgestuurd** |
 | `gebruikerData` | `id`, `naam` | De ingelogde ZAC-gebruiker |
@@ -227,12 +233,23 @@ template declareert, en laat de rest vallen voordat het verzoek wordt opgebouwd.
 Dit is de ene plek waar het Epistola-pad bewust hoort af te wijken van het SmartDocuments-pad dat het
 verder spiegelt, en het is wat van #4's pariteitscriterium een ondergrens maakt in plaats van een bovengrens.
 
-**Gebouwd in #4**, met één grens die het benoemen waard is: het filter versmalt een sectie tot de velden
-die haar schema declareert, dus een template dat een sectie als vrijvormig object declareert
-(`type: object`, zonder `properties`) heeft niets om naar te versmallen en krijgt hem heel. Dat is de
-templateauteur die om de hele zak vraagt en geen gat in het filter, maar het is wel de enige overgebleven
-route waarlangs ongereviewde startformulierdata een document bereikt. Het is in een test vastgelegd en
-vraagt een besluit van de stakeholders.
+**Gebouwd in #4**, in `TemplateSchemaAllowList`. Het schema komt uit het veld `dataModel` van het template:
+Epistola laat het oudere `schema` leeg. De regels:
+
+- Geneste objecten en de items van een lijst worden elk tegen hun eigen schema gefilterd. Een lijst gaat
+  alleen mee als elk item te versmallen is, want een brief die stilletjes één regel uit een opsomming mist,
+  leest als compleet.
+- Lokale `$ref`s worden gevolgd. Bij `allOf`, `anyOf` en `oneOf` is de allow-list de vereniging van de
+  gedeclareerde velden, omdat ZAC niet kan weten welk alternatief een template rendert. Epistola's eigen
+  data-editor gebruikt al deze constructies.
+- Een object of lijst achter een verwijzing die ZAC niet kan oplossen, of onder een schema dat iets anders
+  declareert (bijvoorbeeld `type: string`), blijft weg. Een enkele waarde gaat wel mee.
+- Een template zonder schema wordt geweigerd.
+
+Eén grens is bewust open en staat in een test: een template dat een sectie uitdrukkelijk als
+`type: object` of `type: array` declareert, zonder velden, krijgt hem heel. Dat is de templateauteur die om
+de hele zak vraagt en geen gat in het filter, maar het is wel de enige overgebleven route waarlangs
+ongereviewde startformulierdata een document bereikt. Het vraagt een besluit van de stakeholders.
 
 ### Ontbrekende optionele velden
 
@@ -243,9 +260,10 @@ schema te laten bepalen of die afwezigheid een fout is. Een veld dat het templat
 en dat ZAC niet kan leveren is een configuratiefout die het waard is om hard op te falen, geen witregel in
 een besluit.
 
-Epistola neemt deze als templatevariabelen aan, naast een `correlationId`; de precieze variabelenamen zijn
-een eigenschap van elk template, dus de binding is configuratie in het beheerscherm en geen code. De
-allow-list hierboven bepaalt welke ervan überhaupt verstuurd mogen worden.
+Epistola neemt deze als templatevariabelen aan, naast een `correlationId`. De variabelenamen zijn de
+JSON-B-namen van `DocumentCreationData` (`zaak.identificatie`, `aanvrager.naam`, …), dezelfde die een
+SmartDocuments-sjabloon gebruikt. Een templateauteur schrijft daartegen, dus er is geen binding in het
+beheerscherm. De allow-list hierboven bepaalt welke ervan überhaupt verstuurd mogen worden.
 
 ---
 
@@ -300,10 +318,10 @@ weggeschreven.
 - De frontend verbergt de actie wanneer het recht ontbreekt. Dat is presentatie, geen handhaving; het
   endpoint moet zelfstandig weigeren, en de negatieve test van #11 — geauthenticeerd maar niet
   geautoriseerd, met 403 als verwachting — is wat dat bewijst.
-- Epistola's eigen credential benoemt een geregistreerde consumer en geen persoon — één API key voor de
-  hele ZAC-installatie ([#16](ontwerpverantwoording.md), R1) — dus *ZAC is de enige plek waar dit
-  afgedwongen kan worden*. Dat is een beperking om in het productieadvies helder te benoemen, geen gat in
-  dit ontwerp.
+- Epistola's eigen credential benoemt een geregistreerde consumer en geen persoon — één API key voor de hele
+  ZAC-installatie ([#16](https://github.com/infonl/zac-epistola-prototype/issues/16), R1) — dus *ZAC is de
+  enige plek waar dit afgedwongen kan worden*. Dat is een beperking om in het productieadvies helder te
+  benoemen, geen gat in dit ontwerp.
 
 ---
 
@@ -321,22 +339,26 @@ dat contract gelezen en niet voorgesteld.
 | `POST /tenants/{tenantId}/documents/generate` | Ja | Dient één document in. Geeft `202` terug met een request-id |
 | `GET /tenants/{tenantId}/documents/jobs/{requestId}` | Ja | Jobstatus en items; levert bij afronding het document-id. `DELETE` annuleert |
 | `GET /tenants/{tenantId}/documents/{documentId}` | Ja | Downloadt de PDF — `application/pdf` met een bestandsnaam en grootte |
-| `GET /tenants/{tenantId}/templates` | Ja | De templates die het beheerscherm per zaaktype aanbiedt (#3) |
+| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping) |
+| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` | Ja | De templates die het beheerscherm per zaaktype aanbiedt (#3) |
 | `POST /tenants/{tenantId}/documents/preview` | Nee | Synchroon, maar alleen preview: geen PDF/A, rate-limited, niet bewaard |
 | `POST /tenants/{tenantId}/documents/generate/batch` | Nee | Batchgeneratie — buiten scope; een verbetervoorstel (#20) |
 | `POST /tenants/{tenantId}/generation/collect` | Nee | Cursorgebaseerde verdeelwachtrij voor continue afname. Het pad voor productieschaal |
 
-Verzoeken gebruiken het geversioneerde mediatype `application/vnd.epistola.v1+json`. Genereren vereist het
+Elke templateaanroep draagt de catalogus als padsegment, en ook een generatieverzoek vereist hem
+(`catalogId`). ZAC heeft er precies één, uit `EPISTOLA_CATALOG_ID`. Verzoeken gebruiken het geversioneerde
+mediatype `application/vnd.epistola.v1+json`. Genereren vereist het
 recht `DOCUMENT_GENERATE` op de consumerregistratie; rechten en toegestane tenants worden bij goedkeuring
 door een Epistola-beheerder gezet en niet door de aanroeper.
 
 ### Authenticatie
 
 **Een statische API key**, per consumer uitgegeven door een Epistola-beheerder en bij elke aanroep
-meegestuurd. ZAC krijgt hem als `EPISTOLA_CLIENT_API_KEY` naast `EPISTOLA_TENANT_ID`, beide gevalideerd bij
-het opstarten. De sleutel identificeert de geregistreerde consumer wiens rechten en toegestane tenants die
-beheerder bij goedkeuring heeft vastgelegd; hij benoemt geen persoon, en daarom blijft handhaving bij ZAC
-([§4](#4--autorisatiemodel)). Volledig vastgelegd op #2.
+meegestuurd. ZAC krijgt hem als `EPISTOLA_CLIENT_API_KEY` naast `EPISTOLA_TENANT_ID` en
+`EPISTOLA_CATALOG_ID`. Bij het opstarten controleert ZAC dat alle drie gezet zijn, en dat de tenant en de
+catalogus slugs zijn die Epistola accepteert. De sleutel identificeert de geregistreerde consumer wiens
+rechten en toegestane tenants die beheerder bij goedkeuring heeft vastgelegd; hij benoemt geen persoon, en
+daarom blijft handhaving bij ZAC ([§4](#4--autorisatiemodel)). Volledig vastgelegd op #2.
 
 Het contract biedt twee alternatieven, en #2 vraagt de afgewezen alternatieven vast te leggen in plaats van
 ze alleen niet te kiezen. Een **self-signed JWT** — `iss`, `exp` en een `jti`-nonce, ondertekend met een
@@ -355,7 +377,8 @@ blijft terwijl die vraag beantwoord wordt, en OAuth het gedocumenteerde producti
 ### Verzoek
 
 Een generatieverzoek benoemt het template en ofwel een expliciete `variantId` ofwel `attributes` voor
-automatische variantkeuze — nooit allebei. Het draagt de templatevariabelen uit [§3](#3--datamapping) en
+automatische variantkeuze — nooit allebei. ZAC stuurt geen van beide en laat Epistola de standaardvariant
+kiezen. Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
 een `correlationId`, die ZAC op de **UUID** van de zaak zet. Epistola echoot die terug en bewaart hem, dus
 de waarde belandt in het audittrail van een derde partij en in elke supportuitwisseling. Beide
 identificeren de zaak vanuit ZAC even goed en terugzoeken kost in geen van beide gevallen extra, maar de
@@ -380,10 +403,16 @@ correlatie-id, het template-id, de zaakidentificatie en de status; nooit de payl
 
 ### Testomgeving
 
-De contractrepository levert een mockserver mee, en dat is wat de examenafspraken met "Epistola API
-mock/testomgeving" bedoelen. Daarmee vervalt de afhankelijkheid van een live tenant voor de
-integratietests in #10 en #18, en het is de manier waarop de negatieve paden hierboven bewust uitgevoerd
-kunnen worden in plaats van erop te hopen.
+Er zijn drie, elk voor iets anders:
+
+- **De testserver van Epistola** (tenant `demo`), bereikt met `./start-docker-compose.sh -l -E`. Hiertegen is
+  op 24 september de hele keten binnen WildFly doorlopen, via de geïnjecteerde beans: template lezen,
+  allow-list, genereren, downloaden.
+- **Een WireMock-stand-in** (`-W`), voor werken zonder Epistola. Die spiegelt wat de echte server teruggeeft,
+  niet wat het contract toestaat: het schema staat in `dataModel`, `catalogId` is verplicht. Een mock die meer
+  accepteert dan Epistola, verbergt defects.
+- **De mockserver uit de contractrepository**. Die is gebruikt om ZAC's aanroepvolgorde tegen het contract
+  na te lopen, en is bruikbaar om de negatieve paden hierboven bewust uit te voeren.
 
 ---
 
@@ -407,17 +436,19 @@ kunnen worden in plaats van erop te hopen.
 - **Wordt de templatenaam in ZAC opgeslagen?** SmartDocuments slaat alleen het id op, waardoor ZAC geen
   lijst kan tonen als de provider onbereikbaar is en verweesde mappings onzichtbaar blijven. Dat getrouw
   spiegelen reproduceert de zwakte; de naam opslaan kost een waarde die kan verouderen.
-- **De formulering van #11 over vertrouwelijkheidaanduiding** moet gecorrigeerd worden, zie
-  [§4](#4--autorisatiemodel).
-- **Een template dat een sectie als vrijvormig object declareert** krijgt die sectie heel, en de allow-list
-  uit [§3](#3--datamapping) kan daar niets aan versmallen. Vastgelegd in een test; vraagt een besluit van de
-  stakeholders.
+- **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel, en de
+  allow-list uit [§3](#3--datamapping) kan daar niets aan versmallen. Vastgelegd in een test; vraagt een
+  besluit van de stakeholders.
+
+De formulering van #11 over vertrouwelijkheidaanduiding ([§4](#4--autorisatiemodel)) is op 18 september
+gecorrigeerd en staat hier daarom niet meer open.
 
 ---
 
 ## Verantwoording
 
-Gegrond in de fork op `60b9cd82d`: `zaak-rechten.rego`, `taak-rechten.rego`,
+Oorspronkelijk gegrond in de fork op `60b9cd82d`, en op 24 september nagelopen tegen de gebouwde code van #4
+op `437c46fa1`: `zaak-rechten.rego`, `taak-rechten.rego`,
 `DocumentCreationDataService.kt`, `DocumentCreationService.kt`, `DocumentCreationRestService.kt`,
 `SmartDocumentsService.kt`, `SmartDocumentsTemplatesService.kt`, `DocumentCreationProviderConfiguration.kt`
 en `ZaaktypeConfigurationService.kt`. Functionele besluiten komen uit #15; privacy- en securitybevindingen

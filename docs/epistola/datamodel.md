@@ -2,7 +2,6 @@
 
 | | |
 |---|---|
-| Bron | [Epistola Datamodel](https://claude.ai/artifact/SjfJM763j1HgWDNNHuztLW) — het artifact is leidend, dit is de kopie |
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
 | Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026 |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
@@ -117,8 +116,8 @@ Eén `document_template`-tabel met een `provider`-discriminator zou minder dupli
 de twee providers: elke kolom die Epistola nodig heeft zou ook op SmartDocuments-rijen landen, en een
 migratie voor de één zou de ander kunnen breken.
 
-Dit volgt de regel "dupliceren omwille van onafhankelijkheid" uit `plan.md`, en houdt de DoD-belofte
-overeind dat de bestaande SmartDocuments-flow intact blijft.
+Dupliceren omwille van onafhankelijkheid houdt de DoD-belofte overeind dat de bestaande
+SmartDocuments-flow intact blijft.
 
 ### Twee booleans per zaaktype, eerlijk gehouden door de globale instelling
 
@@ -160,8 +159,8 @@ API onbereikbaar is, en een verweesde mapping blijft onzichtbaar tot iemand het 
 spiegelen reproduceert de zwakte.
 
 `naam` naast `epistola_id` opslaan zou het beheerscherm laten tonen wat er geconfigureerd is, ook als
-Epistola plat ligt — ten koste van een waarde die kan verouderen. Het waard om aan de stakeholders voor te
-leggen (#21); het is nu een besluit van één kolom en later een migratie.
+Epistola plat ligt — ten koste van een waarde die kan verouderen. Dit ligt als open vraag bij de
+stakeholders (#21); het is nu een besluit van één kolom en later een migratie.
 
 ---
 

@@ -8,9 +8,9 @@ Deze documenten horen bij de prototyperepository
 [`infonl/zac-epistola-prototype`](https://github.com/infonl/zac-epistola-prototype) en bij het
 bijbehorende projectbord.
 
-> **Het gepubliceerde artifact is de bron, deze Markdown is de kopie.** Elk document noemt bovenaan zijn
-> bron-URL, het issue waar het bij hoort en de stand waarop de kopie is gemaakt. Wijzigt het artifact, dan
-> moet de kopie hier opnieuw worden bijgewerkt — niet andersom.
+> **Deze Markdown is de bron.** Tot 24 september 2026 waren gepubliceerde artifacts leidend en was dit de
+> kopie. Die artifacts worden niet meer bijgewerkt, en wie iets wil wijzigen, wijzigt het hier. Elk document
+> noemt bovenaan het issue waar het bij hoort en de stand waarop het is bijgewerkt.
 
 ## Documenten
 
@@ -20,8 +20,8 @@ bijbehorende projectbord.
 | [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de drie wijzigingen die Epistola nodig heeft, met ERD | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 
-De uitgangspunten, eisen en wensen en de ontwerpverantwoording staan niet hier: die horen bij de user
-stories op het projectbord en worden daar bijgehouden.
+De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan
+voorlopig alleen als artifact, gelinkt vanuit hun issue.
 
 ## Kernbesluiten in één oogopslag
 
