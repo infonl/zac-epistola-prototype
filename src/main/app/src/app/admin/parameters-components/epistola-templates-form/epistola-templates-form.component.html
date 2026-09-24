@@ -34,7 +34,7 @@
                 ('epistola.sjabloongroep.nieuw' | translate)
               "
             >
-              <div class="flex-row items-center">
+              <div class="template-group-header flex-row">
                 <mat-form-field class="flex-1" subscriptSizing="dynamic">
                   <mat-label>{{
                     "epistola.sjabloongroep" | translate
@@ -50,13 +50,14 @@
                     }}</mat-error>
                   }
                 </mat-form-field>
+                @let removeTemplateGroupLabel =
+                  "actie.sjabloongroep.verwijderen"
+                    | translate: { naam: templateGroup.controls.name.value };
                 <button
                   type="button"
                   mat-icon-button
-                  [attr.aria-label]="
-                    'actie.sjabloongroep.verwijderen'
-                      | translate: { naam: templateGroup.controls.name.value }
-                  "
+                  [attr.aria-label]="removeTemplateGroupLabel"
+                  [title]="removeTemplateGroupLabel"
                   (click)="removeTemplateGroup(templateGroupIndex)"
                 >
                   <mat-icon>delete</mat-icon>
@@ -74,12 +75,12 @@
                       template.controls.informatieObjectTypeUUID.value
                     );
                   <div
-                    class="template flex-row items-center"
+                    class="template flex-row"
                     role="group"
                     [formGroupName]="templateIndex"
                     [attr.aria-label]="name"
                   >
-                    <span class="flex-1">{{ name }}</span>
+                    <span class="template-name flex-1">{{ name }}</span>
                     <mat-form-field subscriptSizing="dynamic">
                       <mat-label>{{
                         "informatieobjectTypeOmschrijving" | translate
@@ -115,7 +116,7 @@
                       }}</mat-label>
                       <input
                         matInput
-                        readonly
+                        disabled
                         [value]="
                           vertrouwelijkheid
                             ? ('vertrouwelijkheidaanduiding.' +
@@ -124,12 +125,13 @@
                         "
                       />
                     </mat-form-field>
+                    @let removeTemplateLabel =
+                      "actie.sjabloon.verwijderen" | translate: { naam: name };
                     <button
                       type="button"
                       mat-icon-button
-                      [attr.aria-label]="
-                        'actie.sjabloon.verwijderen' | translate: { naam: name }
-                      "
+                      [attr.aria-label]="removeTemplateLabel"
+                      [title]="removeTemplateLabel"
                       (click)="removeTemplate(templateGroup, templateIndex)"
                     >
                       <mat-icon>delete</mat-icon>
@@ -165,9 +167,8 @@
             {{ "msg.epistola.sjablonen.geen" | translate }}
           </p>
         }
-        <div>
-          <button type="button" mat-stroked-button (click)="addTemplateGroup()">
-            <mat-icon>add</mat-icon>
+        <div class="add-template-group">
+          <button type="button" mat-raised-button (click)="addTemplateGroup()">
             {{ "actie.sjabloongroep.toevoegen" | translate }}
           </button>
         </div>
