@@ -2,11 +2,9 @@
  * SPDX-FileCopyrightText: 2026 INFO.nl
  * SPDX-License-Identifier: EUPL-1.2+
  */
-package nl.info.zac.documentcreation.converter
+package nl.info.zac.documentcreation.model
 
-import jakarta.json.bind.JsonbBuilder
 import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingException
-import nl.info.zac.documentcreation.model.DocumentCreationData
 import java.util.logging.Logger
 
 private const val SCHEMA_PROPERTIES = "properties"
@@ -21,23 +19,10 @@ private const val JSON_POINTER_SEPARATOR = "/"
 private val SCHEMA_COMBINATIONS = listOf("allOf", "anyOf", "oneOf")
 
 /**
- * Serializing and reading back is what keeps the two providers in step: the payload is produced by
- * the same JSON-B annotations that produce the SmartDocuments deposit.
- */
-private val JSONB = JsonbBuilder.create()
-
-/**
- * The template's JSON Schema is used as an allow-list, not as a validator: `additionalProperties` is
+ * The template's JSON Schema used as an allow-list, not as a validator: `additionalProperties` is
  * ignored, because the startformulier data is an unfiltered map of everything a citizen submitted.
  */
-fun DocumentCreationData.toEpistolaTemplateData(templateId: String, templateSchema: Any?): Map<String, Any> =
-    TemplateSchemaAllowList(templateId = templateId, rootSchema = templateSchema).retain(toPayloadMap())
-
-@Suppress("UNCHECKED_CAST")
-private fun DocumentCreationData.toPayloadMap(): Map<String, Any> =
-    JSONB.fromJson(JSONB.toJson(this), Map::class.java) as Map<String, Any>
-
-private class TemplateSchemaAllowList(private val templateId: String, private val rootSchema: Any?) {
+internal class TemplateSchemaAllowList(private val templateId: String, private val rootSchema: Any?) {
     companion object {
         private val LOG = Logger.getLogger(TemplateSchemaAllowList::class.java.name)
     }

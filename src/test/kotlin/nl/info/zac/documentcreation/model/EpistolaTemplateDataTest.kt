@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2026 INFO.nl
  * SPDX-License-Identifier: EUPL-1.2+
  */
-package nl.info.zac.documentcreation.converter
+package nl.info.zac.documentcreation.model
 
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
@@ -13,15 +13,6 @@ import io.kotest.matchers.maps.shouldNotContainKey
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingException
-import nl.info.zac.documentcreation.model.AanvragerData
-import nl.info.zac.documentcreation.model.DocumentCreationData
-import nl.info.zac.documentcreation.model.GebruikerData
-import nl.info.zac.documentcreation.model.StartformulierData
-import nl.info.zac.documentcreation.model.TaskData
-import nl.info.zac.documentcreation.model.ZaakData
-import nl.info.zac.documentcreation.model.createData
-import nl.info.zac.documentcreation.model.createStartformulierData
-import nl.info.zac.documentcreation.model.createZaakData
 import java.time.LocalDate
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty1
@@ -61,7 +52,7 @@ private fun schemaDeclaringEveryPropertyOf(vararg sections: Pair<String, KClass<
         }.toTypedArray()
     )
 
-class EpistolaTemplateDataConverterTest : BehaviorSpec({
+class EpistolaTemplateDataTest : BehaviorSpec({
     context("converting zaak data to an Epistola template payload") {
         given("a template whose schema declares every field ZAC maps") {
             val documentCreationData = createData()

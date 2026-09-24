@@ -11,7 +11,7 @@ import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.zac.authentication.LoggedInUser
-import nl.info.zac.documentcreation.converter.toEpistolaTemplateData
+import nl.info.zac.documentcreation.model.toEpistolaTemplateData
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import java.util.logging.Logger

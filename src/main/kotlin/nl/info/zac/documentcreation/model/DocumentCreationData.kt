@@ -4,6 +4,7 @@
  */
 package nl.info.zac.documentcreation.model
 
+import jakarta.json.bind.JsonbBuilder
 import jakarta.json.bind.annotation.JsonbDateFormat
 import jakarta.json.bind.annotation.JsonbProperty
 import net.atos.zac.util.StringUtil
@@ -14,6 +15,12 @@ import java.time.LocalDate
 
 private const val DATE_FORMAT = "dd-MM-yyyy"
 private const val POINT_COORDINATE_COUNT = 2
+
+/**
+ * Serializing and reading back is what keeps the two providers in step: the Epistola payload is produced
+ * by the same JSON-B annotations that produce the SmartDocuments deposit.
+ */
+private val JSONB = JsonbBuilder.create()
 
 /**
  * The JSON-B names below are the variable names a template author writes, for either provider, so
@@ -35,6 +42,13 @@ data class DocumentCreationData(
     @field:JsonbProperty("zaak")
     val zaakData: ZaakData
 )
+
+fun DocumentCreationData.toEpistolaTemplateData(templateId: String, templateSchema: Any?): Map<String, Any> =
+    TemplateSchemaAllowList(templateId = templateId, rootSchema = templateSchema).retain(toPayloadMap())
+
+@Suppress("UNCHECKED_CAST")
+private fun DocumentCreationData.toPayloadMap(): Map<String, Any> =
+    JSONB.fromJson(JSONB.toJson(this), Map::class.java) as Map<String, Any>
 
 data class AanvragerData(
     val naam: String? = null,
