@@ -67,13 +67,18 @@ class EpistolaClientService @Inject constructor(
         ).requestId
         LOG.fine { "Epistola accepted generation request '$requestId' for template '$templateId'" }
 
-        val completedItem = try {
-            awaitCompletedItem(tenant, requestId)
-        } catch (epistolaDocumentGenerationTimeoutException: EpistolaDocumentGenerationTimeoutException) {
-            cancelGenerationJob(tenant, requestId)
-            throw epistolaDocumentGenerationTimeoutException
+        var isJobFinished = false
+        val finishedItem = try {
+            awaitFinishedItem(tenant, requestId).also { isJobFinished = true }
+        } finally {
+            if (!isJobFinished) cancelGenerationJob(tenant, requestId)
         }
-        return downloadDocument(tenant, completedItem, fileName)
+        if (finishedItem.status == FAILED) {
+            throw EpistolaDocumentGenerationException(
+                "Epistola generation request '$requestId' failed: ${finishedItem.errorMessage ?: "no reason given"}"
+            )
+        }
+        return downloadDocument(tenant, finishedItem, fileName)
     }
 
     fun readTemplateSchema(templateId: String): Any? =
@@ -83,20 +88,13 @@ class EpistolaClientService @Inject constructor(
     fun readTemplate(templateId: String) =
         templatesApi.getTemplate(epistolaSettings.tenantId, epistolaSettings.catalogId, templateId)
 
-    @Suppress("ReturnCount")
-    private fun awaitCompletedItem(tenant: String, requestId: UUID): DocumentGenerationItemDto {
+    private fun awaitFinishedItem(tenant: String, requestId: UUID): DocumentGenerationItemDto {
         val deadline = System.nanoTime() + epistolaSettings.generationTimeout.toNanos()
         var pollDelay = FIRST_POLL_DELAY
         while (true) {
-            generationApi.getGenerationJobStatus(tenant, requestId).items.orEmpty().firstOrNull()?.let { item ->
-                when (item.status) {
-                    COMPLETED -> return item
-                    FAILED -> throw EpistolaDocumentGenerationException(
-                        "Epistola generation request '$requestId' failed: ${item.errorMessage ?: "no reason given"}"
-                    )
-                    else -> Unit
-                }
-            }
+            generationApi.getGenerationJobStatus(tenant, requestId).items.orEmpty().firstOrNull()
+                ?.takeIf { it.status == COMPLETED || it.status == FAILED }
+                ?.let { return it }
             val remainingTime = Duration.ofNanos(deadline - System.nanoTime())
             if (remainingTime.isNegative || remainingTime.isZero) {
                 throw EpistolaDocumentGenerationTimeoutException(

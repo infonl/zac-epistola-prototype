@@ -167,6 +167,40 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 and("no document is downloaded") {
                     verify(exactly = 0) { generationApi.downloadDocument(any(), any()) }
                 }
+
+                and("the job is not cancelled, because a failed job has finished and left no document") {
+                    verify(exactly = 0) { generationApi.cancelGenerationJob(any(), any()) }
+                }
+            }
+        }
+
+        given("a job whose status Epistola fails to report, for example with a 503 while ZAC polls") {
+            val requestId = UUID.randomUUID()
+            val apiException = ApiException()
+
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } throws apiException
+            every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } just runs
+
+            `when`("the document is generated") {
+                val exception = shouldThrow<ApiException> {
+                    createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap(),
+                        fileName = FAKE_FILE_NAME,
+                        correlationId = FAKE_CORRELATION_ID
+                    )
+                }
+
+                then("the failure reaches the caller") {
+                    exception shouldBe apiException
+                }
+
+                and("the job Epistola accepted is cancelled, so trying again does not leave a second document") {
+                    verify(exactly = 1) { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) }
+                }
             }
         }
 
