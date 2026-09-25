@@ -144,8 +144,12 @@ function zaakMenuItems(zaak: Zaak, handlers: ZaakMenuHandlers) {
   }
 
   if (zaak.rechten.creerenDocument) {
-    const smartDocuments = zaak.zaaktype.zaakafhandelparameters?.smartDocuments;
-    if (smartDocuments?.enabledForZaaktype && smartDocuments.enabledGlobally) {
+    const { smartDocuments, epistola } =
+      zaak.zaaktype.zaakafhandelparameters ?? {};
+    const isDocumentCreationEnabled =
+      (smartDocuments?.enabledGlobally && smartDocuments.enabledForZaaktype) ||
+      (epistola?.isEnabledGlobally && epistola.isEnabledForZaaktype);
+    if (isDocumentCreationEnabled) {
       menu.push(new ButtonMenuItem("actie.document.maken", open, "note_add"));
     }
 
