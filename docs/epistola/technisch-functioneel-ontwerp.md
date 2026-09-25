@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 24 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)) en #3 hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -62,8 +62,15 @@ zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verander
 de applicatie weigert bij het opstarten een tegenstrijdige opzet. Het codepad is nog niet abstract —
 `DocumentCreationService` injecteert `SmartDocumentsService` rechtstreeks, en het REST-endpoint kijkt nog
 naar `isSmartDocumentsEnabled(zaaktypeUuid)`. Dat is het werk van dit ontwerp. #4 heeft de Epistola-kant
-gebouwd als een losse `EpistolaDocumentCreationService`. De gedeelde interface hieronder komt er met het
-endpoint uit #5.
+gebouwd als een losse `EpistolaDocumentCreationService`.
+
+**Gebouwd in #5 is een eenvoudiger vorm dan de interface hieronder.** Er zijn twee endpoints. Het bestaande
+`create-document-attended` blijft voor SmartDocuments en geeft de redirect naar de wizard. Het nieuwe
+`epistola/create-document` genereert en slaat op in één verzoek, en geeft het opgeslagen document terug. De
+behandelaar merkt daar niets van, want één dialoog kiest het endpoint van de actieve provider. De vertakking
+die de sealed outcome hieronder in de REST-laag legt, ligt daarmee in de dialoog. Het voordeel is dat het
+SmartDocuments-pad onaangeroerd blijft (DoD-item 1). De prijs is dat er geen gedeelde interface is om een
+derde provider achter te hangen. Die staat daarom op #20 (R7).
 
 De moeilijkheid zit niet in het injecteren van twee implementaties. Die zit erin dat de twee providers
 werkelijk verschillende *interactievormen* hebben, en een interface die dat ontkent gaat lekken.
@@ -201,7 +208,9 @@ flowchart TD
 
 Alleen de interfacebox is nieuw werk; de twee services erboven bestaan al en houden hun
 verantwoordelijkheden. De poort die nu `isSmartDocumentsEnabled` vraagt, vraagt het voortaan aan de actieve
-provider.
+provider. *Niet zo gebouwd; zie het besluit bovenaan deze paragraaf.* Elk endpoint toetst nu zijn eigen
+provider: het SmartDocuments-endpoint `isSmartDocumentsEnabled`, het Epistola-endpoint of Epistola actief is,
+voor het zaaktype aanstaat en het gekozen template aanbiedt.
 
 ---
 
@@ -349,12 +358,14 @@ weggeschreven.
 ### Handhaving
 
 - Server-side, in `DocumentCreationRestService`, via
-  `assertPolicy(policyService.readZaakRechten(zaak, user).creerenDocument)` — al aanwezig en onveranderd
-  door dit ontwerp. Genereren vanuit een taak toetst daarnaast het taakniveau-`creeren_document`, dat ook
-  `taak.open` vereist.
+  `assertPolicy(policyService.readZaakRechten(zaak, user).creerenDocument)`. Die controle stond er al voor
+  SmartDocuments, en #5 heeft haar in één helper gezet die beide endpoints aanroepen. Genereren vanuit een
+  taak toetst daarnaast het taakniveau-`creeren_document`, dat ook `taak.open` vereist. Een weigering is een
+  `PolicyException`, die `RestExceptionMapper` met 403 beantwoordt, voordat er iets naar Epistola gaat.
 - De frontend verbergt de actie wanneer het recht ontbreekt. Dat is presentatie, geen handhaving; het
   endpoint moet zelfstandig weigeren, en de negatieve test van #11 — geauthenticeerd maar niet
-  geautoriseerd, met 403 als verwachting — is wat dat bewijst.
+  geautoriseerd, met 403 als verwachting — is wat dat bewijst. *Gebouwd in #5, als unit tests: geweigerd
+  zonder het zaakrecht, zonder het taakrecht, en voor een taak die niet meer open is.*
 - Epistola's eigen credential benoemt de installatie en geen persoon — één API key voor de hele
   ZAC-installatie ([#16](https://github.com/infonl/zac-epistola-prototype/issues/16), R1) — dus *ZAC is de
   enige plek waar dit afgedwongen kan worden*. Dat is een beperking om in het productieadvies helder te
