@@ -19,6 +19,8 @@ bijbehorende projectbord.
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
 | [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de drie wijzigingen die Epistola nodig heeft, met ERD | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
+| [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testscenario's, positief en negatief, over de acht afgesproken gebieden. Volgens het examensjabloon (B1-K1-W4) | #18 |
+| [Testrapport](testrapport.md) | De uitvoering van 25 september: resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
 
 De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan
 voorlopig alleen als artifact, gelinkt vanuit hun issue.
