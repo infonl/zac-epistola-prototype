@@ -156,6 +156,53 @@ describe(buildZaakMenu.name, () => {
       expect(menuFor(false, true)).not.toContain("actie.document.maken");
     });
 
+    it("offers document maken only when Epistola is the active provider and enabled for the zaaktype", () => {
+      const menuFor = (enabledGlobally: boolean, enabledForZaaktype: boolean) =>
+        titles(
+          buildZaakMenu(
+            createZaak(
+              {
+                zaaktype: fromPartial({
+                  zaakafhandelparameters: fromPartial({
+                    epistola: { enabledGlobally, enabledForZaaktype },
+                  }),
+                }),
+              },
+              { creerenDocument: true },
+            ),
+            noPlanItems,
+            handlers,
+            dialogs,
+            false,
+          ),
+        );
+
+      expect(menuFor(true, true)).toContain("actie.document.maken");
+      expect(menuFor(true, false)).not.toContain("actie.document.maken");
+      expect(menuFor(false, true)).not.toContain("actie.document.maken");
+    });
+
+    it("does not offer document maken to a user who may not create documents, even with Epistola enabled", () => {
+      const menu = buildZaakMenu(
+        createZaak(
+          {
+            zaaktype: fromPartial({
+              zaakafhandelparameters: fromPartial({
+                epistola: { enabledGlobally: true, enabledForZaaktype: true },
+              }),
+            }),
+          },
+          { creerenDocument: false },
+        ),
+        noPlanItems,
+        handlers,
+        dialogs,
+        false,
+      );
+
+      expect(titles(menu)).not.toContain("actie.document.maken");
+    });
+
     it("offers toevoegen and verzenden whenever documents may be created, regardless of SmartDocuments", () => {
       const menu = buildZaakMenu(
         createZaak({}, { creerenDocument: true }),

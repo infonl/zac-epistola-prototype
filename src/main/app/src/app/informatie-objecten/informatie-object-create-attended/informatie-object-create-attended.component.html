@@ -60,20 +60,33 @@
       </zac-input>
     </section>
     <section class="row">
-      <zac-date [form]="form" key="creationDate" class="col-12">
-        <mat-label>{{ "creatiedatum" | translate }}</mat-label>
-      </zac-date>
+      @if (usesEpistola) {
+        <zac-input [form]="form" key="format" class="col-12">
+          <mat-label>{{ "formaat" | translate }}</mat-label>
+        </zac-input>
+      } @else {
+        <zac-date [form]="form" key="creationDate" class="col-12">
+          <mat-label>{{ "creatiedatum" | translate }}</mat-label>
+        </zac-date>
+      }
       <zac-input [form]="form" key="author" class="col-12">
         <mat-label>{{ "auteur" | translate }}</mat-label>
       </zac-input>
     </section>
   </fieldset>
   <fieldset>
+    @if (usesEpistola && createEpistolaDocumentMutation.isPending()) {
+      <p role="status" class="mx-3">
+        {{ "msg.document.genereren.bezig" | translate }}
+      </p>
+    }
     <mat-action-row>
       <zac-form-actions
         [form]="form"
-        [mutation]="createDocumentMutation"
-        submitLabel="actie.toevoegen"
+        [mutation]="
+          usesEpistola ? createEpistolaDocumentMutation : createDocumentMutation
+        "
+        [submitLabel]="usesEpistola ? 'actie.genereren' : 'actie.toevoegen'"
       />
     </mat-action-row>
   </fieldset>
