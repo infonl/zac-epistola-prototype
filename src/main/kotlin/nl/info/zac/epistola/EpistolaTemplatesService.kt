@@ -18,6 +18,7 @@ import nl.info.zac.admin.model.ZaaktypeConfiguration
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
+import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
 import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
 import nl.info.zac.epistola.rest.toEpistolaTemplateGroup
@@ -110,6 +111,16 @@ class EpistolaTemplatesService @Inject constructor(
             templateGroups = previousTemplateGroups.map { it.copyTo(newZaaktypeConfiguration) }
         )
     }
+
+    /** A template not configured for the zaaktype is refused, so a behandelaar can only generate what the beheerder offers. */
+    fun readInformatieobjecttypeUuid(zaaktypeUuid: UUID, templateId: String): UUID =
+        readStoredTemplateGroups(zaaktypeUuid)
+            .flatMap { it.templates }
+            .firstOrNull { it.epistolaId == templateId }
+            ?.informatieObjectTypeUUID
+            ?: throw EpistolaTemplateNotConfiguredException(
+                "Epistola template '$templateId' is not configured for zaaktype '$zaaktypeUuid'."
+            )
 
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 

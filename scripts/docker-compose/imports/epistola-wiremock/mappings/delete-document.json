@@ -1,0 +1,9 @@
+{
+  "request": {
+    "method": "DELETE",
+    "urlPathPattern": "/tenants/[^/]+/documents/[0-9a-fA-F-]{36}"
+  },
+  "response": {
+    "status": 204
+  }
+}
