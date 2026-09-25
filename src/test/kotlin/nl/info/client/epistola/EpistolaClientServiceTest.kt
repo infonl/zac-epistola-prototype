@@ -434,4 +434,32 @@ class EpistolaClientServiceTest : BehaviorSpec({
             }
         }
     }
+
+    context("deleting a document at Epistola") {
+        given("a document Epistola still holds") {
+            val documentId = UUID.randomUUID()
+            every { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) } just runs
+
+            `when`("the document is deleted") {
+                createService().deleteDocument(documentId)
+
+                then("Epistola is asked to delete it") {
+                    verify(exactly = 1) { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) }
+                }
+            }
+        }
+
+        given("a document Epistola refuses to delete") {
+            val documentId = UUID.randomUUID()
+            every { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) } throws ApiException()
+
+            `when`("the document is deleted") {
+                createService().deleteDocument(documentId)
+
+                then("the failure is only logged, because the document is already in the dossier") {
+                    verify(exactly = 1) { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) }
+                }
+            }
+        }
+    }
 })

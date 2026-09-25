@@ -24,6 +24,7 @@ import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
+import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
 import nl.info.zac.epistola.rest.RestMappedEpistolaTemplate
 import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
@@ -414,6 +415,78 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
 
                 then("nothing is stored for the new version") {
                     verify(exactly = 0) { epistolaTemplateGroupRepository.replaceTemplateGroups(any(), any()) }
+                }
+            }
+        }
+    }
+
+    context("reading the informatieobjecttype a template is filed under") {
+        given("a zaaktype whose group offers the template under an informatieobjecttype") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            val informatieObjectTypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
+            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
+                createEpistolaTemplateGroup(
+                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
+                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-other-template" to UUID.randomUUID())
+                ),
+                createEpistolaTemplateGroup(
+                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
+                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-template-1" to informatieObjectTypeUuid)
+                )
+            )
+
+            `when`("the informatieobjecttype of that template is read") {
+                val readInformatieObjectTypeUuid = epistolaTemplatesService.readInformatieobjecttypeUuid(
+                    zaaktypeUuid = zaaktypeUuid,
+                    templateId = "fake-template-1"
+                )
+
+                then("the one configured with it is returned, whichever group holds it") {
+                    readInformatieObjectTypeUuid shouldBe informatieObjectTypeUuid
+                }
+            }
+        }
+
+        given("a zaaktype whose groups do not offer the template") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
+            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
+                createEpistolaTemplateGroup(zaaktypeConfiguration = zaaktypeCmmnConfiguration)
+            )
+
+            `when`("the informatieobjecttype of an unoffered template is read") {
+                val epistolaTemplateNotConfiguredException = shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaTemplatesService.readInformatieobjecttypeUuid(
+                        zaaktypeUuid = zaaktypeUuid,
+                        templateId = "fake-unoffered-template"
+                    )
+                }
+
+                then("it is refused, so a behandelaar can only generate what the beheerder offers") {
+                    epistolaTemplateNotConfiguredException.message shouldBe
+                        "Epistola template 'fake-unoffered-template' is not configured for zaaktype '$zaaktypeUuid'."
+                }
+            }
+        }
+
+        given("SmartDocuments is the active provider") {
+            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
+
+            `when`("the informatieobjecttype of a template is read") {
+                shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaTemplatesService.readInformatieobjecttypeUuid(
+                        zaaktypeUuid = UUID.randomUUID(),
+                        templateId = "fake-template-1"
+                    )
+                }
+
+                then("it is refused without reading any stored mapping") {
+                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
                 }
             }
         }

@@ -105,6 +105,20 @@ class EpistolaClientService @Inject constructor(
         return templates
     }
 
+    /**
+     * Epistola otherwise keeps the document until its own retention removes it, months later. A failure is
+     * only logged: the document is already in the zaak's dossier, and failing now would invite a second one.
+     */
+    fun deleteDocument(documentId: UUID) {
+        try {
+            generationApi.deleteDocument(epistolaSettings.tenantId, documentId)
+        } catch (apiException: ApiException) {
+            LOG.warning { "Could not delete Epistola document '$documentId': HTTP ${apiException.response?.status}" }
+        } catch (processingException: ProcessingException) {
+            LOG.warning { "Could not delete Epistola document '$documentId': ${processingException.message}" }
+        }
+    }
+
     fun readTemplateSchema(templateId: String): Any? =
         readTemplate(templateId).let { it.dataModel ?: it.schema }
 
