@@ -26,6 +26,7 @@ import userEvent from "@testing-library/user-event";
 import { EMPTY } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { sleep, testQueryClient } from "../../../../setupJest";
+import { UtilService } from "../../core/service/util.service";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "../../shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
 import { GeneratedType } from "../../shared/utils/generated-types";
@@ -36,6 +37,9 @@ const TEMPLATES_URL =
   "/rest/zaakafhandelparameters/fakeZaaktypeUuid/smartdocuments-templates-mapping";
 const INFORMATIEOBJECTTYPES_URL =
   "/rest/informatieobjecten/informatieobjecttypes/fakeZaaktypeUuid";
+const EPISTOLA_CREATE_URL = "/rest/document-creation/epistola/create-document";
+const EPISTOLA_TEMPLATES_URL =
+  "/rest/zaakafhandelparameters/fakeZaaktypeUuid/epistola-templates-mapping";
 
 const zaak = fromPartial<GeneratedType<"RestZaak">>({
   uuid: "fakeZaakUuid",
@@ -69,6 +73,34 @@ const singleTemplateGroup = fromPartial<
   name: "Group Two",
   templates: [{ id: "fakeTemplateId3", name: "Template Three" }],
   groups: null,
+});
+
+const epistolaZaak = fromPartial<GeneratedType<"RestZaak">>({
+  uuid: "fakeZaakUuid",
+  zaaktype: {
+    uuid: "fakeZaaktypeUuid",
+    zaakafhandelparameters: {
+      epistola: { enabledGlobally: true, enabledForZaaktype: true },
+    },
+  },
+});
+
+const epistolaTemplateGroup = fromPartial<
+  GeneratedType<"RestMappedEpistolaTemplateGroup">
+>({
+  name: "Brieven",
+  templates: [
+    {
+      id: "fake-epistola-template-1",
+      name: "Standaardbrief",
+      informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
+    },
+    {
+      id: "fake-epistola-template-2",
+      name: "Ontvangstbevestiging",
+      informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
+    },
+  ],
 });
 
 const loggedInUser = fromPartial<GeneratedType<"RestUser">>({
@@ -364,5 +396,195 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     await user.click(screen.getByRole("button", { name: "actie.annuleren" }));
 
     expect(sideNav.close).toHaveBeenCalled();
+  });
+
+  describe("when Epistola is the active provider", () => {
+    let openSnackbar: jest.SpyInstance;
+
+    async function setupEpistola(
+      inputs: { taak?: GeneratedType<"RestTask"> } = {},
+    ) {
+      testQueryClient.setQueryData(
+        ["/rest/identity/loggedInUser"],
+        loggedInUser,
+      );
+      sideNav = fromPartial<MatDrawer>({
+        close: jest.fn().mockResolvedValue(undefined),
+      });
+      documentCreated = jest.fn();
+
+      const { fixture: renderedFixture } = await render(
+        InformatieObjectCreateAttendedComponent,
+        {
+          inputs: { zaak: epistolaZaak, sideNav, ...inputs },
+          imports: [NoopAnimationsModule, TranslateModule.forRoot()],
+          providers: [
+            provideRouter([]),
+            provideHttpClient(withInterceptorsFromDi()),
+            provideHttpClientTesting(),
+            provideMomentDateAdapter(),
+            provideTanStackQuery(testQueryClient),
+            provideQueryClient(testQueryClient),
+            VertrouwelijkaanduidingToTranslationKeyPipe,
+          ],
+        },
+      );
+
+      fixture = renderedFixture;
+      fixture.componentInstance.document.subscribe(documentCreated);
+      httpTestingController = TestBed.inject(HttpTestingController);
+      foutAfhandelen = jest
+        .spyOn(TestBed.inject(FoutAfhandelingService), "foutAfhandelen")
+        .mockReturnValue(EMPTY);
+      openSnackbar = jest
+        .spyOn(TestBed.inject(UtilService), "openSnackbar")
+        .mockImplementation(() => undefined);
+
+      await sleep();
+      httpTestingController
+        .expectOne(INFORMATIEOBJECTTYPES_URL)
+        .flush([informatieobjecttype]);
+      httpTestingController
+        .expectOne(EPISTOLA_TEMPLATES_URL)
+        .flush([epistolaTemplateGroup]);
+      await sleep();
+      fixture.detectChanges();
+    }
+
+    function generateButton() {
+      return screen.getByRole("button", { name: "actie.genereren" });
+    }
+
+    async function fillInValidEpistolaForm() {
+      await choose("sjabloonGroep", "Brieven");
+      await choose("sjabloon", "Standaardbrief");
+      await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
+    }
+
+    it("offers the template groups the beheerder arranged for Epistola", async () => {
+      await setupEpistola();
+
+      await choose("sjabloonGroep", "Brieven");
+      await user.click(field("sjabloon"));
+
+      expect(
+        screen.getByRole("option", { name: "Standaardbrief" }),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("option", { name: "Ontvangstbevestiging" }),
+      ).toBeVisible();
+    });
+
+    it("fills in the informatieobjecttype and vertrouwelijkheid of the template", async () => {
+      await setupEpistola();
+
+      await choose("sjabloonGroep", "Brieven");
+      await choose("sjabloon", "Standaardbrief");
+
+      expect(field("informatieobjectType")).toHaveValue("Bijlage");
+      expect(field("vertrouwelijkheidaanduiding")).toHaveValue(
+        "vertrouwelijkheidaanduiding.OPENBAAR",
+      );
+    });
+
+    it("states that the document will be a PDF and asks for no creation date, because Epistola dates it today", async () => {
+      await setupEpistola();
+
+      expect(field("formaat")).toHaveValue("PDF");
+      expect(field("formaat")).toBeDisabled();
+      expect(screen.queryByLabelText("creatiedatum")).not.toBeInTheDocument();
+    });
+
+    it("names the logged-in user as the author, who cannot be changed", async () => {
+      await setupEpistola();
+
+      expect(field("auteur")).toHaveValue("fakeUserName1");
+      expect(field("auteur")).toBeDisabled();
+    });
+
+    it("generates the document, reports that it was added to the zaak, and opens no wizard", async () => {
+      const windowOpen = jest.spyOn(window, "open").mockReturnValue(null);
+      const invalidateQueries = jest.spyOn(
+        testQueryClient,
+        "invalidateQueries",
+      );
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      await sleep();
+
+      const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
+      expect(request.request.method).toBe("POST");
+      expect(request.request.body).toEqual({
+        zaakUuid: "fakeZaakUuid",
+        taskId: undefined,
+        templateId: "fake-epistola-template-1",
+        title: "Ontvangstbevestiging aanvraag",
+        description: null,
+      });
+      request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      await sleep();
+
+      expect(openSnackbar).toHaveBeenCalledWith(
+        "msg.document.toegevoegd.aan.zaak",
+        { document: "Ontvangstbevestiging aanvraag" },
+      );
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: [
+          "/rest/informatieobjecten/informatieobjectenList",
+          "fakeZaakUuid",
+        ],
+      });
+      expect(documentCreated).toHaveBeenCalled();
+      expect(windowOpen).not.toHaveBeenCalled();
+    });
+
+    it("links the document to the task it was created from", async () => {
+      await setupEpistola({
+        taak: fromPartial<GeneratedType<"RestTask">>({ id: "fakeTaskId" }),
+      });
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      await sleep();
+
+      const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
+      expect(request.request.body).toMatchObject({ taskId: "fakeTaskId" });
+      request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("says it is generating, and offers no second generation while it does", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      await sleep();
+      fixture.detectChanges();
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.bezig",
+      );
+      expect(generateButton()).toBeDisabled();
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("routes a failed generation through the error handler and keeps the drawer open", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      await sleep();
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush("boom", { status: 500, statusText: "Server Error" });
+      await sleep();
+
+      expect(foutAfhandelen).toHaveBeenCalled();
+      expect(documentCreated).not.toHaveBeenCalled();
+      expect(openSnackbar).not.toHaveBeenCalled();
+    });
   });
 });

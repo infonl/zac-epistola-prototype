@@ -93,6 +93,12 @@ export class InformatieObjectenService {
     );
   }
 
+  createEpistolaDocumentMutation() {
+    return this.zacQueryClient.POST(
+      "/rest/document-creation/epistola/create-document",
+    );
+  }
+
   readHuidigeVersieEnkelvoudigInformatieObject(uuid: string) {
     return this.zacHttpClient.GET(
       "/rest/informatieobjecten/informatieobject/{uuid}/huidigeversie",
@@ -151,6 +157,13 @@ export class InformatieObjectenService {
         lastValueFrom(this.listEnkelvoudigInformatieobjecten(body)),
       staleTime: StaleTimes.Short,
     });
+  }
+
+  /** Covers both lists of the zaak: with and without the documents of its linked zaken. */
+  listEnkelvoudigInformatieobjectenQueryKeyOfZaak(zaakUUID: string) {
+    return this.listEnkelvoudigInformatieobjectenQuery({
+      zaakUUID,
+    }).queryKey.slice(0, 2);
   }
 
   readEnkelvoudigInformatieobjectByZaakInformatieobjectUUID(uuid: string) {

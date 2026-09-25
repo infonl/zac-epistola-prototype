@@ -7,6 +7,7 @@ import {
   Component,
   effect,
   EventEmitter,
+  inject,
   Input,
   OnDestroy,
   OnInit,
@@ -37,8 +38,10 @@ import {
   take,
   takeUntil,
 } from "rxjs";
+import { EpistolaTemplatesService } from "src/app/admin/epistola-templates.service";
 import { SmartDocumentsService } from "src/app/admin/smart-documents.service";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "src/app/shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
+import { UtilService } from "../../core/service/util.service";
 import { IdentityService } from "../../identity/identity.service";
 import { ZacAutoComplete } from "../../shared/form/auto-complete/auto-complete";
 import { ZacDate } from "../../shared/form/date/date";
@@ -51,6 +54,18 @@ import {
 } from "../../shared/notification-dialog/notification-dialog.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { InformatieObjectenService } from "../informatie-objecten.service";
+
+/** SmartDocuments groups carry an id; Epistola's belong to ZAC and are known by name only. */
+type TemplateOption = {
+  id: string;
+  name: string;
+  informatieObjectTypeUUID?: string | null;
+};
+type TemplateGroupOption = {
+  id?: string;
+  name: string;
+  templates: TemplateOption[];
+};
 
 @Component({
   selector: "zac-informatie-object-create-attended",
@@ -80,9 +95,7 @@ export class InformatieObjectCreateAttendedComponent
   @Input({ required: true }) sideNav!: MatDrawer;
   @Input({ required: false }) smartDocumentsGroupId?: string;
   @Input({ required: false }) smartDocumentsTemplateId?: string;
-  @Output() document = new EventEmitter<
-    GeneratedType<"RestDocumentCreationAttendedData">
-  >();
+  @Output() document = new EventEmitter<void>();
 
   private readonly destroy$ = new Subject<void>();
 
@@ -91,16 +104,12 @@ export class InformatieObjectCreateAttendedComponent
   >(1);
 
   protected readonly form = this.formBuilder.group({
-    templateGroup:
-      this.formBuilder.control<GeneratedType<"RestMappedSmartDocumentsTemplateGroup"> | null>(
-        null,
-        [Validators.required],
-      ),
-    template:
-      this.formBuilder.control<GeneratedType<"RestMappedSmartDocumentsTemplate"> | null>(
-        null,
-        [Validators.required],
-      ),
+    templateGroup: this.formBuilder.control<TemplateGroupOption | null>(null, [
+      Validators.required,
+    ]),
+    template: this.formBuilder.control<TemplateOption | null>(null, [
+      Validators.required,
+    ]),
     title: this.formBuilder.control<string | null>(null, [
       Validators.required,
       Validators.maxLength(100),
@@ -110,6 +119,10 @@ export class InformatieObjectCreateAttendedComponent
     ]),
     informationObjectType: this.formBuilder.control<string | null>(null),
     confidentiality: this.formBuilder.control<string | null>(null),
+    format: this.formBuilder.control<string | null>({
+      value: "PDF",
+      disabled: true,
+    }),
     creationDate: this.formBuilder.control<Moment | null>(moment(), [
       Validators.required,
     ]),
@@ -121,10 +134,11 @@ export class InformatieObjectCreateAttendedComponent
     taskId: this.formBuilder.control<string | null>(null),
   });
 
-  protected templateGroups: Observable<
-    GeneratedType<"RestMappedSmartDocumentsTemplateGroup">[]
-  > = of([]);
-  protected templates: GeneratedType<"RestMappedSmartDocumentsTemplate">[] = [];
+  protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
+  protected templates: TemplateOption[] = [];
+
+  private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
+  private readonly utilService = inject(UtilService);
 
   private readonly loggedInUserQuery = injectQuery(() =>
     this.identityService.readLoggedInUser(),
@@ -132,6 +146,10 @@ export class InformatieObjectCreateAttendedComponent
 
   protected readonly createDocumentMutation = injectMutation(() =>
     this.informatieObjectenService.createDocumentAttendedMutation(),
+  );
+
+  protected readonly createEpistolaDocumentMutation = injectMutation(() =>
+    this.informatieObjectenService.createEpistolaDocumentMutation(),
   );
 
   constructor(
@@ -151,21 +169,28 @@ export class InformatieObjectCreateAttendedComponent
     });
   }
 
+  /**
+   * Epistola renders the document while ZAC waits, so there is no wizard to choose a date or an author in:
+   * the document is dated today and written by the logged-in user.
+   */
+  protected get usesEpistola() {
+    return !!this.zaak.zaaktype.zaakafhandelparameters?.epistola
+      ?.enabledGlobally;
+  }
+
   async ngOnInit() {
     this.fetchInformatieobjecttypes();
 
     this.form.controls.template.disable();
     this.form.controls.informationObjectType.disable();
     this.form.controls.confidentiality.disable();
+    if (this.usesEpistola) {
+      this.form.controls.creationDate.disable();
+      this.form.controls.author.disable();
+    }
 
-    const templateGroupsFetcher: Observable<
-      GeneratedType<"RestMappedSmartDocumentsTemplateGroup">[]
-    > = from(
-      this.queryClient.query(
-        this.smartDocumentsService.getTemplatesMappingQuery(
-          this.zaak.zaaktype.uuid,
-        ),
-      ),
+    const templateGroupsFetcher: Observable<TemplateGroupOption[]> = from(
+      this.fetchTemplateGroups(),
     ).pipe(startWith([]));
     this.templateGroups = templateGroupsFetcher;
 
@@ -251,6 +276,20 @@ export class InformatieObjectCreateAttendedComponent
       });
   }
 
+  private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
+    return this.usesEpistola
+      ? this.queryClient.query(
+          this.epistolaTemplatesService.getTemplatesMappingQuery(
+            this.zaak.zaaktype.uuid,
+          ),
+        )
+      : this.queryClient.query(
+          this.smartDocumentsService.getTemplatesMappingQuery(
+            this.zaak.zaaktype.uuid,
+          ),
+        );
+  }
+
   private fetchInformatieobjecttypes() {
     this.informatieObjectenService
       .listInformatieobjecttypes(this.zaak.zaaktype.uuid)
@@ -268,9 +307,18 @@ export class InformatieObjectCreateAttendedComponent
       return;
     }
 
+    if (this.usesEpistola) {
+      this.createEpistolaDocument(
+        values.template!.id,
+        values.title!,
+        values.description,
+      );
+      return;
+    }
+
     const data: GeneratedType<"RestDocumentCreationAttendedData"> = {
       author: values.author!,
-      smartDocumentsTemplateGroupId: values.templateGroup!.id,
+      smartDocumentsTemplateGroupId: values.templateGroup!.id ?? null,
       smartDocumentsTemplateId: values.template!.id,
       title: values.title!,
       creationDate: values.creationDate!.toISOString(),
@@ -288,10 +336,40 @@ export class InformatieObjectCreateAttendedComponent
           return;
         }
 
-        this.document.emit(data);
+        this.document.emit();
         window.open(redirectURL);
       },
     });
+  }
+
+  private createEpistolaDocument(
+    templateId: string,
+    title: string,
+    description?: string | null,
+  ) {
+    this.createEpistolaDocumentMutation.mutate(
+      {
+        zaakUuid: this.zaak.uuid,
+        taskId: this.taak?.id,
+        templateId,
+        title,
+        description,
+      },
+      {
+        onSuccess: () => {
+          void this.queryClient.invalidateQueries({
+            queryKey:
+              this.informatieObjectenService.listEnkelvoudigInformatieobjectenQueryKeyOfZaak(
+                this.zaak.uuid,
+              ),
+          });
+          this.utilService.openSnackbar("msg.document.toegevoegd.aan.zaak", {
+            document: title,
+          });
+          this.document.emit();
+        },
+      },
+    );
   }
 
   ngOnDestroy() {
