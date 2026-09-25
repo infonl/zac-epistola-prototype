@@ -27,11 +27,14 @@ import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedData
 import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedResponse
+import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
+import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.runAsLoggedInUser
 import nl.info.zac.authentication.runAsSystemUser
 import nl.info.zac.documentcreation.DocumentCreationService
 import nl.info.zac.documentcreation.DocumentCreationUserStore
+import nl.info.zac.documentcreation.EpistolaDocumentCreationService
 import nl.info.zac.documentcreation.model.DocumentCreationAttendedResponse
 import nl.info.zac.documentcreation.model.DocumentCreationDataAttended
 import nl.info.zac.policy.PolicyService
@@ -54,6 +57,7 @@ import java.util.logging.Logger
 class DocumentCreationRestService @Inject constructor(
     private val policyService: PolicyService,
     private val documentCreationService: DocumentCreationService,
+    private val epistolaDocumentCreationService: EpistolaDocumentCreationService,
     private val zrcClientService: ZrcClientService,
     private val zaaktypeConfigurationService: ZaaktypeConfigurationService,
     private val flowableTaskService: FlowableTaskService,
@@ -78,16 +82,33 @@ class DocumentCreationRestService @Inject constructor(
         @Valid restDocumentCreationAttendedData: RestDocumentCreationAttendedData
     ): RestDocumentCreationAttendedResponse =
         zrcClientService.readZaak(restDocumentCreationAttendedData.zaakUuid).also { zaak ->
-            assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).creerenDocument)
-            restDocumentCreationAttendedData.taskId?.let {
-                val task = flowableTaskService.findOpenTask(it)
-                    ?: throw TaskNotFoundException("No open task found with task id: '$it'")
-                assertPolicy(policyService.readTaakRechten(task).creerenDocument)
-            }
+            assertDocumentCreationAllowed(zaak = zaak, taskId = restDocumentCreationAttendedData.taskId)
         }.let { zaak ->
             createSmartDocumentsDocumentAttended(zaak, restDocumentCreationAttendedData)
                 .let { RestDocumentCreationAttendedResponse(it.redirectUrl, it.message) }
         }
+
+    /**
+     * Returns once the document is in the zaak's dossier: Epistola renders it while this request waits, so
+     * there is no wizard and no callback. The wait is bounded by `EPISTOLA_GENERATION_TIMEOUT_SECONDS`.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Path("/epistola/create-document")
+    fun createEpistolaDocument(
+        @Valid restEpistolaDocumentCreationData: RestEpistolaDocumentCreationData
+    ): RestEpistolaDocumentCreationResponse =
+        zrcClientService.readZaak(restEpistolaDocumentCreationData.zaakUuid).also { zaak ->
+            assertDocumentCreationAllowed(zaak = zaak, taskId = restEpistolaDocumentCreationData.taskId)
+        }.let { zaak ->
+            epistolaDocumentCreationService.createAndStoreDocument(
+                zaak = zaak,
+                templateId = restEpistolaDocumentCreationData.templateId,
+                title = restEpistolaDocumentCreationData.title,
+                description = restEpistolaDocumentCreationData.description,
+                taskId = restEpistolaDocumentCreationData.taskId
+            )
+        }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
 
     /**
      * SmartDocuments callback for CMMN zaak
@@ -158,6 +179,15 @@ class DocumentCreationRestService @Inject constructor(
         ) {
             documentCreationService.getInformationObjecttypeUuid(it, templateGroupId, templateId)
         }
+
+    private fun assertDocumentCreationAllowed(zaak: Zaak, taskId: String?) {
+        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).creerenDocument)
+        taskId?.let {
+            val task = flowableTaskService.findOpenTask(it)
+                ?: throw TaskNotFoundException("No open task found with task id: '$it'")
+            assertPolicy(policyService.readTaakRechten(task).creerenDocument)
+        }
+    }
 
     @Suppress("ThrowsCount")
     private fun createSmartDocumentsDocumentAttended(

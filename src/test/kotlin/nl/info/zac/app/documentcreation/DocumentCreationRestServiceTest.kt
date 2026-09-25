@@ -5,6 +5,9 @@
 
 package nl.info.zac.app.documentcreation
 
+import nl.info.client.zgw.model.createZaakInformatieobjectForReads
+import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
+import nl.info.zac.documentcreation.EpistolaDocumentCreationService
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
@@ -48,6 +51,7 @@ import java.util.logging.Handler
 
 class DocumentCreationRestServiceTest : BehaviorSpec({
     val documentCreationService = mockk<DocumentCreationService>()
+    val epistolaDocumentCreationService = mockk<EpistolaDocumentCreationService>()
     val policyService = mockk<PolicyService>()
     val zrcClientService = mockk<ZrcClientService>()
     val ztcClientService = mockk<ZtcClientService>()
@@ -59,6 +63,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
     val documentCreationRestService = DocumentCreationRestService(
         policyService = policyService,
         documentCreationService = documentCreationService,
+        epistolaDocumentCreationService = epistolaDocumentCreationService,
         zrcClientService = zrcClientService,
         zaaktypeConfigurationService = zaaktypeConfigurationService,
         flowableTaskService = flowableTaskService,
@@ -180,6 +185,93 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             then("it throws exception with correct message") {
                 exception.errorCode shouldBe ERROR_CODE_SMARTDOCUMENTS_DISABLED
                 exception.message shouldBe null
+            }
+        }
+    }
+
+    given("an Epistola document requested for a zaak, from one of its tasks") {
+        val zaak = createZaak()
+        val taskId = "fakeTaskId"
+        val task = createTestTask()
+        val informatieobjectUuid = UUID.randomUUID()
+        val loggedInUser = createLoggedInUser()
+        val restEpistolaDocumentCreationData = RestEpistolaDocumentCreationData(
+            zaakUuid = zaak.uuid,
+            taskId = taskId,
+            templateId = "fake-template",
+            title = "fakeTitle",
+            description = "fakeDescription"
+        )
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { loggedInUserInstance.get() } returns loggedInUser
+
+        `when`("it is requested by a user who may create documents for the zaak and for the task") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { flowableTaskService.findOpenTask(taskId) } returns task
+            every { policyService.readTaakRechten(task).creerenDocument } returns true
+            every {
+                epistolaDocumentCreationService.createAndStoreDocument(
+                    zaak = zaak,
+                    templateId = "fake-template",
+                    title = "fakeTitle",
+                    description = "fakeDescription",
+                    taskId = taskId
+                )
+            } returns createZaakInformatieobjectForReads(
+                informatieobject = URI("https://example.com/enkelvoudiginformatieobjecten/$informatieobjectUuid")
+            )
+
+            val restEpistolaDocumentCreationResponse = documentCreationRestService.createEpistolaDocument(
+                restEpistolaDocumentCreationData
+            )
+
+            then("the document is generated and stored, and the stored informatieobject is named") {
+                restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
+            }
+        }
+
+        `when`("it is requested by a user who may not create documents for the zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+
+            shouldThrow<PolicyException> {
+                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
+            }
+
+            then("it is refused before any zaak data reaches Epistola") {
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+            }
+        }
+
+        `when`("it is requested by a user who may create documents for the zaak but not for the task") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { flowableTaskService.findOpenTask(taskId) } returns task
+            every { policyService.readTaakRechten(task).creerenDocument } returns false
+
+            shouldThrow<PolicyException> {
+                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
+            }
+
+            then("it is refused before any zaak data reaches Epistola") {
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+            }
+        }
+
+        `when`("it is requested for a task that is no longer open") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { flowableTaskService.findOpenTask(taskId) } returns null
+
+            val taskNotFoundException = shouldThrow<TaskNotFoundException> {
+                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
+            }
+
+            then("it is refused, naming the task") {
+                taskNotFoundException.message shouldBe "No open task found with task id: 'fakeTaskId'"
             }
         }
     }

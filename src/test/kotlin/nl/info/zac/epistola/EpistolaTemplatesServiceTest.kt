@@ -424,6 +424,7 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         given("a zaaktype whose group offers the template under an informatieobjecttype") {
             val zaaktypeUuid = UUID.randomUUID()
             val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+                .apply { epistolaEnabled = true }
             val informatieObjectTypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
             every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
@@ -453,6 +454,7 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         given("a zaaktype whose groups do not offer the template") {
             val zaaktypeUuid = UUID.randomUUID()
             val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+                .apply { epistolaEnabled = true }
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
             every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
             every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
@@ -474,8 +476,31 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             }
         }
 
+        given("a zaaktype whose group offers the template, but for which the beheerder switched Epistola off") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+                .apply { epistolaEnabled = false }
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
+
+            `when`("the informatieobjecttype of that template is read") {
+                shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaTemplatesService.readInformatieobjecttypeUuid(
+                        zaaktypeUuid = zaaktypeUuid,
+                        templateId = "fake-template-id"
+                    )
+                }
+
+                then("it is refused, while the stored mapping is kept for when Epistola is switched on again") {
+                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
+                }
+            }
+        }
+
         given("SmartDocuments is the active provider") {
             givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(any()) } returns
+                createZaaktypeCmmnConfiguration().apply { epistolaEnabled = true }
 
             `when`("the informatieobjecttype of a template is read") {
                 shouldThrow<EpistolaTemplateNotConfiguredException> {

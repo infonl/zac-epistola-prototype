@@ -112,9 +112,15 @@ class EpistolaTemplatesService @Inject constructor(
         )
     }
 
-    /** A template not configured for the zaaktype is refused, so a behandelaar can only generate what the beheerder offers. */
+    /**
+     * A template the zaaktype does not offer is refused, and so is every template while the beheerder has
+     * switched Epistola off for the zaaktype, so a behandelaar can only generate what the beheerder offers.
+     */
     fun readInformatieobjecttypeUuid(zaaktypeUuid: UUID, templateId: String): UUID =
-        readStoredTemplateGroups(zaaktypeUuid)
+        zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
+            ?.takeIf { isEpistolaActive() && it.epistolaEnabled }
+            ?.let(epistolaTemplateGroupRepository::listTemplateGroups)
+            .orEmpty()
             .flatMap { it.templates }
             .firstOrNull { it.epistolaId == templateId }
             ?.informatieObjectTypeUUID
