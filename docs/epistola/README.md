@@ -21,6 +21,7 @@ bijbehorende projectbord.
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testscenario's, positief en negatief, over de acht afgesproken gebieden. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testrapport](testrapport.md) | De uitvoering van 25 september: resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
+| [Verbetervoorstellen](verbetervoorstellen.md) | De uitkomst van het prototype als besluiten: de negen risico's uit de ontwerpverantwoording met hun uitkomst, vijftien voorstellen voor productie en daarna, wat al is opgelost, en wat bewust niet wordt voorgesteld. Procesverbeteringen staan in de reflectie (#23) | #20 |
 
 De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan
 voorlopig alleen als artifact, gelinkt vanuit hun issue.
