@@ -57,10 +57,14 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     enabledForZaaktype = true,
     templates = [BESLUIT_EVENEMENTENVERGUNNING, ONTVANGSTBEVESTIGING],
     templateMapping = [],
+    readTemplateMapping = () => Promise.resolve(templateMapping),
   }: {
     enabledForZaaktype?: boolean;
     templates?: GeneratedType<"RestEpistolaTemplate">[];
     templateMapping?: GeneratedType<"RestMappedEpistolaTemplateGroup">[];
+    readTemplateMapping?: () => Promise<
+      GeneratedType<"RestMappedEpistolaTemplateGroup">[]
+    >;
   } = {}) {
     const storeTemplatesMapping = jest.fn().mockReturnValue(of(undefined));
 
@@ -79,7 +83,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
             getTemplatesMappingQuery: (zaaktypeUuid: string) =>
               queryOptions({
                 queryKey: ["epistola-templates-mapping", zaaktypeUuid],
-                queryFn: () => Promise.resolve(templateMapping),
+                queryFn: readTemplateMapping,
               }),
             storeTemplatesMapping,
           }),
@@ -153,6 +157,30 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       expect(component.isValid()).toBe(true);
       expect(component.enabledForZaaktypeValue).toBe(false);
+    });
+  });
+
+  describe("given the stored template groups have not arrived", () => {
+    it("is not valid while they are loading, so the empty form cannot be saved over them", async () => {
+      const { component } = await setup({
+        readTemplateMapping: () => new Promise(() => {}),
+      });
+
+      expect(component.isValid()).toBe(false);
+    });
+
+    it("is not valid when they could not be loaded", async () => {
+      const { component } = await setup({
+        readTemplateMapping: () => Promise.reject(new Error("fakeFailure")),
+      });
+
+      expect(component.isValid()).toBe(false);
+    });
+
+    it("is valid once they have arrived, even when the zaaktype has none", async () => {
+      const { component } = await setup({ templateMapping: [] });
+
+      await waitFor(() => expect(component.isValid()).toBe(true));
     });
   });
 

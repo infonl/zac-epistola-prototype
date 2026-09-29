@@ -162,8 +162,12 @@ export class EpistolaTemplatesFormComponent {
     return this.form.controls.enabledForZaaktype.value;
   }
 
+  /** Before the stored mapping has arrived the form is empty, and saving it would delete that mapping. */
   isValid() {
-    return !this.enabledForZaaktypeValue || this.form.valid;
+    return (
+      !this.enabledForZaaktypeValue ||
+      (this.templateMappingQuery.data() !== undefined && this.form.valid)
+    );
   }
 
   saveEpistolaTemplatesMapping() {
