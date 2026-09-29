@@ -654,6 +654,8 @@ Met deze actie wordt een e-mail vanuit de zaak verstuurd. De mail wordt als docu
 Deze actie maakt het mogelijk om een document met sjablonen in een documentcreatieapplicatie een document te maken en aan de zaak toe te voegen.  
 > Deze optie moet in het zaaktype aanstaan, anders is deze niet zichtbaar in het menu
 
+> Met Epistola kan alleen een document worden gemaakt bij zaken van een CMMN-zaaktype. Bij een zaak die door een BPMN-proces wordt gestuurd staat *Document maken* uitgeschakeld. Wijs het menu-item aan voor de toelichting
+
 **Stappen**
 
 1 In een zaak kies je actie *Document maken*

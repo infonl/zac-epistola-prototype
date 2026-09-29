@@ -606,6 +606,12 @@ Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren. Het zaaktype is h
 
 **LET OP: het kan tot 5 minuten duren voordat gewijzigde sjabloongroepnamen of sjabloonnamen in ZAC zichtbaar zijn.**
 
+#### Epistola
+
+Epistola is de andere documentcreatieapplicatie die ZAC kan gebruiken. ZAC gebruikt één documentcreatieapplicatie tegelijk: de beheerder kiest die bij de installatie.
+
+**LET OP: met Epistola kan alleen een document worden gemaakt bij zaken van een CMMN-zaaktype.** Een BPMN-zaaktype heeft geen Epistola-instellingen. In een zaak die door een BPMN-proces wordt gestuurd staat *Document maken* uitgeschakeld, met een toelichting bij het menu-item.
+
 # Inrichting in OpenZaak - voor functionaliteiten in ZAC
 
 ## Procestermijnen
