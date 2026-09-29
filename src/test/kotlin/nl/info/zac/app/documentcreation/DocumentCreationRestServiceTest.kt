@@ -42,6 +42,7 @@ import nl.info.zac.policy.PolicyService
 import nl.info.zac.policy.exception.PolicyException
 import nl.info.zac.policy.output.createZaakRechtenAllDeny
 import nl.info.zac.smartdocuments.exception.SmartDocumentsDisabledException
+import org.flowable.task.api.TaskInfo
 import java.net.URI
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -309,6 +310,47 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
 
             then("it is refused, naming the task") {
                 taskNotFoundException.message shouldBe "No open task found with task id: 'fakeTaskId'"
+            }
+        }
+    }
+
+    given("an Epistola document requested for a zaak, and not from a task") {
+        val zaak = createZaak()
+        val informatieobjectUuid = UUID.randomUUID()
+        val loggedInUser = createLoggedInUser()
+        val restEpistolaDocumentCreationData = RestEpistolaDocumentCreationData(
+            zaakUuid = zaak.uuid,
+            templateId = "fake-template",
+            title = "fakeTitle",
+            description = "fakeDescription"
+        )
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { loggedInUserInstance.get() } returns loggedInUser
+
+        `when`("it is requested by a user who may create documents for the zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every {
+                epistolaDocumentCreationService.createAndStoreDocument(
+                    zaak = zaak,
+                    templateId = "fake-template",
+                    title = "fakeTitle",
+                    description = "fakeDescription",
+                    taskId = null
+                )
+            } returns createZaakInformatieobjectForReads(
+                informatieobject = URI("https://example.com/enkelvoudiginformatieobjecten/$informatieobjectUuid")
+            )
+
+            val restEpistolaDocumentCreationResponse = documentCreationRestService.createEpistolaDocument(
+                restEpistolaDocumentCreationData
+            )
+
+            then("the document is generated and stored for the zaak, and no task is looked up or checked") {
+                restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
+                verify(exactly = 0) { flowableTaskService.findOpenTask(any()) }
+                verify(exactly = 0) { policyService.readTaakRechten(any<TaskInfo>()) }
             }
         }
     }
