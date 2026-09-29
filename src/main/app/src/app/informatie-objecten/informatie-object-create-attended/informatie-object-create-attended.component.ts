@@ -183,7 +183,9 @@ export class InformatieObjectCreateAttendedComponent
   });
 
   protected readonly generatingMessage = computed(() => {
-    const status = this.epistolaStatusQuery.data()?.status;
+    const status = this.epistolaStatusQuery.isError()
+      ? undefined
+      : this.epistolaStatusQuery.data()?.status;
     return status
       ? EPISTOLA_STATUS_MESSAGES[status]
       : "msg.document.genereren.bezig";

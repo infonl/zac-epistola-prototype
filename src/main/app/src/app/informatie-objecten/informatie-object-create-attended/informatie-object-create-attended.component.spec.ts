@@ -623,6 +623,31 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       httpTestingController.expectNone(EPISTOLA_STATUS_URL);
     });
 
+    it("falls back to the general message and stops polling when Epistola's status cannot be read", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      fixture.detectChanges();
+      await sleep();
+      answerStatusPolls("RENDERING");
+      await sleep(1_100);
+      httpTestingController
+        .expectOne(EPISTOLA_STATUS_URL)
+        .flush(null, { status: 500, statusText: "fakeStatusText" });
+      await sleep(50);
+      fixture.detectChanges();
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.bezig",
+      );
+      await sleep(1_100);
+      httpTestingController.expectNone(EPISTOLA_STATUS_URL);
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
     it("says why there are no template groups when they cannot be loaded", async () => {
       await setupEpistola({}, async (request) => {
         const unavailable = { message: "msg.error.epistola.unavailable" };

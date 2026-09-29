@@ -8,7 +8,7 @@ import { TestBed } from "@angular/core/testing";
 import { of } from "rxjs";
 import { fromPartial } from "../../../test-helpers";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
-import { QUERY_CLIENT } from "./query-client";
+import { QUERY_CLIENT, SKIP_GLOBAL_ERROR_HANDLING } from "./query-client";
 
 describe("QUERY_CLIENT", () => {
   const foutAfhandelen = jest.fn().mockReturnValue(of());
@@ -67,6 +67,21 @@ describe("QUERY_CLIENT", () => {
     ).rejects.toBe(error);
 
     expect(foutAfhandelen).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports nothing for a read that opts out of the error handling", async () => {
+    const queryClient = TestBed.inject(QUERY_CLIENT);
+
+    await expect(
+      queryClient.fetchQuery({
+        queryKey: ["fakeEndpoint"],
+        queryFn: () => Promise.reject(error),
+        meta: SKIP_GLOBAL_ERROR_HANDLING,
+        retry: false,
+      }),
+    ).rejects.toBe(error);
+
+    expect(foutAfhandelen).not.toHaveBeenCalled();
   });
 
   it("reports nothing for a read that succeeds", async () => {
