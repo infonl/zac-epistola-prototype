@@ -15,6 +15,9 @@ import java.util.UUID
  * The status of the document a user is having Epistola generate for a zaak, which the dialog reads while the request
  * that generates it is still waiting. Kept in memory, as ZAC runs as a single instance: the request that writes a
  * status and the requests that read it reach the same one.
+ *
+ * A user generating two documents for one zaak at once, in two tabs, shares one entry, and the first to finish
+ * removes it. The other dialog then shows its general message, which costs it nothing but detail.
  */
 @Singleton
 @AllOpen
