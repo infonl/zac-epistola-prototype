@@ -19,6 +19,7 @@ import nl.info.zac.admin.model.ZaakafhandelparametersStatusMailOption
 import nl.info.zac.admin.model.ZaaktypeBpmnConfiguration
 import nl.info.zac.admin.model.ZaaktypeCmmnConfiguration
 import nl.info.zac.app.admin.model.RestAutomaticEmailConfirmation
+import nl.info.zac.app.admin.model.RestEpistola
 import nl.info.zac.app.admin.model.RestZaaktypeConfiguration
 import nl.info.zac.app.admin.model.toAutomaticEmailConfirmation
 import nl.info.zac.app.admin.model.toRestAutomaticEmailConfirmation
@@ -168,6 +169,10 @@ class RestZaaktypeConfigurationConverter @Inject constructor(
             creatiedatum = zaaktypeBpmnConfiguration.creatiedatum,
             productaanvraagtype = zaaktypeBpmnConfiguration.productaanvraagtype,
             smartDocuments = zaaktypeBpmnConfiguration.toRestSmartDocuments(smartDocumentsService.isEnabled()),
+            epistola = RestEpistola(
+                isEnabledGlobally = epistolaTemplatesService.isEpistolaActive(),
+                isEnabledForZaaktype = false
+            ),
             betrokkeneKoppelingen = zaaktypeBpmnConfiguration.getBetrokkeneParameters()
                 .toRestBetrokkeneKoppelingen(),
             brpDoelbindingen = zaaktypeBpmnConfiguration.getBrpParameters()

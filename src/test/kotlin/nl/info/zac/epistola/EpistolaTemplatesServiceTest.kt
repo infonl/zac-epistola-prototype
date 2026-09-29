@@ -20,9 +20,11 @@ import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createZaakType
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.admin.exception.ZaaktypeConfigurationNotFoundException
+import nl.info.zac.admin.model.createZaaktypeBpmnConfiguration
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
+import nl.info.zac.epistola.exception.EpistolaCmmnOnlyException
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
@@ -33,6 +35,7 @@ import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplateGroup
 import nl.info.zac.epistola.templates.EpistolaTemplateGroupRepository
 import nl.info.zac.epistola.templates.model.EpistolaTemplateGroup
 import nl.info.zac.epistola.templates.model.createEpistolaTemplateGroup
+import nl.info.zac.exception.ErrorCode
 import java.net.URI
 import java.util.UUID
 
@@ -492,6 +495,49 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                 }
 
                 then("it is refused, while the stored mapping is kept for when Epistola is switched on again") {
+                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
+                }
+            }
+        }
+
+        given("a BPMN zaaktype, while Epistola is the active provider") {
+            val zaaktypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
+                createZaaktypeBpmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply { isEpistolaEnabled = true }
+
+            `when`("the informatieobjecttype of a template is read") {
+                val epistolaCmmnOnlyException = shouldThrow<EpistolaCmmnOnlyException> {
+                    epistolaTemplatesService.readInformatieobjecttypeUuid(
+                        zaaktypeUuid = zaaktypeUuid,
+                        templateId = "fake-template-1"
+                    )
+                }
+
+                then("it is refused with a message that says Epistola is limited to CMMN, before any mapping is read") {
+                    epistolaCmmnOnlyException.errorCode shouldBe ErrorCode.ERROR_CODE_EPISTOLA_CMMN_ONLY
+                    epistolaCmmnOnlyException.message shouldBe
+                        "Creating a document with Epistola is limited to zaken with a CMMN zaaktype; " +
+                        "zaaktype '$zaaktypeUuid' is not a CMMN zaaktype."
+                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
+                }
+            }
+        }
+
+        given("a BPMN zaaktype, while SmartDocuments is the active provider") {
+            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(any()) } returns
+                createZaaktypeBpmnConfiguration()
+
+            `when`("the informatieobjecttype of a template is read") {
+                shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaTemplatesService.readInformatieobjecttypeUuid(
+                        zaaktypeUuid = UUID.randomUUID(),
+                        templateId = "fake-template-1"
+                    )
+                }
+
+                then("it is refused as not configured, since the CMMN limit is Epistola's and Epistola is not in use") {
                     verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
                 }
             }

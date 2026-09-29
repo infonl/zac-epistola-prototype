@@ -15,8 +15,10 @@ import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.admin.exception.ZaaktypeConfigurationNotFoundException
 import nl.info.zac.admin.model.ZaaktypeConfiguration
+import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZaaktypeConfigurationType.CMMN
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
+import nl.info.zac.epistola.exception.EpistolaCmmnOnlyException
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
@@ -115,9 +117,21 @@ class EpistolaTemplatesService @Inject constructor(
     /**
      * A template the zaaktype does not offer is refused, and so is every template while the beheerder has
      * switched Epistola off for the zaaktype, so a behandelaar can only generate what the beheerder offers.
+     * Every template of a zaaktype that is not CMMN is refused too, with a message that says why.
+     *
+     * @throws EpistolaCmmnOnlyException when Epistola is the active provider and the zaaktype is not a CMMN one
+     * @throws EpistolaTemplateNotConfiguredException when the zaaktype does not offer the template
      */
-    fun readInformatieobjecttypeUuid(zaaktypeUuid: UUID, templateId: String): UUID =
-        zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
+    fun readInformatieobjecttypeUuid(zaaktypeUuid: UUID, templateId: String): UUID {
+        val zaaktypeConfiguration = zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
+        val isNotCmmn = zaaktypeConfiguration != null && zaaktypeConfiguration.getConfigurationType() != CMMN
+        if (isEpistolaActive() && isNotCmmn) {
+            throw EpistolaCmmnOnlyException(
+                "Creating a document with Epistola is limited to zaken with a CMMN zaaktype; " +
+                    "zaaktype '$zaaktypeUuid' is not a CMMN zaaktype."
+            )
+        }
+        return zaaktypeConfiguration
             ?.takeIf { isEpistolaActive() && it.isEpistolaEnabled }
             ?.let(epistolaTemplateGroupRepository::listTemplateGroups)
             .orEmpty()
@@ -127,6 +141,7 @@ class EpistolaTemplatesService @Inject constructor(
             ?: throw EpistolaTemplateNotConfiguredException(
                 "Epistola template '$templateId' is not configured for zaaktype '$zaaktypeUuid'."
             )
+    }
 
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 

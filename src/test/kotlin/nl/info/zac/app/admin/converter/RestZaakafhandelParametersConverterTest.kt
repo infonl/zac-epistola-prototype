@@ -235,6 +235,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
             zaakbeeindigParameterConverter.convertZaakbeeindigParameters(zaaktypeBpmnConfiguration.getZaakbeeindigParameters())
         } returns listOf(restZaakbeeindigParameter)
         every { smartDocumentsService.isEnabled() } returns true
+        every { epistolaTemplatesService.isEpistolaActive() } returns false
         every { ztcClientService.findEigenschap(zaakType.url, ZAAK_GEAUTORISEERD_EIGENSCHAP_NAAM) } returns null
 
         `when`("converted to REST representation") {
@@ -267,7 +268,36 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
                         enabledGlobally = true,
                         enabledForZaaktype = false
                     )
+                    epistola shouldBe RestEpistola(isEnabledGlobally = false, isEnabledForZaaktype = false)
                 }
+            }
+        }
+    }
+
+    given("a BPMN zaaktype configuration whose shared Epistola setting is on, while Epistola is the active provider") {
+        val zaaktypeBpmnConfiguration = createZaaktypeBpmnConfiguration().apply { isEpistolaEnabled = true }
+        val zaakType = createZaakType().apply {
+            beginGeldigheid = LocalDate.now().minusDays(1)
+        }
+        every { ztcClientService.readZaaktype(zaaktypeBpmnConfiguration.zaaktypeUuid) } returns zaakType
+        every {
+            ztcClientService.readResultaattype(zaaktypeBpmnConfiguration.nietOntvankelijkResultaattype!!)
+        } returns createResultaatType()
+        every {
+            zaakbeeindigParameterConverter.convertZaakbeeindigParameters(zaaktypeBpmnConfiguration.getZaakbeeindigParameters())
+        } returns emptyList()
+        every { smartDocumentsService.isEnabled() } returns false
+        every { epistolaTemplatesService.isEpistolaActive() } returns true
+        every { ztcClientService.findEigenschap(zaakType.url, ZAAK_GEAUTORISEERD_EIGENSCHAP_NAAM) } returns null
+
+        `when`("converted to REST representation") {
+            val restZaakafhandelParameters = restZaaktypeConfigurationConverter.toRestZaaktypeConfiguration(
+                zaaktypeBpmnConfiguration
+            )
+
+            then("Epistola is reported as active for the installation but never as enabled for the zaaktype") {
+                restZaakafhandelParameters.epistola shouldBe
+                    RestEpistola(isEnabledGlobally = true, isEnabledForZaaktype = false)
             }
         }
     }
