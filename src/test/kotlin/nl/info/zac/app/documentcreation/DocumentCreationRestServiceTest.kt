@@ -8,6 +8,7 @@ package nl.info.zac.app.documentcreation
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.documentcreation.EpistolaDocumentCreationService
+import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
@@ -351,6 +352,22 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
                 verify(exactly = 0) { flowableTaskService.findOpenTask(any()) }
                 verify(exactly = 0) { policyService.readTaakRechten(any<TaskInfo>()) }
+            }
+        }
+    }
+
+    given("an Epistola document that the logged-in user is having rendered for a zaak") {
+        val zaakUuid = UUID.randomUUID()
+        every {
+            epistolaDocumentCreationService.readStatus(zaakUuid)
+        } returns EpistolaDocumentCreationStatus.HELD_UP_IN_RENDERING
+
+        `when`("the status is read") {
+            val restEpistolaDocumentCreationStatus = documentCreationRestService.readEpistolaDocumentCreationStatus(zaakUuid)
+
+            then("the status Epistola reports is returned, without reading the zaak") {
+                restEpistolaDocumentCreationStatus.status shouldBe EpistolaDocumentCreationStatus.HELD_UP_IN_RENDERING
+                verify(exactly = 0) { zrcClientService.readZaak(any<UUID>()) }
             }
         }
     }

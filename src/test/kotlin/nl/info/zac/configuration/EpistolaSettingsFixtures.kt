@@ -11,11 +11,13 @@ fun createEpistolaSettings(
     tenantId: String = "fake-tenant",
     catalogId: String = "fake-catalog",
     apiKey: String = "fakeEpistolaApiKey",
-    generationTimeout: Duration = Duration.ofSeconds(60)
+    generationTimeout: Duration = Duration.ofSeconds(60),
+    jobHeldUpAfter: Duration = EpistolaSettings.DEFAULT_JOB_HELD_UP_AFTER
 ) = EpistolaSettings(
     restUrl = restUrl,
     tenantId = tenantId,
     catalogId = catalogId,
     apiKey = apiKey,
-    generationTimeout = generationTimeout
+    generationTimeout = generationTimeout,
+    jobHeldUpAfter = jobHeldUpAfter
 )

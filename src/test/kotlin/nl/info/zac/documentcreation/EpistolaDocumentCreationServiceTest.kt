@@ -8,6 +8,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
 import io.mockk.just
@@ -17,12 +18,19 @@ import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
 import jakarta.enterprise.inject.Instance
+import jakarta.ws.rs.ProcessingException
+import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.epistola.EpistolaClientService
+import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
+import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.VertrouwelijkheidaanduidingEnum as DrcVertrouwelijkheidaanduidingEnum
 import nl.info.client.zgw.drc.model.generated.StatusEnum
+import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
+import nl.info.client.zgw.shared.model.createFieldValidationError
+import nl.info.client.zgw.shared.model.createValidationZgwError
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.model.createZaak
@@ -34,10 +42,15 @@ import nl.info.zac.app.informatieobjecten.EnkelvoudigInformatieObjectUpdateServi
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.createLoggedInUser
 import nl.info.zac.configuration.ConfigurationService
+import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
+import nl.info.zac.documentcreation.exception.EpistolaDocumentNotStoredException
 import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingException
+import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
 import nl.info.zac.util.toBase64String
 import java.net.URI
 import java.time.LocalDate
@@ -68,6 +81,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
     val enkelvoudigInformatieObjectUpdateService = mockk<EnkelvoudigInformatieObjectUpdateService>()
     val configurationService = mockk<ConfigurationService>()
     val loggedInUserInstance = mockk<Instance<LoggedInUser>>()
+    val epistolaDocumentCreationStatusStore = EpistolaDocumentCreationStatusStore()
     val epistolaDocumentCreationService = EpistolaDocumentCreationService(
         epistolaClientService = epistolaClientService,
         documentCreationDataService = documentCreationDataService,
@@ -75,6 +89,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
         ztcClientService = ztcClientService,
         enkelvoudigInformatieObjectUpdateService = enkelvoudigInformatieObjectUpdateService,
         configurationService = configurationService,
+        epistolaDocumentCreationStatusStore = epistolaDocumentCreationStatusStore,
         loggedInUserInstance = loggedInUserInstance
     )
 
@@ -101,7 +116,8 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 templateId = FAKE_TEMPLATE_ID,
                 data = capture(templateDataSlot),
                 fileName = FAKE_FILE_NAME,
-                correlationId = capture(correlationIdSlot)
+                correlationId = capture(correlationIdSlot),
+                onJobStatus = any()
             )
         } returns generatedDocument
 
@@ -152,7 +168,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
 
             then("no zaak data is sent to Epistola") {
                 exception.message shouldContain FAKE_TEMPLATE_ID
-                verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
             }
         }
     }
@@ -181,7 +197,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
             every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
             every {
-                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString())
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
             } returns generatedDocument
             every { configurationService.readBronOrganisatie() } returns FAKE_BRONORGANISATIE
             return generatedDocument to informatieObjectTypeUri
@@ -283,19 +299,67 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             }
         }
 
-        given("storing the generated document in Open Zaak fails") {
+        given("a document whose job Epistola reports as held up while rendering, before it completes") {
             val zaak = createZaak()
-            givenAGeneratedDocument(zaak, UUID.randomUUID())
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            var statusWhileGenerating: EpistolaDocumentCreationStatus? = null
+            var statusWhileStoring: EpistolaDocumentCreationStatus? = null
+            every {
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
+            } answers {
+                lastArg<(EpistolaJobStatus) -> Unit>()(EpistolaJobStatus.HELD_UP_IN_RENDERING)
+                statusWhileGenerating = epistolaDocumentCreationService.readStatus(zaak.uuid)
+                generatedDocument
+            }
             every {
                 enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
                     zaak = zaak,
                     enkelvoudigInformatieObjectCreateLockRequest = any(),
                     taskId = null
                 )
-            } throws DrcRuntimeException("fakeDrcFailure")
+            } answers {
+                statusWhileStoring = epistolaDocumentCreationService.readStatus(zaak.uuid)
+                createZaakInformatieobjectForReads()
+            }
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
 
             `when`("the document is created and stored") {
-                val drcRuntimeException = shouldThrow<DrcRuntimeException> {
+                epistolaDocumentCreationService.createAndStoreDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    title = FAKE_TITLE,
+                    description = null
+                )
+
+                then("the status Epistola reports can be read while the job runs") {
+                    statusWhileGenerating shouldBe EpistolaDocumentCreationStatus.HELD_UP_IN_RENDERING
+                }
+
+                and("storing is reported once the document is out of Epistola") {
+                    statusWhileStoring shouldBe EpistolaDocumentCreationStatus.STORING
+                }
+
+                and("no status is left once the request ends") {
+                    epistolaDocumentCreationService.readStatus(zaak.uuid) shouldBe null
+                }
+            }
+        }
+
+        given("storing the generated document in Open Zaak fails with a server error") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            val drcRuntimeException = DrcRuntimeException("fakeDrcFailure")
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = null
+                )
+            } throws drcRuntimeException
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("the document is created and stored") {
+                val epistolaDocumentNotStoredException = shouldThrow<EpistolaDocumentNotStoredException> {
                     epistolaDocumentCreationService.createAndStoreDocument(
                         zaak = zaak,
                         templateId = FAKE_TEMPLATE_ID,
@@ -304,15 +368,183 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                     )
                 }
 
-                then("the failure reaches the caller and Epistola's copy is kept, as the only one there is") {
-                    drcRuntimeException.message shouldBe "fakeDrcFailure"
-                    verify(exactly = 0) { epistolaClientService.deleteDocument(any()) }
+                then("the behandelaar is told the document was generated but not stored, with Open Zaak's reason") {
+                    epistolaDocumentNotStoredException.errorCode shouldBe ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
+                    epistolaDocumentNotStoredException.detail shouldBe "fakeDrcFailure"
+                    epistolaDocumentNotStoredException.cause shouldBe drcRuntimeException
+                }
+
+                and("the log names the zaak, the template and Epistola's document") {
+                    epistolaDocumentNotStoredException.message shouldContain zaak.identificatie
+                    epistolaDocumentNotStoredException.message shouldContain FAKE_TEMPLATE_ID
+                    epistolaDocumentNotStoredException.message shouldContain generatedDocument.documentId.toString()
+                }
+
+                and("Epistola's copy is deleted, so no document is left that ZAC holds no reference to") {
+                    verify(exactly = 1) { epistolaClientService.deleteDocument(generatedDocument.documentId) }
+                }
+            }
+        }
+
+        given("storing the generated document in Open Zaak fails validation") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = null
+                )
+            } throws ZgwValidationErrorException(
+                createValidationZgwError(
+                    invalidParams = listOf(
+                        createFieldValidationError(reason = "fakeReason1"),
+                        createFieldValidationError(reason = "fakeReason2")
+                    )
+                )
+            )
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("the document is created and stored") {
+                val epistolaDocumentNotStoredException = shouldThrow<EpistolaDocumentNotStoredException> {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = FAKE_TEMPLATE_ID,
+                        title = FAKE_TITLE,
+                        description = null
+                    )
+                }
+
+                then("the reason Open Zaak gives for each field is shown") {
+                    epistolaDocumentNotStoredException.detail shouldBe "fakeReason1, fakeReason2"
+                }
+            }
+        }
+
+        given("Open Zaak cannot be reached to store the generated document") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = null
+                )
+            } throws ProcessingException("fakeConnectionRefused")
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("the document is created and stored") {
+                val epistolaDocumentNotStoredException = shouldThrow<EpistolaDocumentNotStoredException> {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = FAKE_TEMPLATE_ID,
+                        title = FAKE_TITLE,
+                        description = null
+                    )
+                }
+
+                then("it counts as a failure to store, and Epistola's copy is deleted") {
+                    epistolaDocumentNotStoredException.detail shouldBe "fakeConnectionRefused"
+                    verify(exactly = 1) { epistolaClientService.deleteDocument(generatedDocument.documentId) }
+                }
+            }
+        }
+
+        given("a document that is stored in the zaak, but whose task is no longer open") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            val taskNotFoundException = TaskNotFoundException("fakeTaskNotFound")
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = "fakeTaskId",
+                    skipPolicyCheck = false
+                )
+            } throws taskNotFoundException
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("the document is created and stored") {
+                val thrownTaskNotFoundException = shouldThrow<TaskNotFoundException> {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = FAKE_TEMPLATE_ID,
+                        title = FAKE_TITLE,
+                        description = null,
+                        taskId = "fakeTaskId"
+                    )
+                }
+
+                then("the failure is not reported as a failure to store, because the document is in the zaak") {
+                    thrownTaskNotFoundException shouldBe taskNotFoundException
+                }
+            }
+        }
+
+        given("Epistola rejects the zaak data against the template's contract") {
+            val zaak = createZaak()
+            val loggedInUser = createLoggedInUser()
+            val informatieObjectTypeUuid = UUID.randomUUID()
+            every { loggedInUserInstance.get() } returns loggedInUser
+            every {
+                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
+            } returns informatieObjectTypeUuid
+            every {
+                ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid)
+            } returns createInformatieObjectType()
+            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
+            every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
+            val epistolaTemplateDataRejectedException = EpistolaTemplateDataRejectedException(
+                message = "fakeRejectedMessage",
+                detail = "/aanvrager: is required"
+            )
+            every {
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
+            } throws epistolaTemplateDataRejectedException
+
+            `when`("the document is created and stored") {
+                val epistolaDocumentCreationException = shouldThrow<EpistolaDocumentCreationException> {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = FAKE_TEMPLATE_ID,
+                        title = FAKE_TITLE,
+                        description = null
+                    )
+                }
+
+                then("the behandelaar sees Epistola's reason under the error code of the rejection") {
+                    epistolaDocumentCreationException.errorCode shouldBe ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
+                    epistolaDocumentCreationException.detail shouldBe "/aanvrager: is required"
+                }
+
+                and("the log names the zaak and the template, next to the request that the cause names") {
+                    epistolaDocumentCreationException.message shouldContain zaak.identificatie
+                    epistolaDocumentCreationException.message shouldContain FAKE_TEMPLATE_ID
+                    epistolaDocumentCreationException.cause shouldBe epistolaTemplateDataRejectedException
+                }
+
+                and("Epistola's reason stays out of the log") {
+                    epistolaDocumentCreationException.message shouldNotContain "aanvrager"
+                }
+
+                and("nothing is stored and no status is left") {
+                    verify(exactly = 0) {
+                        enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                            any(),
+                            any(),
+                            any(),
+                            any(),
+                            any()
+                        )
+                    }
+                    epistolaDocumentCreationService.readStatus(zaak.uuid) shouldBe null
                 }
             }
         }
 
         given("a template that is not configured for the zaak's zaaktype") {
             val zaak = createZaak()
+            every { loggedInUserInstance.get() } returns createLoggedInUser()
             every {
                 epistolaTemplatesService.readInformatieobjecttypeUuid(any(), FAKE_TEMPLATE_ID)
             } throws EpistolaTemplateNotConfiguredException("fakeNotConfigured")
@@ -329,7 +561,36 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
 
                 then("it is refused before any zaak data reaches Epistola") {
                     epistolaTemplateNotConfiguredException.message shouldBe "fakeNotConfigured"
-                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
+                }
+            }
+        }
+    }
+
+    context("reading the status of a document being generated") {
+        given("a document that Epistola is rendering for one user of a zaak") {
+            val zaakUuid = UUID.randomUUID()
+            epistolaDocumentCreationStatusStore.update(
+                userId = "fakeUserId",
+                zaakUuid = zaakUuid,
+                status = EpistolaDocumentCreationStatus.RENDERING
+            )
+
+            `when`("that user reads the status for the zaak") {
+                every { loggedInUserInstance.get() } returns createLoggedInUser(id = "fakeUserId")
+                val status = epistolaDocumentCreationService.readStatus(zaakUuid)
+
+                then("Epistola's status is returned") {
+                    status shouldBe EpistolaDocumentCreationStatus.RENDERING
+                }
+            }
+
+            `when`("another user reads the status for the same zaak") {
+                every { loggedInUserInstance.get() } returns createLoggedInUser(id = "fakeOtherUserId")
+                val status = epistolaDocumentCreationService.readStatus(zaakUuid)
+
+                then("there is none, because a user only reads the status of their own request") {
+                    status shouldBe null
                 }
             }
         }

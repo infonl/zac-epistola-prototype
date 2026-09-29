@@ -12,6 +12,7 @@ import jakarta.validation.Valid
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DefaultValue
 import jakarta.ws.rs.FormParam
+import jakarta.ws.rs.GET
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
@@ -30,6 +31,7 @@ import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedData
 import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedResponse
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
+import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationStatus
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.runAsLoggedInUser
 import nl.info.zac.authentication.runAsSystemUser
@@ -110,6 +112,15 @@ class DocumentCreationRestService @Inject constructor(
                 taskId = restEpistolaDocumentCreationData.taskId
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
+
+    /**
+     * What Epistola reports on the document the logged-in user is generating for the zaak, while the request above
+     * waits. Only the user's own request is ever read, so no rights beyond being logged in are checked.
+     */
+    @GET
+    @Path("/epistola/create-document/{zaakUuid}/status")
+    fun readEpistolaDocumentCreationStatus(@PathParam("zaakUuid") zaakUuid: UUID) =
+        RestEpistolaDocumentCreationStatus(status = epistolaDocumentCreationService.readStatus(zaakUuid))
 
     /**
      * SmartDocuments callback for CMMN zaak

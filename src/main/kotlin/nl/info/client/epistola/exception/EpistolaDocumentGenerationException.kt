@@ -5,11 +5,13 @@
 package nl.info.client.epistola.exception
 
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_FAILED
-import nl.info.zac.exception.ServerErrorException
 
-/** A failure reported inside a job that Epistola accepted, so there is no HTTP status to act on. */
-class EpistolaDocumentGenerationException(message: String, cause: Throwable? = null) : ServerErrorException(
+/**
+ * A failure reported inside a job that Epistola accepted, so there is no HTTP status to act on. Epistola's reason is
+ * the [detail], because Epistola may quote the data it was rendering.
+ */
+class EpistolaDocumentGenerationException(message: String, detail: String? = null) : EpistolaException(
     errorCode = ERROR_CODE_EPISTOLA_GENERATION_FAILED,
     message = message,
-    cause = cause
+    detail = detail
 )
