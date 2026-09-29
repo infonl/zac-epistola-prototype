@@ -8,40 +8,25 @@
   (mouseenter)="mouseEnter()"
   (mouseleave)="mouseLeave()"
 >
-  <ng-container *ngFor="let menuItem of menu()" [ngSwitch]="menuItem.type">
-    <h3 mat-subheader *ngSwitchCase="menuItemType.HEADER">
-      <mat-icon *ngIf="menuState() === MenuState.CLOSED">{{
-        menuItem.icon ?? "more_horiz"
-      }}</mat-icon>
-      <span *ngIf="menuState() === MenuState.OPEN">
-        {{ menuItem.title | translate }}</span
-      >
-    </h3>
-    <mat-divider *ngSwitchCase="menuItemType.HEADER" />
-    <a
-      mat-list-item
-      *ngSwitchCase="menuItemType.LINK"
-      [disabled]="menuItem.disabled"
-      [activated]="menuItem.activated"
-      routerLink="{{ asLinkMenuItem(menuItem).url }}"
-      routerLinkActive="active"
-    >
-      <mat-icon
-        [matTooltipDisabled]="menuState() === MenuState.OPEN"
-        matTooltipPosition="after"
-        [matTooltip]="menuItem.title | translate"
-        matListItemIcon
-        >{{ menuItem.icon }}</mat-icon
-      >
-      <div matListItemTitle>{{ menuItem.title | translate }}</div>
-    </a>
-    <ng-container *ngSwitchCase="menuItemType.BUTTON">
-      <ng-template #buttonMenuItem>
-        <button
+  @for (menuItem of menu(); track menuItem) {
+    @switch (menuItem.type) {
+      @case (menuItemType.HEADER) {
+        <h3 mat-subheader>
+          @if (menuState() === MenuState.CLOSED) {
+            <mat-icon>{{ menuItem.icon ?? "more_horiz" }}</mat-icon>
+          }
+          @if (menuState() === MenuState.OPEN) {
+            <span> {{ menuItem.title | translate }}</span>
+          }
+        </h3>
+        <mat-divider />
+      }
+      @case (menuItemType.LINK) {
+        <a
           mat-list-item
           [disabled]="menuItem.disabled"
-          [activated]="activeItem() === menuItem.title"
-          (click)="onClick(asButtonMenuItem(menuItem))"
+          [activated]="menuItem.activated"
+          routerLink="{{ asLinkMenuItem(menuItem).url }}"
           routerLinkActive="active"
         >
           <mat-icon
@@ -52,37 +37,61 @@
             >{{ menuItem.icon }}</mat-icon
           >
           <div matListItemTitle>{{ menuItem.title | translate }}</div>
-        </button>
-      </ng-template>
-      <!-- A disabled button receives no mouse or keyboard events, so its explanation hangs on a focusable wrapper -->
-      <span
-        *ngIf="menuItem.tooltip; else buttonMenuItem"
-        class="explained-menu-item"
-        role="group"
-        tabindex="0"
-        [attr.aria-label]="menuItem.title | translate"
-        [matTooltip]="menuItem.tooltip | translate"
-        matTooltipPosition="after"
-      >
-        <ng-container *ngTemplateOutlet="buttonMenuItem" />
-      </span>
-    </ng-container>
-    <a
-      mat-list-item
-      *ngSwitchCase="menuItemType.HREF"
-      [disabled]="menuItem.disabled"
-      [href]="asHrefMenuItem(menuItem).url"
-    >
-      <mat-icon
-        [matTooltipDisabled]="menuState() === MenuState.OPEN"
-        matTooltipPosition="after"
-        [matTooltip]="menuItem.title | translate"
-        matListItemIcon
-        >{{ menuItem.icon }}</mat-icon
-      >
-      <div matListItemTitle>{{ menuItem.title | translate }}</div>
-    </a>
-  </ng-container>
+        </a>
+      }
+      @case (menuItemType.BUTTON) {
+        <ng-template #buttonMenuItem>
+          <button
+            mat-list-item
+            [disabled]="menuItem.disabled"
+            [activated]="activeItem() === menuItem.title"
+            (click)="onClick(asButtonMenuItem(menuItem))"
+            routerLinkActive="active"
+          >
+            <mat-icon
+              [matTooltipDisabled]="menuState() === MenuState.OPEN"
+              matTooltipPosition="after"
+              [matTooltip]="menuItem.title | translate"
+              matListItemIcon
+              >{{ menuItem.icon }}</mat-icon
+            >
+            <div matListItemTitle>{{ menuItem.title | translate }}</div>
+          </button>
+        </ng-template>
+        <!-- A disabled button receives no mouse or keyboard events, so its explanation hangs on a focusable wrapper -->
+        @if (menuItem.tooltip) {
+          <span
+            class="explained-menu-item"
+            role="group"
+            tabindex="0"
+            [attr.aria-label]="menuItem.title | translate"
+            [matTooltip]="menuItem.tooltip | translate"
+            matTooltipPosition="after"
+          >
+            <ng-container [ngTemplateOutlet]="buttonMenuItem" />
+          </span>
+        } @else {
+          <ng-container [ngTemplateOutlet]="buttonMenuItem" />
+        }
+      }
+      @case (menuItemType.HREF) {
+        <a
+          mat-list-item
+          [disabled]="menuItem.disabled"
+          [href]="asHrefMenuItem(menuItem).url"
+        >
+          <mat-icon
+            [matTooltipDisabled]="menuState() === MenuState.OPEN"
+            matTooltipPosition="after"
+            [matTooltip]="menuItem.title | translate"
+            matListItemIcon
+            >{{ menuItem.icon }}</mat-icon
+          >
+          <div matListItemTitle>{{ menuItem.title | translate }}</div>
+        </a>
+      }
+    }
+  }
 </mat-nav-list>
 <mat-toolbar class="toolbar-footer">
   <button
