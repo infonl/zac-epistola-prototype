@@ -31,13 +31,13 @@
               [formGroupName]="templateGroupIndex"
               [attr.aria-label]="
                 templateGroup.controls.name.value ||
-                ('epistola.sjabloongroep.nieuw' | translate)
+                ('epistola.templategroep.nieuw' | translate)
               "
             >
               <div class="template-group-header flex-row">
                 <mat-form-field class="flex-1" subscriptSizing="dynamic">
                   <mat-label>{{
-                    "epistola.sjabloongroep" | translate
+                    "epistola.templategroep" | translate
                   }}</mat-label>
                   <input matInput formControlName="name" required />
                   @if (templateGroup.controls.name.hasError("required")) {
@@ -46,12 +46,12 @@
                     templateGroup.controls.name.hasError("duplicateName")
                   ) {
                     <mat-error>{{
-                      "msg.epistola.sjabloongroep.naam-bestaat-al" | translate
+                      "msg.epistola.templategroep.naam-bestaat-al" | translate
                     }}</mat-error>
                   }
                 </mat-form-field>
                 @let removeTemplateGroupLabel =
-                  "actie.sjabloongroep.verwijderen"
+                  "actie.templategroep.verwijderen"
                     | translate: { naam: templateGroup.controls.name.value };
                 <button
                   type="button"
@@ -126,7 +126,7 @@
                       />
                     </mat-form-field>
                     @let removeTemplateLabel =
-                      "actie.sjabloon.verwijderen" | translate: { naam: name };
+                      "actie.template.verwijderen" | translate: { naam: name };
                     <button
                       type="button"
                       mat-icon-button
@@ -139,14 +139,14 @@
                   </div>
                 } @empty {
                   <p class="form-disabled-feedback">
-                    {{ "msg.epistola.sjabloongroep.leeg" | translate }}
+                    {{ "msg.epistola.templategroep.leeg" | translate }}
                   </p>
                 }
               </div>
               @if (unplacedTemplates().length) {
                 <mat-form-field class="add-template" subscriptSizing="dynamic">
                   <mat-label>{{
-                    "actie.sjabloon.toevoegen" | translate
+                    "actie.template.toevoegen" | translate
                   }}</mat-label>
                   <mat-select
                     (selectionChange)="addTemplate(templateGroup, $event)"
@@ -164,12 +164,12 @@
         </div>
         @if (templatesQuery.isSuccess() && !templatesQuery.data().length) {
           <p class="form-disabled-feedback">
-            {{ "msg.epistola.sjablonen.geen" | translate }}
+            {{ "msg.epistola.templates.geen" | translate }}
           </p>
         }
         <div class="add-template-group">
           <button type="button" mat-raised-button (click)="addTemplateGroup()">
-            {{ "actie.sjabloongroep.toevoegen" | translate }}
+            {{ "actie.templategroep.toevoegen" | translate }}
           </button>
         </div>
       } @else {

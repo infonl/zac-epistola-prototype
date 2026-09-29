@@ -27,8 +27,8 @@ CREATE TABLE ${schema}.zaaktype_epistola_document_template_group_parameters
 );
 CREATE SEQUENCE ${schema}.sq_zaaktype_epistola_document_template_group_parameters START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
 
-COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_group_parameters.naam IS 'Naam van de sjabloongroep, door de beheerder in ZAC gekozen';
-COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_group_parameters.aanmaakdatum IS 'Datum waarop de sjabloongroep in deze tabel is opgeslagen';
+COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_group_parameters.naam IS 'Naam van de templategroep, door de beheerder in ZAC gekozen';
+COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_group_parameters.aanmaakdatum IS 'Datum waarop de templategroep in deze tabel is opgeslagen';
 
 -- A template appears at most once per zaaktype, so the informatieobjecttype a document is filed under never
 -- depends on the group the behandelaar happened to open.
@@ -37,13 +37,13 @@ CREATE TABLE ${schema}.zaaktype_epistola_document_template_parameters
     id                          BIGINT                   NOT NULL,
     epistola_id                 VARCHAR                  NOT NULL,
     aanmaakdatum                TIMESTAMP WITH TIME ZONE NOT NULL,
-    sjabloon_groep_id           BIGINT                   NOT NULL,
+    template_group_id           BIGINT                   NOT NULL,
     zaaktype_configuration_id   BIGINT                   NOT NULL,
     informatie_object_type_uuid UUID                     NOT NULL,
     CONSTRAINT pk_zaaktype_epistola_document_template_parameters
         PRIMARY KEY (id),
     CONSTRAINT fk_zaaktype_epistola_document_template_group
-        FOREIGN KEY (sjabloon_groep_id)
+        FOREIGN KEY (template_group_id)
             REFERENCES ${schema}.zaaktype_epistola_document_template_group_parameters (id)
             ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT fk_zaaktype_configuration
@@ -54,9 +54,9 @@ CREATE TABLE ${schema}.zaaktype_epistola_document_template_parameters
         UNIQUE (zaaktype_configuration_id, epistola_id)
 );
 CREATE SEQUENCE ${schema}.sq_zaaktype_epistola_document_template_parameters START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
-CREATE INDEX idx_zaaktype_epistola_document_template_sjabloon_groep_id
-    ON ${schema}.zaaktype_epistola_document_template_parameters (sjabloon_groep_id);
+CREATE INDEX idx_zaaktype_epistola_document_template_template_group_id
+    ON ${schema}.zaaktype_epistola_document_template_parameters (template_group_id);
 
-COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_parameters.epistola_id IS 'ID van het sjabloon in Epistola';
-COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_parameters.sjabloon_groep_id IS 'ID van de sjabloongroep waar dit sjabloon deel van uitmaakt';
+COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_parameters.epistola_id IS 'ID van het template in Epistola';
+COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_parameters.template_group_id IS 'ID van de templategroep waar dit template deel van uitmaakt';
 COMMENT ON COLUMN ${schema}.zaaktype_epistola_document_template_parameters.informatie_object_type_uuid IS 'Informatieobjecttype waaronder het gegenereerde document in Open Zaak wordt opgeslagen';

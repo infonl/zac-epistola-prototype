@@ -45,7 +45,7 @@ class EpistolaTemplate {
     lateinit var creationDate: ZonedDateTime
 
     @ManyToOne
-    @JoinColumn(name = "sjabloon_groep_id", nullable = false)
+    @JoinColumn(name = "template_group_id", nullable = false)
     lateinit var templateGroup: EpistolaTemplateGroup
 
     @ManyToOne(fetch = FetchType.LAZY)

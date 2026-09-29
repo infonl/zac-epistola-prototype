@@ -111,15 +111,15 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
   async function addTemplateGroup(user: UserEvent, name: string) {
     await user.click(
-      screen.getByRole("button", { name: "actie.sjabloongroep.toevoegen" }),
+      screen.getByRole("button", { name: "actie.templategroep.toevoegen" }),
     );
     const newTemplateGroups = screen.getAllByRole("group", {
-      name: "epistola.sjabloongroep.nieuw",
+      name: "epistola.templategroep.nieuw",
     });
     const newTemplateGroup = newTemplateGroups[newTemplateGroups.length - 1];
     await user.type(
       within(newTemplateGroup).getByRole("textbox", {
-        name: "epistola.sjabloongroep",
+        name: "epistola.templategroep",
       }),
       name,
     );
@@ -144,7 +144,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).not.toBeChecked();
       expect(screen.getByText("msg.epistola.form.disabled")).toBeVisible();
       expect(
-        screen.queryByRole("button", { name: "actie.sjabloongroep.toevoegen" }),
+        screen.queryByRole("button", { name: "actie.templategroep.toevoegen" }),
       ).not.toBeInTheDocument();
     });
 
@@ -165,7 +165,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       });
       expect(
         within(templateGroup).getByRole("textbox", {
-          name: "epistola.sjabloongroep",
+          name: "epistola.templategroep",
         }),
       ).toHaveValue("Vergunningen");
       const template = within(templateGroup).getByRole("group", {
@@ -193,7 +193,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await user.click(
         within(
           await screen.findByRole("group", { name: "Vergunningen" }),
-        ).getByRole("combobox", { name: /actie.sjabloon.toevoegen/ }),
+        ).getByRole("combobox", { name: /actie.template.toevoegen/ }),
       );
 
       expect(
@@ -214,17 +214,17 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       await user.click(
         within(templateGroup).getByRole("button", {
-          name: "actie.sjabloon.verwijderen",
+          name: "actie.template.verwijderen",
         }),
       );
 
       expect(
-        within(templateGroup).getByText("msg.epistola.sjabloongroep.leeg"),
+        within(templateGroup).getByText("msg.epistola.templategroep.leeg"),
       ).toBeVisible();
 
       await user.click(
         within(templateGroup).getByRole("button", {
-          name: "actie.sjabloongroep.verwijderen",
+          name: "actie.templategroep.verwijderen",
         }),
       );
 
@@ -242,7 +242,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         within(templateGroup).getByRole("combobox", {
-          name: /actie.sjabloon.toevoegen/,
+          name: /actie.template.toevoegen/,
         }),
         "Ontvangstbevestiging aanvraag",
       );
@@ -277,7 +277,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await user.tab();
 
       expect(
-        screen.getAllByText("msg.epistola.sjabloongroep.naam-bestaat-al"),
+        screen.getAllByText("msg.epistola.templategroep.naam-bestaat-al"),
       ).toHaveLength(2);
       expect(component.isValid()).toBe(false);
     });
@@ -299,7 +299,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         within(templateGroup).getByRole("combobox", {
-          name: /actie.sjabloon.toevoegen/,
+          name: /actie.template.toevoegen/,
         }),
         "Ontvangstbevestiging aanvraag",
       );
@@ -333,10 +333,10 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       const templateGroup = await addTemplateGroup(user, "Handhaving");
 
-      expect(screen.getByText("msg.epistola.sjablonen.geen")).toBeVisible();
+      expect(screen.getByText("msg.epistola.templates.geen")).toBeVisible();
       expect(
         within(templateGroup).queryByRole("combobox", {
-          name: /actie.sjabloon.toevoegen/,
+          name: /actie.template.toevoegen/,
         }),
       ).not.toBeInTheDocument();
     });
