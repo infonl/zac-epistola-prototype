@@ -28,7 +28,9 @@ import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.VertrouwelijkheidaanduidingEnum as DrcVertrouwelijkheidaanduidingEnum
 import nl.info.client.zgw.drc.model.generated.StatusEnum
+import nl.info.client.zgw.shared.exception.ZgwErrorException
 import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
+import nl.info.client.zgw.shared.model.ZgwError
 import nl.info.client.zgw.shared.model.createFieldValidationError
 import nl.info.client.zgw.shared.model.createValidationZgwError
 import nl.info.client.zgw.util.extractUuid
@@ -52,6 +54,7 @@ import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
 import nl.info.zac.util.toBase64String
+import java.net.ConnectException
 import java.net.URI
 import java.time.LocalDate
 import java.util.UUID
@@ -371,7 +374,11 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 then("the behandelaar is told the document was generated but not stored, with Open Zaak's reason") {
                     epistolaDocumentNotStoredException.errorCode shouldBe ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
                     epistolaDocumentNotStoredException.detail shouldBe "fakeDrcFailure"
-                    epistolaDocumentNotStoredException.cause shouldBe drcRuntimeException
+                }
+
+                and("the log says what failed, without chaining the exception whose message carries Open Zaak's words") {
+                    epistolaDocumentNotStoredException.message shouldContain "DrcRuntimeException (fakeDrcFailure)"
+                    epistolaDocumentNotStoredException.cause shouldBe null
                 }
 
                 and("the log names the zaak, the template and Epistola's document") {
@@ -397,9 +404,10 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 )
             } throws ZgwValidationErrorException(
                 createValidationZgwError(
+                    detail = "fakeDetailOfOpenZaak",
                     invalidParams = listOf(
-                        createFieldValidationError(reason = "fakeReason1"),
-                        createFieldValidationError(reason = "fakeReason2")
+                        createFieldValidationError(name = "fakeFieldName1", code = "fakeFieldCode1", reason = "fakeReason1"),
+                        createFieldValidationError(name = "fakeFieldName2", code = "fakeFieldCode2", reason = "fakeReason2")
                     )
                 )
             )
@@ -418,6 +426,54 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 then("the reason Open Zaak gives for each field is shown") {
                     epistolaDocumentNotStoredException.detail shouldBe "fakeReason1, fakeReason2"
                 }
+
+                and("the log names the status, the code and the fields, but neither the reasons nor Open Zaak's detail") {
+                    epistolaDocumentNotStoredException.message shouldContain
+                        "ZgwValidationErrorException (HTTP 123 fakeCode, invalid: fakeFieldName1 [fakeFieldCode1], fakeFieldName2 [fakeFieldCode2])"
+                    epistolaDocumentNotStoredException.message shouldNotContain "fakeReason"
+                    epistolaDocumentNotStoredException.message shouldNotContain "fakeDetailOfOpenZaak"
+                    epistolaDocumentNotStoredException.cause shouldBe null
+                }
+            }
+        }
+
+        given("storing the generated document in Open Zaak is refused with a client error") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = null
+                )
+            } throws ZgwErrorException(
+                ZgwError(
+                    URI("https://localhost:8080/error"),
+                    "fakeErrorCode",
+                    "fakeErrorTitle",
+                    403,
+                    "fakeDetailOfOpenZaak",
+                    URI("https://localhost:8080/error-instance")
+                )
+            )
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("the document is created and stored") {
+                val epistolaDocumentNotStoredException = shouldThrow<EpistolaDocumentNotStoredException> {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = FAKE_TEMPLATE_ID,
+                        title = FAKE_TITLE,
+                        description = null
+                    )
+                }
+
+                then("the user gets Open Zaak's detail, and the log only the status and the code") {
+                    epistolaDocumentNotStoredException.detail shouldContain "fakeDetailOfOpenZaak"
+                    epistolaDocumentNotStoredException.message shouldContain "ZgwErrorException (HTTP 403 fakeErrorCode)"
+                    epistolaDocumentNotStoredException.message shouldNotContain "fakeDetailOfOpenZaak"
+                    epistolaDocumentNotStoredException.cause shouldBe null
+                }
             }
         }
 
@@ -430,7 +486,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                     enkelvoudigInformatieObjectCreateLockRequest = any(),
                     taskId = null
                 )
-            } throws ProcessingException("fakeConnectionRefused")
+            } throws ProcessingException("fakeConnectionRefused", ConnectException("fakeCauseMessage"))
             every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
 
             `when`("the document is created and stored") {
@@ -446,6 +502,13 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 then("it counts as a failure to store, and Epistola's copy is deleted") {
                     epistolaDocumentNotStoredException.detail shouldBe "fakeConnectionRefused"
                     verify(exactly = 1) { epistolaClientService.deleteDocument(generatedDocument.documentId) }
+                }
+
+                and("the log names the kind of failure and of its cause, and not their messages") {
+                    epistolaDocumentNotStoredException.message shouldContain "ProcessingException (ConnectException)"
+                    epistolaDocumentNotStoredException.message shouldNotContain "fakeConnectionRefused"
+                    epistolaDocumentNotStoredException.message shouldNotContain "fakeCauseMessage"
+                    epistolaDocumentNotStoredException.cause shouldBe null
                 }
             }
         }

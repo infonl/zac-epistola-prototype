@@ -166,36 +166,49 @@ class EpistolaDocumentCreationService @Inject constructor(
                 taskId = taskId
             ).also { LOG.fine { "Stored Epistola document '${generatedDocument.documentId}' in zaak '${zaak.uuid}'" } }
         } catch (zgwValidationErrorException: ZgwValidationErrorException) {
-            throw EpistolaDocumentNotStoredException(
-                message = notStoredMessage,
-                cause = zgwValidationErrorException,
+            throw notStored(
+                notStoredMessage = notStoredMessage,
+                failure = zgwValidationErrorException,
+                diagnosis = zgwValidationErrorException.validatieFout.let { validatieFout ->
+                    "HTTP ${validatieFout.status} ${validatieFout.code}, invalid: " +
+                        validatieFout.invalidParams.joinToString { "${it.name} [${it.code}]" }
+                },
                 detail = zgwValidationErrorException.validatieFout.let { validatieFout ->
                     validatieFout.invalidParams.joinToString(separator = ", ") { it.reason }
                         .ifEmpty { validatieFout.detail }
                 }
             )
         } catch (zgwRuntimeException: ZgwRuntimeException) {
-            throw EpistolaDocumentNotStoredException(
-                message = notStoredMessage,
-                cause = zgwRuntimeException,
+            throw notStored(
+                notStoredMessage = notStoredMessage,
+                failure = zgwRuntimeException,
+                diagnosis = zgwRuntimeException.message,
                 detail = zgwRuntimeException.message
             )
         } catch (zgwErrorException: ZgwErrorException) {
-            throw EpistolaDocumentNotStoredException(
-                message = notStoredMessage,
-                cause = zgwErrorException,
+            throw notStored(
+                notStoredMessage = notStoredMessage,
+                failure = zgwErrorException,
+                diagnosis = "HTTP ${zgwErrorException.zgwError.status} ${zgwErrorException.zgwError.code}",
                 detail = zgwErrorException.zgwError.toString()
             )
         } catch (processingException: ProcessingException) {
-            throw EpistolaDocumentNotStoredException(
-                message = notStoredMessage,
-                cause = processingException,
+            throw notStored(
+                notStoredMessage = notStoredMessage,
+                failure = processingException,
+                diagnosis = processingException.cause?.javaClass?.simpleName,
                 detail = processingException.message
             )
         } finally {
             epistolaClientService.deleteDocument(generatedDocument.documentId)
         }
     }
+
+    private fun notStored(notStoredMessage: String, failure: Exception, diagnosis: String?, detail: String?) =
+        EpistolaDocumentNotStoredException(
+            message = "$notStoredMessage: ${failure.javaClass.simpleName}" + diagnosis?.let { " ($it)" }.orEmpty(),
+            detail = detail
+        )
 
     /**
      * Stored as work in progress, as a SmartDocuments document is, so a behandelaar can still add a new
