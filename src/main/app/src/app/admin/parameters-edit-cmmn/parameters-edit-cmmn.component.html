@@ -894,11 +894,11 @@
         [enabledForZaaktype]="parameters.smartDocuments.enabledForZaaktype"
         #smartDocumentsFormRef
       ></smart-documents-form>
-      @if (parameters.epistola?.enabledGlobally) {
+      @if (parameters.epistola?.isEnabledGlobally) {
         <epistola-templates-form
           [zaaktypeUuid]="parameters.zaaktype.uuid ?? ''"
           [enabledForZaaktype]="
-            parameters.epistola?.enabledForZaaktype ?? false
+            parameters.epistola?.isEnabledForZaaktype ?? false
           "
           #epistolaTemplatesFormRef
         ></epistola-templates-form>

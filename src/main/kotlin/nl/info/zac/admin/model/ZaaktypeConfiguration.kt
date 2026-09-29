@@ -72,7 +72,7 @@ abstract class ZaaktypeConfiguration {
     var smartDocumentsEnabled: Boolean = false
 
     @Column(name = "epistola_ingeschakeld")
-    var epistolaEnabled: Boolean = false
+    var isEpistolaEnabled: Boolean = false
 
     @field:NotNull
     @Column(name = "creatiedatum", nullable = false)

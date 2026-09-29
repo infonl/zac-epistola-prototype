@@ -1022,7 +1022,7 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
       this.smartDocumentsFormComponent?.enabledForZaaktypeValue ?? false;
 
     if (this.parameters.epistola && this.epistolaTemplatesFormComponent) {
-      this.parameters.epistola.enabledForZaaktype =
+      this.parameters.epistola.isEnabledForZaaktype =
         this.epistolaTemplatesFormComponent.enabledForZaaktypeValue;
     }
 

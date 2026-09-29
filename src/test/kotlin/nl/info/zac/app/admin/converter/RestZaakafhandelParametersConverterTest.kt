@@ -54,7 +54,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
     )
 
     given("ZaakafhandelParameters CMMN with minimal content") {
-        val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration().apply { epistolaEnabled = true }
+        val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration().apply { isEpistolaEnabled = true }
         val zaakType = createZaakType().apply {
             beginGeldigheid = LocalDate.now().minusDays(1)
         }
@@ -128,8 +128,8 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
                         enabledForZaaktype = false
                     )
                     epistola shouldBe RestEpistola(
-                        enabledGlobally = false,
-                        enabledForZaaktype = true
+                        isEnabledGlobally = false,
+                        isEnabledForZaaktype = true
                     )
                 }
             }
@@ -178,7 +178,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
         val restZaaktypeConfiguration = createRestZaaktypeConfiguration().apply {
             caseDefinition = RESTCaseDefinition()
             zaakNietOntvankelijkResultaattype = createResultaatType().toRestResultaatType()
-            epistola = RestEpistola(enabledGlobally = true, enabledForZaaktype = true)
+            epistola = RestEpistola(isEnabledGlobally = true, isEnabledForZaaktype = true)
         }
         every {
             zaaktypeCmmnConfigurationService.fetchZaaktypeCmmnConfiguration(restZaaktypeConfiguration.zaaktype.uuid)
@@ -191,7 +191,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
             )
 
             then("Epistola is enabled for the zaaktype") {
-                zaaktypeCmmnConfiguration.epistolaEnabled shouldBe true
+                zaaktypeCmmnConfiguration.isEpistolaEnabled shouldBe true
             }
         }
     }
@@ -204,7 +204,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
         }
         every {
             zaaktypeCmmnConfigurationService.fetchZaaktypeCmmnConfiguration(restZaaktypeConfiguration.zaaktype.uuid)
-        } returns createZaaktypeCmmnConfiguration().apply { epistolaEnabled = true }
+        } returns createZaaktypeCmmnConfiguration().apply { isEpistolaEnabled = true }
         every { restHumanTaskParametersConverter.convertRESTHumanTaskParameters(any()) } returns emptyList()
 
         `when`("converted to DB model representation") {
@@ -213,7 +213,7 @@ class RestZaakafhandelParametersConverterTest : BehaviorSpec({
             )
 
             then("Epistola stays enabled, so a client that predates Epistola does not switch it off") {
-                zaaktypeCmmnConfiguration.epistolaEnabled shouldBe true
+                zaaktypeCmmnConfiguration.isEpistolaEnabled shouldBe true
             }
         }
     }

@@ -255,7 +255,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
         }
 
         originalZaaktypeCmmnConfiguration.zaaktypeBetrokkeneParameters = betrokkeneKoppelingen
-        originalZaaktypeCmmnConfiguration.epistolaEnabled = true
+        originalZaaktypeCmmnConfiguration.isEpistolaEnabled = true
 
         val slotPersistZaaktypeCmmnConfiguration = slot<ZaaktypeCmmnConfiguration>()
 
@@ -425,7 +425,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
             }
 
             and("the Epistola setting and template mapping are copied to the new zaaktype") {
-                slotPersistZaaktypeCmmnConfiguration.captured.epistolaEnabled shouldBe true
+                slotPersistZaaktypeCmmnConfiguration.captured.isEpistolaEnabled shouldBe true
                 verify(exactly = 1) {
                     epistolaTemplatesService.copyTemplateMapping(
                         previousZaaktypeUuid = originalZaaktypeCmmnConfiguration.zaaktypeUuid,

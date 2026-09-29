@@ -125,7 +125,7 @@ class RestZaaktypeConfigurationConverter @Inject constructor(
             defaultBehandelaarId = restZaaktypeConfiguration.defaultBehandelaarId
             einddatumGeplandWaarschuwing = restZaaktypeConfiguration.einddatumGeplandWaarschuwing
             smartDocumentsEnabled = restZaaktypeConfiguration.smartDocuments.enabledForZaaktype
-            restZaaktypeConfiguration.epistola?.let { epistolaEnabled = it.enabledForZaaktype }
+            restZaaktypeConfiguration.epistola?.let { isEpistolaEnabled = it.isEnabledForZaaktype }
             creatiedatum = restZaaktypeConfiguration.creatiedatum ?: ZonedDateTime.now()
         }.also {
             it.setHumanTaskParametersCollection(
