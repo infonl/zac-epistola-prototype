@@ -10,13 +10,17 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
+import jakarta.ws.rs.NotFoundException
 import nl.info.client.zgw.shared.model.Results
 import nl.info.client.zgw.zrc.model.RolListParameters
 import nl.info.client.zgw.zrc.model.generated.ZaakInformatieObjectRequest
 import nl.info.client.zgw.drc.DrcClientService
+import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.createGebruiksrechten
@@ -28,7 +32,9 @@ import nl.info.client.zgw.model.createRolOrganisatorischeEenheid
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.client.zgw.shared.exception.StatusTypeNotFoundException
+import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
+import nl.info.client.zgw.zrc.exception.ZrcRuntimeException
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.zrc.model.generated.ZaakAfsluiten
 import nl.info.client.zgw.zrc.model.generated.ZaakEigenschap
@@ -1131,6 +1137,141 @@ class ZgwApiServiceTest : BehaviorSpec({
                         this.titel shouldBe "fakeTitle"
                         this.beschrijving shouldBe "fakeDescription"
                     }
+                }
+
+                and("the informatieobject is kept") {
+                    verify(exactly = 0) { drcClientService.deleteEnkelvoudigInformatieobject(any()) }
+                }
+            }
+        }
+
+        given("an informatieobject that is stored, but that the ZRC fails to link to the zaak") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObjectCreateLockRequest = createEnkelvoudigInformatieObjectCreateLockRequest()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            val zrcRuntimeException = ZrcRuntimeException("fakeZrcFailure")
+            every {
+                drcClientService.createEnkelvoudigInformatieobject(enkelvoudigInformatieObjectCreateLockRequest)
+            } returns enkelvoudigInformatieObject
+            every { drcClientService.createGebruiksrechten(any()) } returns createGebruiksrechten()
+            every { zrcClientService.createZaakInformatieobject(any()) } throws zrcRuntimeException
+            every {
+                drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+            } just runs
+
+            `when`("a ZaakInformatieobject is created") {
+                val thrownZrcRuntimeException = shouldThrow<ZrcRuntimeException> {
+                    zgwApiService.createZaakInformatieobjectForZaak(
+                        zaak = zaak,
+                        enkelvoudigInformatieObjectCreateLockRequest = enkelvoudigInformatieObjectCreateLockRequest,
+                        titel = "fakeTitle",
+                        beschrijving = null,
+                        omschrijvingVoorwaardenGebruiksrechten = "fakeConditions"
+                    )
+                }
+
+                then("the failure to link reaches the caller") {
+                    thrownZrcRuntimeException shouldBe zrcRuntimeException
+                }
+
+                and("the informatieobject is deleted, so none is left that no zaak links to") {
+                    verify(exactly = 1) {
+                        drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+                    }
+                }
+            }
+        }
+
+        given("an informatieobject that is stored, but whose gebruiksrechten the DRC fails to create") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObjectCreateLockRequest = createEnkelvoudigInformatieObjectCreateLockRequest()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            every {
+                drcClientService.createEnkelvoudigInformatieobject(enkelvoudigInformatieObjectCreateLockRequest)
+            } returns enkelvoudigInformatieObject
+            every { drcClientService.createGebruiksrechten(any()) } throws DrcRuntimeException("fakeDrcFailure")
+            every {
+                drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+            } just runs
+
+            `when`("a ZaakInformatieobject is created") {
+                shouldThrow<DrcRuntimeException> {
+                    zgwApiService.createZaakInformatieobjectForZaak(
+                        zaak = zaak,
+                        enkelvoudigInformatieObjectCreateLockRequest = enkelvoudigInformatieObjectCreateLockRequest,
+                        titel = "fakeTitle",
+                        beschrijving = null,
+                        omschrijvingVoorwaardenGebruiksrechten = "fakeConditions"
+                    )
+                }
+
+                then("the informatieobject is deleted and never linked") {
+                    verify(exactly = 1) {
+                        drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+                    }
+                    verify(exactly = 0) { zrcClientService.createZaakInformatieobject(any()) }
+                }
+            }
+        }
+
+        given("an informatieobject that the ZRC fails to link, and that is already gone when it is deleted") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObjectCreateLockRequest = createEnkelvoudigInformatieObjectCreateLockRequest()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            val zrcRuntimeException = ZrcRuntimeException("fakeZrcFailure")
+            every {
+                drcClientService.createEnkelvoudigInformatieobject(enkelvoudigInformatieObjectCreateLockRequest)
+            } returns enkelvoudigInformatieObject
+            every { drcClientService.createGebruiksrechten(any()) } returns createGebruiksrechten()
+            every { zrcClientService.createZaakInformatieobject(any()) } throws zrcRuntimeException
+            every {
+                drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+            } throws NotFoundException()
+
+            `when`("a ZaakInformatieobject is created") {
+                val thrownZrcRuntimeException = shouldThrow<ZrcRuntimeException> {
+                    zgwApiService.createZaakInformatieobjectForZaak(
+                        zaak = zaak,
+                        enkelvoudigInformatieObjectCreateLockRequest = enkelvoudigInformatieObjectCreateLockRequest,
+                        titel = "fakeTitle",
+                        beschrijving = null,
+                        omschrijvingVoorwaardenGebruiksrechten = "fakeConditions"
+                    )
+                }
+
+                then("the caller still sees why linking failed") {
+                    thrownZrcRuntimeException shouldBe zrcRuntimeException
+                }
+            }
+        }
+
+        given("an informatieobject that the ZRC fails to link, and that the DRC then fails to delete") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObjectCreateLockRequest = createEnkelvoudigInformatieObjectCreateLockRequest()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            val zrcRuntimeException = ZrcRuntimeException("fakeZrcFailure")
+            every {
+                drcClientService.createEnkelvoudigInformatieobject(enkelvoudigInformatieObjectCreateLockRequest)
+            } returns enkelvoudigInformatieObject
+            every { drcClientService.createGebruiksrechten(any()) } returns createGebruiksrechten()
+            every { zrcClientService.createZaakInformatieobject(any()) } throws zrcRuntimeException
+            every {
+                drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+            } throws DrcRuntimeException("fakeDrcFailure")
+
+            `when`("a ZaakInformatieobject is created") {
+                val thrownZrcRuntimeException = shouldThrow<ZrcRuntimeException> {
+                    zgwApiService.createZaakInformatieobjectForZaak(
+                        zaak = zaak,
+                        enkelvoudigInformatieObjectCreateLockRequest = enkelvoudigInformatieObjectCreateLockRequest,
+                        titel = "fakeTitle",
+                        beschrijving = null,
+                        omschrijvingVoorwaardenGebruiksrechten = "fakeConditions"
+                    )
+                }
+
+                then("the caller sees why linking failed, not why deleting failed") {
+                    thrownZrcRuntimeException shouldBe zrcRuntimeException
                 }
             }
         }
