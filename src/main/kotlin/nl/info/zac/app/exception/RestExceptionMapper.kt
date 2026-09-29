@@ -171,7 +171,7 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
                     generateServerErrorResponse(
                         exception = this,
                         errorCode = this.errorCode,
-                        exceptionMessage = this.message
+                        exceptionMessage = this.detail ?: this.message
                     )
                 }
             }

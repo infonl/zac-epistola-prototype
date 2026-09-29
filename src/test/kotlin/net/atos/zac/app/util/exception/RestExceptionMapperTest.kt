@@ -606,6 +606,32 @@ class RestExceptionMapperTest : BehaviorSpec({
             }
         }
 
+        given("An exception chain IllegalArgumentException->InvocationTargetException->ServerErrorException with a detail for the user") {
+            val exception = ServerErrorException(
+                errorCode = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED,
+                message = "fakeLoggedMessage",
+                detail = "fakeDetailForTheUser"
+            )
+            val chain = IllegalArgumentException(InvocationTargetException(exception))
+
+            `when`("the chain is mapped to a response") {
+                val response = restExceptionMapper.toResponse(chain)
+
+                then("the detail is returned next to the error code, and not the message meant for the log") {
+                    checkResponse(
+                        response = response,
+                        errorMessage = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED.value,
+                        exceptionMessage = "fakeDetailForTheUser",
+                        expectedStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR
+                    )
+                }
+
+                and("only the message is logged, never the detail") {
+                    verify(exactly = 1) { log(any(), Level.SEVERE, "fakeLoggedMessage", exception) }
+                }
+            }
+        }
+
         given("A ZAC setup exception") {
             val exception = ZacSetupException("fakeMessage", ErrorCode.ERROR_CODE_BPMN_TASK_FORM_NOT_FOUND)
 
