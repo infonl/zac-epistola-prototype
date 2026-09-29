@@ -44,7 +44,15 @@ import { MatStepperModule } from "@angular/material/stepper";
 import { MatTableDataSource, MatTableModule } from "@angular/material/table";
 import { ActivatedRoute } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
-import { forkJoin, Subject, Subscription, takeUntil } from "rxjs";
+import {
+  forkJoin,
+  map,
+  of,
+  Subject,
+  Subscription,
+  switchMap,
+  takeUntil,
+} from "rxjs";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -1040,17 +1048,20 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
 
     this.zaakafhandelParametersService
       .updateZaakafhandelparameters(this.parameters)
+      .pipe(
+        // After the update, not beside it: the mapping needs the zaaktype configuration to exist.
+        switchMap((data) =>
+          this.epistolaTemplatesFormComponent?.enabledForZaaktypeValue
+            ? this.epistolaTemplatesFormComponent
+                .saveEpistolaTemplatesMapping()
+                .pipe(map(() => data))
+            : of(data),
+        ),
+      )
       .subscribe({
         next: (data) => {
           this.isLoading = false;
           this.cmmnBpmnFormGroup.disable({ emitEvent: false }); // disable form to prevent modifications until explicitly enabled again
-
-          // After the update, not beside it: the mapping needs the zaaktype configuration to exist.
-          if (this.epistolaTemplatesFormComponent?.enabledForZaaktypeValue) {
-            this.epistolaTemplatesFormComponent
-              .saveEpistolaTemplatesMapping()
-              .subscribe();
-          }
 
           this.utilService.openSnackbar(
             "msg.zaakafhandelparameters.opgeslagen",
