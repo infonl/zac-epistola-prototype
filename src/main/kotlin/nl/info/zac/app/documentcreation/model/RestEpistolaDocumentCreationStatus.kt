@@ -5,9 +5,11 @@
 package nl.info.zac.app.documentcreation.model
 
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
+import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 
 /** No [status] until Epistola has reported on the job, and none once the document is stored or has failed. */
+@AllOpen
 @NoArgConstructor
 data class RestEpistolaDocumentCreationStatus(
     val status: EpistolaDocumentCreationStatus?
