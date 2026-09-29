@@ -185,6 +185,86 @@ describe(buildZaakMenu.name, () => {
       expect(menuFor(false, true)).not.toContain("actie.document.maken");
     });
 
+    describe("on a procesgestuurde zaak", () => {
+      const documentMakenFor = (
+        isEnabledGlobally: boolean,
+        rechten: Partial<GeneratedType<"RestZaakRechten">> = {
+          creerenDocument: true,
+        },
+      ) =>
+        buttonNamed(
+          buildZaakMenu(
+            createZaak(
+              {
+                isProcesGestuurd: true,
+                zaaktype: fromPartial({
+                  zaakafhandelparameters: fromPartial({
+                    epistola: {
+                      isEnabledGlobally,
+                      isEnabledForZaaktype: false,
+                    },
+                  }),
+                }),
+              },
+              rechten,
+            ),
+            noPlanItems,
+            handlers,
+            dialogs,
+            false,
+          ),
+          "actie.document.maken",
+        );
+
+      it("shows document maken disabled with the CMMN-only explanation while Epistola is the active provider", () => {
+        const documentMaken = documentMakenFor(true);
+
+        expect(documentMaken?.disabled).toBe(true);
+        expect(documentMaken?.tooltip).toBe(
+          "msg.document.maken.epistola.alleen-cmmn",
+        );
+      });
+
+      it("shows no document maken while Epistola is not the active provider, so no Epistola limit is mentioned", () => {
+        expect(documentMakenFor(false)).toBeUndefined();
+      });
+
+      it("shows no document maken to a user who may not create documents", () => {
+        expect(
+          documentMakenFor(true, { creerenDocument: false }),
+        ).toBeUndefined();
+      });
+    });
+
+    it("offers document maken enabled and without an explanation on a zaak that is not procesgestuurd", () => {
+      const documentMaken = buttonNamed(
+        buildZaakMenu(
+          createZaak(
+            {
+              isProcesGestuurd: false,
+              zaaktype: fromPartial({
+                zaakafhandelparameters: fromPartial({
+                  epistola: {
+                    isEnabledGlobally: true,
+                    isEnabledForZaaktype: true,
+                  },
+                }),
+              }),
+            },
+            { creerenDocument: true },
+          ),
+          noPlanItems,
+          handlers,
+          dialogs,
+          false,
+        ),
+        "actie.document.maken",
+      );
+
+      expect(documentMaken?.disabled).toBe(false);
+      expect(documentMaken?.tooltip).toBeUndefined();
+    });
+
     it("does not offer document maken to a user who may not create documents, even with Epistola enabled", () => {
       const menu = buildZaakMenu(
         createZaak(

@@ -35,23 +35,38 @@
       >
       <div matListItemTitle>{{ menuItem.title | translate }}</div>
     </a>
-    <button
-      mat-list-item
-      *ngSwitchCase="menuItemType.BUTTON"
-      [disabled]="menuItem.disabled"
-      [activated]="activeItem() === menuItem.title"
-      (click)="onClick(asButtonMenuItem(menuItem))"
-      routerLinkActive="active"
-    >
-      <mat-icon
-        [matTooltipDisabled]="menuState() === MenuState.OPEN"
+    <ng-container *ngSwitchCase="menuItemType.BUTTON">
+      <ng-template #buttonMenuItem>
+        <button
+          mat-list-item
+          [disabled]="menuItem.disabled"
+          [activated]="activeItem() === menuItem.title"
+          (click)="onClick(asButtonMenuItem(menuItem))"
+          routerLinkActive="active"
+        >
+          <mat-icon
+            [matTooltipDisabled]="menuState() === MenuState.OPEN"
+            matTooltipPosition="after"
+            [matTooltip]="menuItem.title | translate"
+            matListItemIcon
+            >{{ menuItem.icon }}</mat-icon
+          >
+          <div matListItemTitle>{{ menuItem.title | translate }}</div>
+        </button>
+      </ng-template>
+      <!-- A disabled button receives no mouse or keyboard events, so its explanation hangs on a focusable wrapper -->
+      <span
+        *ngIf="menuItem.tooltip; else buttonMenuItem"
+        class="explained-menu-item"
+        role="group"
+        tabindex="0"
+        [attr.aria-label]="menuItem.title | translate"
+        [matTooltip]="menuItem.tooltip | translate"
         matTooltipPosition="after"
-        [matTooltip]="menuItem.title | translate"
-        matListItemIcon
-        >{{ menuItem.icon }}</mat-icon
       >
-      <div matListItemTitle>{{ menuItem.title | translate }}</div>
-    </button>
+        <ng-container *ngTemplateOutlet="buttonMenuItem" />
+      </span>
+    </ng-container>
     <a
       mat-list-item
       *ngSwitchCase="menuItemType.HREF"
