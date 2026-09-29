@@ -20,6 +20,7 @@ import jakarta.ws.rs.QueryParam
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import net.atos.zac.flowable.task.FlowableTaskService
+import net.atos.zac.flowable.task.TaakVariabelenService.readZaakUUID
 import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
@@ -185,6 +186,9 @@ class DocumentCreationRestService @Inject constructor(
         taskId?.let {
             val task = flowableTaskService.findOpenTask(it)
                 ?: throw TaskNotFoundException("No open task found with task id: '$it'")
+            if (readZaakUUID(task) != zaak.uuid) {
+                throw TaskNotFoundException("No open task found with task id: '$it' for zaak '${zaak.uuid}'")
+            }
             assertPolicy(policyService.readTaakRechten(task).creerenDocument)
         }
     }

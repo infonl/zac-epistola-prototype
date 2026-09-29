@@ -18,6 +18,7 @@ import io.mockk.slot
 import io.mockk.verify
 import jakarta.enterprise.inject.Instance
 import jakarta.servlet.http.HttpSession
+import net.atos.zac.flowable.ZaakVariabelenService.Companion.VAR_ZAAK_UUID
 import net.atos.zac.flowable.task.FlowableTaskService
 import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.zgw.model.createZaak
@@ -79,7 +80,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             zaaktypeUri = URI("https://example.com/$zaakTypeUUID"),
         )
         val taskId = "fakeTaskId"
-        val task = createTestTask()
+        val task = createTestTask(caseVariables = mapOf(VAR_ZAAK_UUID to zaak.uuid))
         val restDocumentCreationAttendedData = createRestDocumentCreationAttendedData(
             zaakUuid = zaak.uuid,
             taskId = taskId,
@@ -143,6 +144,23 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
         }
 
+        `when`("createDocument is called for a task that belongs to another zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { flowableTaskService.findOpenTask(taskId) } returns createTestTask(
+                caseVariables = mapOf(VAR_ZAAK_UUID to UUID.randomUUID())
+            )
+
+            val exception = shouldThrow<TaskNotFoundException> {
+                documentCreationRestService.createDocumentAttended(restDocumentCreationAttendedData)
+            }
+
+            then("it throws exception with message that mentions the task id and the zaak") {
+                exception.message shouldBe "No open task found with task id: 'fakeTaskId' for zaak '${zaak.uuid}'"
+            }
+        }
+
         `when`("createDocument is called for a task that is not opened") {
             every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
                 creerenDocument = true
@@ -192,7 +210,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
     given("an Epistola document requested for a zaak, from one of its tasks") {
         val zaak = createZaak()
         val taskId = "fakeTaskId"
-        val task = createTestTask()
+        val task = createTestTask(caseVariables = mapOf(VAR_ZAAK_UUID to zaak.uuid))
         val informatieobjectUuid = UUID.randomUUID()
         val loggedInUser = createLoggedInUser()
         val restEpistolaDocumentCreationData = RestEpistolaDocumentCreationData(
@@ -256,6 +274,25 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+            }
+        }
+
+        `when`("it is requested with a task that belongs to another zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { flowableTaskService.findOpenTask(taskId) } returns createTestTask(
+                caseVariables = mapOf(VAR_ZAAK_UUID to UUID.randomUUID())
+            )
+
+            val taskNotFoundException = shouldThrow<TaskNotFoundException> {
+                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
+            }
+
+            then("it is refused, naming the task and the zaak, before any zaak data reaches Epistola") {
+                taskNotFoundException.message shouldBe
+                    "No open task found with task id: 'fakeTaskId' for zaak '${zaak.uuid}'"
                 verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
             }
         }
