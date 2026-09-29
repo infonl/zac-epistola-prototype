@@ -49,7 +49,12 @@ class EpistolaClientService @Inject constructor(
 ) {
     companion object {
         private val FIRST_POLL_DELAY: Duration = Duration.ofMillis(500)
-        private val MAXIMUM_POLL_DELAY: Duration = Duration.ofSeconds(5)
+
+        /**
+         * The dialog shows the job's status as ZAC last polled it. Epistola renders a document in a second or two, so a
+         * longer delay would show a job as waiting in the queue while it renders, and notice a finished one late.
+         */
+        private val MAXIMUM_POLL_DELAY: Duration = Duration.ofSeconds(1)
         private const val POLL_DELAY_FACTOR = 2L
 
         /** The largest page size Epistola's contract allows. */
