@@ -13,6 +13,8 @@ import { ZacHttpClient } from "../shared/http/zac-http-client";
 import { StaleTimes, ZacQueryClient } from "../shared/http/zac-query-client";
 import { GeneratedType } from "../shared/utils/generated-types";
 
+const EPISTOLA_STATUS_POLL_INTERVAL = 1000;
+
 @Injectable({
   providedIn: "root",
 })
@@ -97,6 +99,23 @@ export class InformatieObjectenService {
     return this.zacQueryClient.POST(
       "/rest/document-creation/epistola/create-document",
     );
+  }
+
+  /**
+   * Polled while the request that generates the document waits. Kept for no time once nothing polls it, so the
+   * next generation does not start from the last one's status.
+   */
+  readEpistolaDocumentCreationStatusQuery(zaakUuid: string) {
+    return {
+      ...this.zacQueryClient.GET(
+        "/rest/document-creation/epistola/create-document/{zaakUuid}/status",
+        { path: { zaakUuid } },
+      ),
+      refetchInterval: EPISTOLA_STATUS_POLL_INTERVAL,
+      staleTime: StaleTimes.Instant,
+      gcTime: StaleTimes.Instant,
+      retry: false,
+    };
   }
 
   readHuidigeVersieEnkelvoudigInformatieObject(uuid: string) {

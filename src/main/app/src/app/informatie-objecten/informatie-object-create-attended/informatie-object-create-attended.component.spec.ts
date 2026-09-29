@@ -10,6 +10,7 @@ import {
 import {
   HttpTestingController,
   provideHttpClientTesting,
+  TestRequest,
 } from "@angular/common/http/testing";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { provideMomentDateAdapter } from "@angular/material-moment-adapter";
@@ -40,6 +41,8 @@ const INFORMATIEOBJECTTYPES_URL =
 const EPISTOLA_CREATE_URL = "/rest/document-creation/epistola/create-document";
 const EPISTOLA_TEMPLATES_URL =
   "/rest/zaakafhandelparameters/fakeZaaktypeUuid/epistola-templates-mapping";
+const EPISTOLA_STATUS_URL =
+  "/rest/document-creation/epistola/create-document/fakeZaakUuid/status";
 
 const zaak = fromPartial<GeneratedType<"RestZaak">>({
   uuid: "fakeZaakUuid",
@@ -403,6 +406,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
 
     async function setupEpistola(
       inputs: { taak?: GeneratedType<"RestTask"> } = {},
+      answerTemplateGroups: (request: TestRequest) => void = (request) =>
+        request.flush([epistolaTemplateGroup]),
     ) {
       testQueryClient.setQueryData(
         ["/rest/identity/loggedInUser"],
@@ -444,11 +449,21 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       httpTestingController
         .expectOne(INFORMATIEOBJECTTYPES_URL)
         .flush([informatieobjecttype]);
-      httpTestingController
-        .expectOne(EPISTOLA_TEMPLATES_URL)
-        .flush([epistolaTemplateGroup]);
+      answerTemplateGroups(
+        httpTestingController.expectOne(EPISTOLA_TEMPLATES_URL),
+      );
       await sleep();
       fixture.detectChanges();
+    }
+
+    afterEach(() => answerStatusPolls(null));
+
+    function answerStatusPolls(
+      status: GeneratedType<"EpistolaDocumentCreationStatus"> | null,
+    ) {
+      httpTestingController
+        .match(EPISTOLA_STATUS_URL)
+        .forEach((request) => request.flush({ status }));
     }
 
     function generateButton() {
@@ -569,6 +584,63 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       httpTestingController
         .expectOne(EPISTOLA_CREATE_URL)
         .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("shows what Epistola reports on the job while the document is generated", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      fixture.detectChanges();
+      await sleep();
+      answerStatusPolls("HELD_UP_IN_QUEUE");
+      await sleep(50);
+      fixture.detectChanges();
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.lang-in-wachtrij",
+      );
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("stops asking Epistola's status once the document is generated", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      fixture.detectChanges();
+      await sleep();
+      answerStatusPolls("RENDERING");
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      await sleep();
+      fixture.detectChanges();
+      await sleep(1_100);
+
+      httpTestingController.expectNone(EPISTOLA_STATUS_URL);
+    });
+
+    it("says why there are no template groups when they cannot be loaded", async () => {
+      await setupEpistola({}, async (request) => {
+        const unavailable = { message: "msg.error.epistola.unavailable" };
+        const serverError = { status: 500, statusText: "Server Error" };
+        request.flush(unavailable, serverError);
+        for (const retryDelay of [1_000, 2_000, 4_000]) {
+          await sleep(retryDelay + 100);
+          httpTestingController
+            .expectOne(EPISTOLA_TEMPLATES_URL)
+            .flush(unavailable, serverError);
+        }
+      });
+      await sleep(7_500);
+      fixture.detectChanges();
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "msg.document.templates.niet-geladen msg.error.epistola.unavailable",
+      );
     });
 
     it("routes a failed generation through the error handler and keeps the drawer open", async () => {

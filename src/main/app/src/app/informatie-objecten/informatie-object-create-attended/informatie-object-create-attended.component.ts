@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
+import { HttpErrorResponse } from "@angular/common/http";
 import {
   Component,
+  computed,
   effect,
   EventEmitter,
   inject,
@@ -12,6 +14,7 @@ import {
   OnDestroy,
   OnInit,
   Output,
+  signal,
 } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -26,6 +29,7 @@ import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { injectQuery, QueryClient } from "@tanstack/angular-query-experimental";
 import moment, { Moment } from "moment";
 import {
+  catchError,
   EMPTY,
   from,
   map,
@@ -65,6 +69,17 @@ type TemplateGroupOption = {
   id?: string;
   name: string;
   templates: TemplateOption[];
+};
+
+const EPISTOLA_STATUS_MESSAGES: Record<
+  GeneratedType<"EpistolaDocumentCreationStatus">,
+  string
+> = {
+  WAITING_IN_QUEUE: "msg.document.genereren.in-wachtrij",
+  HELD_UP_IN_QUEUE: "msg.document.genereren.lang-in-wachtrij",
+  RENDERING: "msg.document.genereren.wordt-gemaakt",
+  HELD_UP_IN_RENDERING: "msg.document.genereren.duurt-lang",
+  STORING: "msg.document.genereren.opslaan",
 };
 
 @Component({
@@ -136,6 +151,7 @@ export class InformatieObjectCreateAttendedComponent
 
   protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
   protected templates: TemplateOption[] = [];
+  protected readonly templateGroupsError = signal<string | null>(null);
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
   private readonly utilService = inject(UtilService);
@@ -151,6 +167,27 @@ export class InformatieObjectCreateAttendedComponent
   protected readonly createEpistolaDocumentMutation = injectMutation(() =>
     this.informatieObjectenService.createEpistolaDocumentMutation(),
   );
+
+  private readonly generatingForZaakUuid = signal<string | undefined>(
+    undefined,
+  );
+
+  private readonly epistolaStatusQuery = injectQuery(() => {
+    const uuid = this.generatingForZaakUuid();
+    return {
+      ...this.informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
+        uuid ?? "",
+      ),
+      enabled: Boolean(uuid),
+    };
+  });
+
+  protected readonly generatingMessage = computed(() => {
+    const status = this.epistolaStatusQuery.data()?.status;
+    return status
+      ? EPISTOLA_STATUS_MESSAGES[status]
+      : "msg.document.genereren.bezig";
+  });
 
   constructor(
     private readonly smartDocumentsService: SmartDocumentsService,
@@ -191,7 +228,15 @@ export class InformatieObjectCreateAttendedComponent
 
     const templateGroupsFetcher: Observable<TemplateGroupOption[]> = from(
       this.fetchTemplateGroups(),
-    ).pipe(startWith([]));
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        this.templateGroupsError.set(
+          error.error?.message ?? "dialoog.error.body.technisch",
+        );
+        return of([]);
+      }),
+      startWith([]),
+    );
     this.templateGroups = templateGroupsFetcher;
 
     this.form.controls.templateGroup.valueChanges
@@ -347,6 +392,7 @@ export class InformatieObjectCreateAttendedComponent
     title: string,
     description?: string | null,
   ) {
+    this.generatingForZaakUuid.set(this.zaak.uuid);
     this.createEpistolaDocumentMutation.mutate(
       {
         zaakUuid: this.zaak.uuid,
@@ -368,6 +414,7 @@ export class InformatieObjectCreateAttendedComponent
           });
           this.document.emit();
         },
+        onSettled: () => this.generatingForZaakUuid.set(undefined),
       },
     );
   }
