@@ -8,6 +8,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
+import io.mockk.checkUnnecessaryStub
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -43,6 +44,8 @@ class EpistolaDocumentRestServiceTest : BehaviorSpec({
     )
 
     isolationMode = IsolationMode.InstancePerTest
+
+    afterEach { checkUnnecessaryStub() }
 
     context("generating a new version of an Epistola document") {
         given("a document linked to a zaak") {
@@ -114,11 +117,39 @@ class EpistolaDocumentRestServiceTest : BehaviorSpec({
             every { zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject) } returns emptyList()
 
             `when`("a new version is asked for") {
-                shouldThrow<EpistolaNewVersionNotPossibleException> {
+                val epistolaNewVersionNotPossibleException = shouldThrow<EpistolaNewVersionNotPossibleException> {
                     epistolaDocumentRestService.createVersion(informatieobjectUuid)
                 }
 
                 then("it is refused, because there is no zaak data to generate it from") {
+                    epistolaNewVersionNotPossibleException.message shouldBe "Document '$informatieobjectUuid' is " +
+                        "linked to 0 zaken, so there is no single zaak whose data a new version could be generated from."
+                    verify(exactly = 0) { epistolaDocumentVersionService.createNewVersion(any(), any()) }
+                }
+            }
+        }
+
+        given("a document linked to two zaken") {
+            val zaak = createZaak()
+            val otherZaak = createZaak()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            val informatieobjectUuid = enkelvoudigInformatieObject.url.extractUuid()
+            every { drcClientService.readEnkelvoudigInformatieobject(informatieobjectUuid) } returns enkelvoudigInformatieObject
+            every {
+                zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject)
+            } returns listOf(
+                createZaakInformatieobjectForReads(zaak = URI("https://example.com/zaken/${zaak.uuid}")),
+                createZaakInformatieobjectForReads(zaak = URI("https://example.com/zaken/${otherZaak.uuid}"))
+            )
+
+            `when`("a new version is asked for") {
+                val epistolaNewVersionNotPossibleException = shouldThrow<EpistolaNewVersionNotPossibleException> {
+                    epistolaDocumentRestService.createVersion(informatieobjectUuid)
+                }
+
+                then("it is refused, so the data of one zaak never ends up in a document the other zaak also holds") {
+                    epistolaNewVersionNotPossibleException.message shouldBe "Document '$informatieobjectUuid' is " +
+                        "linked to 2 zaken, so there is no single zaak whose data a new version could be generated from."
                     verify(exactly = 0) { epistolaDocumentVersionService.createNewVersion(any(), any()) }
                 }
             }
@@ -145,6 +176,33 @@ class EpistolaDocumentRestServiceTest : BehaviorSpec({
 
                 then("the answer of the service is returned") {
                     restEpistolaDocument.isNewVersionAvailable shouldBe true
+                }
+            }
+        }
+
+        given("a document the user may read that is linked to two zaken") {
+            val zaak = createZaak()
+            val otherZaak = createZaak()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()
+            val informatieobjectUuid = enkelvoudigInformatieObject.url.extractUuid()
+            every { drcClientService.readEnkelvoudigInformatieobject(informatieobjectUuid) } returns enkelvoudigInformatieObject
+            every {
+                zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject)
+            } returns listOf(
+                createZaakInformatieobjectForReads(zaak = URI("https://example.com/zaken/${zaak.uuid}")),
+                createZaakInformatieobjectForReads(zaak = URI("https://example.com/zaken/${otherZaak.uuid}"))
+            )
+            every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+            every {
+                policyService.readDocumentRechten(enkelvoudigInformatieObject, zaak)
+            } returns createDocumentRechtenAllDeny(lezen = true)
+
+            `when`("it is read") {
+                val restEpistolaDocument = epistolaDocumentRestService.readEpistolaDocument(informatieobjectUuid)
+
+                then("no new version is offered, because a new version would be refused") {
+                    restEpistolaDocument.isNewVersionAvailable shouldBe false
+                    verify(exactly = 0) { epistolaDocumentVersionService.isNewVersionAvailable(any()) }
                 }
             }
         }

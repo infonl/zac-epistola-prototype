@@ -1371,7 +1371,7 @@ De metadata van een document kunnen aangepast worden. Hierdoor ontstaat een nieu
 
 Een document dat met Epistola is gemaakt, kan opnieuw worden gegenereerd met de zaakgegevens zoals die nu zijn. Dat wordt een nieuwe versie van hetzelfde document. De eerdere versies blijven bewaard en zijn met de &lt; en &gt; pijltjes te bekijken.
 
-De actie is er alleen bij een document dat met Epistola is gemaakt, zolang Epistola de documentcreatieapplicatie is en het template nog bij het zaaktype hoort. Net als bij *Metadata bewerken* kan dit alleen als de zaak open is en de status van het document niet ‘Definitief’ is. Je hebt ook het recht nodig om voor deze zaak documenten te maken.
+De actie is er alleen bij een document dat met Epistola is gemaakt en bij één zaak hoort, zolang Epistola de documentcreatieapplicatie is. Hoort het template niet meer bij het zaaktype, dan krijg je bij het genereren een melding en blijft de huidige versie zoals ze was. Net als bij *Metadata bewerken* kan dit alleen als de zaak open is en de status van het document niet ‘Definitief’ is. Je hebt ook het recht nodig om voor deze zaak documenten te maken.
 
 **Stappen**
 

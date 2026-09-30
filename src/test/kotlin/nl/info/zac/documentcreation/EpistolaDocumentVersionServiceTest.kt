@@ -152,6 +152,33 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             }
         }
 
+        given("a document Epistola generated whose current version a user replaced with a file of another type") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = "fakeFileName.docx")
+            val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
+            val generatedDocument = givenANewVersionGenerated(zaak, FAKE_FILE_NAME)
+            val requestSlot = slot<EnkelvoudigInformatieObjectWithLockRequest>()
+            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns
+                createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, templateId = FAKE_TEMPLATE_ID)
+            every {
+                enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
+                    enkelvoudigInformatieObjectUUID = informatieObjectUUID,
+                    enkelvoudigInformatieObjectWithLockRequest = capture(requestSlot),
+                    toelichting = "Nieuwe versie gegenereerd met Epistola"
+                )
+            } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 3)
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("a new version is created") {
+                epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
+
+                then("the PDF gets the same name with a .pdf extension, so its name matches its format") {
+                    requestSlot.captured.bestandsnaam shouldBe FAKE_FILE_NAME
+                    requestSlot.captured.formaat shouldBe "application/pdf"
+                }
+            }
+        }
+
         given("a document that Epistola did not generate") {
             val zaak = createZaak()
             val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject()

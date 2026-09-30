@@ -45,37 +45,43 @@ class EpistolaDocumentRestService @Inject constructor(
     @Path("{uuid}")
     fun readEpistolaDocument(@PathParam("uuid") uuid: UUID): RestEpistolaDocument =
         drcClientService.readEnkelvoudigInformatieobject(uuid).let { enkelvoudigInformatieObject ->
+            val zaakInformatieobjecten = zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject)
             assertPolicy(
                 policyService.readDocumentRechten(
                     enkelvoudigInformatieObject,
-                    findZaakForDocument(enkelvoudigInformatieObject)
+                    zaakInformatieobjecten.firstOrNull()?.let { zrcClientService.readZaak(it.zaakUUID) }
                 ).lezen
             )
-            RestEpistolaDocument(isNewVersionAvailable = epistolaDocumentVersionService.isNewVersionAvailable(uuid))
+            RestEpistolaDocument(
+                isNewVersionAvailable = zaakInformatieobjecten.size == 1 &&
+                    epistolaDocumentVersionService.isNewVersionAvailable(uuid)
+            )
         }
 
     /**
      * Generates the document again from the template that produced it, with the zaak's data as it is now, and stores
      * it as the next version of the same informatieobject. It returns once that is done, as creating the document
      * did. The zaak is the one the document is linked to, so the data of one zaak cannot end up in the document of
-     * another.
+     * another. A document linked to several zaken gets no new version, because nothing says whose data it should show.
      */
     @POST
     @Path("{uuid}/versions")
     fun createVersion(@PathParam("uuid") uuid: UUID): RestEpistolaDocumentCreationResponse {
         val enkelvoudigInformatieObject = drcClientService.readEnkelvoudigInformatieobject(uuid)
-        val zaak = findZaakForDocument(enkelvoudigInformatieObject)
-            ?: throw EpistolaNewVersionNotPossibleException(
-                "Document '$uuid' is not linked to a zaak, so there is no zaak data to generate a new version from."
-            )
+        val zaak = readOnlyZaakOfDocument(enkelvoudigInformatieObject)
         assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).creerenDocument)
         assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieObject, zaak).toevoegenNieuweVersie)
         return epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
             .let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.url.extractUuid()) }
     }
 
-    private fun findZaakForDocument(enkelvoudigInformatieObject: EnkelvoudigInformatieObject): Zaak? =
-        zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject)
-            .firstOrNull()
-            ?.let { zrcClientService.readZaak(it.zaakUUID) }
+    private fun readOnlyZaakOfDocument(enkelvoudigInformatieObject: EnkelvoudigInformatieObject): Zaak =
+        zrcClientService.listZaakinformatieobjecten(enkelvoudigInformatieObject).let { zaakInformatieobjecten ->
+            zaakInformatieobjecten.singleOrNull()?.let { zrcClientService.readZaak(it.zaakUUID) }
+                ?: throw EpistolaNewVersionNotPossibleException(
+                    "Document '${enkelvoudigInformatieObject.url.extractUuid()}' is linked to " +
+                        "${zaakInformatieobjecten.size} zaken, so there is no single zaak whose data a new version " +
+                        "could be generated from."
+                )
+        }
 }

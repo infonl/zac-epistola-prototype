@@ -44,6 +44,7 @@ class EpistolaDocumentVersionService @Inject constructor(
 ) {
     companion object {
         private const val PDF_MEDIA_TYPE = "application/pdf"
+        private const val PDF_EXTENSION = ".pdf"
         private const val NEW_VERSION_EXPLANATION = "Nieuwe versie gegenereerd met Epistola"
 
         private val LOG = Logger.getLogger(EpistolaDocumentVersionService::class.java.name)
@@ -86,7 +87,7 @@ class EpistolaDocumentVersionService @Inject constructor(
             val generatedDocument = epistolaDocumentCreationService.createDocument(
                 zaak = zaak,
                 templateId = templateId,
-                fileName = enkelvoudigInformatieObject.bestandsnaam
+                fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(
