@@ -848,6 +848,7 @@
   "msg.error.epistola.generation.timed-out": "Creating the document took too long and was stopped. Try again.",
   "msg.error.epistola.template.without-schema": "The selected template does not declare which case data it accepts. Contact your administrator.",
   "msg.error.epistola.template.mapping-invalid": "The template settings could not be saved. Check that every template group has a unique name and that every template appears once, with a document type.",
+  "msg.error.epistola.template.not-configured": "The selected template is not configured for this zaaktype. Contact your administrator.",
   "msg.error.smartdocuments.not.configured": "SmartDocuments is not configured.",
   "msg.error.smartdocuments.disabled": "SmartDocuments is disabled.",
   "msg.error.validation.generic": "The data entered is not valid. Please check the fields for invalid input.",
