@@ -218,5 +218,6 @@ van ZAC is. Een `naam`-kolom blijft een migratie van één kolom, mocht het gehe
 
 Datamodel voor het Epistola-prototype, afgeleid van de JPA-entiteiten in `nl.info.zac.admin.model` en
 `nl.info.zac.smartdocuments.templates.model` op de examenfork. Bestaande structuren zijn tegen de code
-geverifieerd. De nieuwe structuren staan in `V100__epistola_document_template_mapping.sql` en de entiteiten
-in `nl.info.zac.epistola.templates.model` (#3).
+geverifieerd. De nieuwe structuren staan in `V100__epistola_document_template_mapping.sql` met de entiteiten
+in `nl.info.zac.epistola.templates.model` (#3), en in `V101__epistola_document.sql` met de entiteit in
+`nl.info.zac.epistola.documents.model` (#9, PR #43).
