@@ -7,7 +7,7 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Stand | **Concept 1, 29 september 2026.** Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders |
+| Stand | **Concept 1, 29 september 2026, bijgewerkt op 30 september** (de samenvatting volgt nu de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders |
 
 > **Wat dit document is.** De uitkomst van het prototype, vertaald naar besluiten die Dimpact kan nemen: wat er
 > tussen dit prototype en productiegebruik ligt, wat nu al is opgelost, en welke voorstellen realiseerbaar zijn.
@@ -20,21 +20,25 @@ Het prototype laat ZAC documenten maken met Epistola, per zaaktype in te stellen
 Open Zaak en gekoppeld aan de zaak. De hoofdstroom is getest, in twee rondes: in ronde 1 (25 september) slaagden 32 van de
 35 uitgevoerde scenario's. De drie die mislukten (TS-06, TS-31, TS-32) betroffen meldingen voor de gebruiker. Die zijn
 daarna gebouwd (#7, #8, #30), en ronde 2 (30 september) heeft ze op de gemergede versie opnieuw uitgevoerd: alle 36
-scenario's slagen nu.
+scenario's slagen nu. Een derde ronde testte het optionele #9, een nieuwe versie van een document, met acht scenario's
+die ook slagen.
 
-**Wat productiegebruik nog vraagt** is niet de code van de integratie, maar drie dingen eromheen:
+**Wat productiegebruik nog vraagt** zijn drie dingen, de voorstellen onder *Voor productie: moet* in §4:
 
 1. **Afspraken met Epistola en de organisatie** (VV-02): een verwerkersovereenkomst, een vermelding in het
    verwerkingsregister, en de bewaartermijn die Epistola *werkelijk* toepast, want die is drie tot vier maanden en
    niet de dertig dagen die genoemd werd.
 2. **Sleutelbeheer** (VV-01): de API key is Epistola's ondersteunde methode en geen blokkade meer (R1), maar ZAC heeft geen vervaldatum en geen
    beschreven rotatieprocedure voor hem.
-3. **Gedrag onder belasting** (VV-05): een verzoek houdt een thread vast zolang Epistola rendert. Bij één gebruiker
-   is dat 5 tot 10 seconden. Niemand heeft het met meerdere gebruikers tegelijk gemeten.
+3. **`https` voor de Epistola-URL** (VV-03): ZAC controleert bij het opstarten dat de URL is ingesteld, maar niet
+   dat hij met `https` begint.
 
-Daarnaast zijn er **zes kleine, goed afgebakende verbeteringen** (VV-03, -06, -07, -09, -10, -11), **twee punten
-die van Epistola afhangen** (VV-04, VV-08) en **vier uitbreidingen** die pas zin hebben na een besluit over de
-richting (VV-12 t/m VV-15).
+Daarnaast zijn er **vijf verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11). De
+belangrijkste is een belastingtest (VV-05): een verzoek houdt een thread vast zolang Epistola rendert, bij één
+gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. Er zijn **drie punten
+die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na een besluit over de
+richting (VV-12, VV-13, VV-15). De vierde uitbreiding, een nieuwe versie van een document (VV-14, #9), is op 30
+september gebouwd.
 
 Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie bewust geaccepteerd met een reden
 (waaronder één dat bij een ander team ligt), en twee omgezet in een voorstel. Zie [§3](#3-het-risicoregister-alle-negen).
@@ -112,7 +116,7 @@ opnieuw opgepakt. Aan de ZAC-kant is dus niets nieuws nodig.
 
 **VV-05 · Een belastingtest met gelijktijdige gebruikers** · M · ZAC-team
 *Aanleiding.* Testrapport §6: het verzoek wacht op Epistola en houdt zolang een thread vast. Bij één behandelaar is
-dat 5 tot 10 seconden; onder belasting is het niet gemeten.
+dat 3 tot 10 seconden; onder belasting is het niet gemeten.
 *Voorstel.* Meet met bijvoorbeeld tien tot vijftig gelijktijdige generaties tegen de lokale stand-in (VV-06) en tegen
 de testserver, en kijk naar de threads van de applicatieserver en de wachttijd. Blijkt het te zwaar, dan is het
 alternatief het verzoek direct met een taak-id te beantwoorden en de dialoog te laten pollen. De statusroute die #8

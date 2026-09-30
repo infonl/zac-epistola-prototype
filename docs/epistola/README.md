@@ -17,10 +17,11 @@ bijbehorende projectbord.
 | Document | Onderwerp | Issue |
 |---|---|---|
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
-| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de drie wijzigingen die Epistola nodig heeft, met ERD | #14 |
+| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de vier wijzigingen die Epistola nodig heeft, met ERD | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testscenario's, positief en negatief, over de acht afgesproken gebieden, plus 8 voor het optionele #9. Volgens het examensjabloon (B1-K1-W4) | #18 |
-| [Testrapport](testrapport.md) | De uitvoering in twee rondes, op 25 en 30 september: resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
+| [Testscenario's](testscenarios.md) | De testcases uit het testplan uitgewerkt tot elf testscenario's, één per functionaliteit, met randvoorwaarden, testdata en teststappen, positief en negatief. Volgens het examensjabloon (B1-K1-W4) | #18 |
+| [Testrapport](testrapport.md) | De uitvoering in drie rondes, op 25 en 30 september (de derde voor #9): resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
 | [Verbetervoorstellen](verbetervoorstellen.md) | De uitkomst van het prototype als besluiten: de negen risico's uit de ontwerpverantwoording met hun uitkomst, vijftien voorstellen voor productie en daarna, wat al is opgelost, en wat bewust niet wordt voorgesteld. Procesverbeteringen staan in de reflectie (#23) | #20 |
 
 De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan

@@ -9,7 +9,7 @@
 | Klas | ZWSD24 |
 | Datum | 25 september 2026, bijgewerkt op 30 september 2026 |
 | Versie | 1.3 — bijgewerkt op 30 september 2026 met de scenario's voor #9. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
-| Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30) |
+| Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30). **Ronde 3 (30 september):** branch `feat/epistola-new-document-version` op `ddad815ef` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)), voor TS-36 t/m TS-43 (#9) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
 > bevatten alle scenario's. De functionaliteiten uit [§3](#3-testscope) komen elk terug in [§8](#8-testcases).
@@ -41,7 +41,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 |---|---|---|
 | 1.0 | 25 september 2026 | Eerste versie, voor akkoord |
 | 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de behandelaarscenario's draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de scenario's met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
-| 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18) |
+| 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18). De gewijzigde verwachte uitkomsten van TS-26, TS-31 en TS-35 volgen besluiten van Symon (B20, B21) en het gebouwde #30, en zijn na het akkoord op 1.1 niet opnieuw aan de stakeholders voorgelegd |
 | 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande scenario's zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
 
 ## 2. Testdoelstellingen
@@ -80,7 +80,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 | Besturingssysteem | macOS 27.0 |
 | Browser | Chrome (Chromium, via Playwright), versie vastgelegd in het testrapport |
 | Server | De lokale ZAC-stack via Docker Compose, gestart met `./start-docker-compose.sh -l -E`: een lokaal gebouwde ZAC-image (`ghcr.io/infonl/zaakafhandelcomponent:dev`, van de geteste versie hierboven) op WildFly 41.0.1, Open Zaak 1.29.3, Keycloak 26.7.3, Solr. Epistola is de testserver van Epistola (`demo.epistola.app`, contract 1.3.1), bereikt met ZAC's Jakarta-client 1.3.1 |
-| Database | PostgreSQL 17.11 voor ZAC, met migratie `V100` (Epistola-mapping) |
+| Database | PostgreSQL 17.11 voor ZAC, met migratie `V100` (Epistola-mapping), en voor TS-36 t/m TS-43 ook `V101` (het template per document, #9) |
 | Documentcreatie | `DOCUMENT_CREATION_PROVIDER=EPISTOLA`, catalogus `default` |
 
 ### Testdata
@@ -164,7 +164,8 @@ Library; TestContainers; Python-scripts die Epistola rechtstreeks bevragen en no
 
 Elke functionaliteit uit [§3](#3-testscope) heeft minstens één positief en, waar dat kan, één negatief
 scenario. **+** is positief, **−** is negatief. Onder de tabel staan de stappen van de handmatige
-scenario's.
+scenario's. [De testscenario's](testscenarios.md) werken dezelfde testcases uit per functionaliteit uit §3, met hun
+randvoorwaarden, testdata en teststappen.
 
 | # | Functionaliteit | Testbeschrijving | Verwacht resultaat | Prioriteit | Testmethode |
 |---|---|---|---|---|---|
@@ -296,8 +297,8 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
 | Testfase | Datum | Verantwoordelijke | Status |
 |---|---|---|---|
 | Unittests (backend en frontend) | Doorlopend per pull request; testruns voor het testrapport op 25 en 30 september | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Integratietests | 25 september op de geteste versie van ronde 1, en 30 september op `main` | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de scenario's die op #7 en #8 wachtten (ronde 2) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Integratietests | 25 september op de geteste versie van ronde 1, en 30 september op `main` en op de branch van #9 | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de scenario's die op #7 en #8 wachtten (ronde 2) en voor TS-36 t/m TS-43 (ronde 3, #9) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
 | Akkoord op het testplan | Stakeholderoverleg van 28 september (#21), versie 1.1 zoals het was | Stakeholders | Goedgekeurd (B14) |
 | Gebruikerstest (UAT) | Einddemo op maandag 12 oktober 2026 (#22, B19) | Stakeholders | Nog te doen |
 | Acceptatietest | Na akkoord en UAT, op de einddemo van 12 oktober | Stakeholders met Symon Vleeshouwers | Nog te doen |

@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Opdracht | Opdracht 3 – B1-K1-W4 Test software |
-| Issue | [#19](https://github.com/infonl/zac-epistola-prototype/issues/19) · uitgevoerd volgens [het testplan](testplan.md) v1.2 (#18) |
+| Issue | [#19](https://github.com/infonl/zac-epistola-prototype/issues/19) · uitgevoerd volgens [het testplan](testplan.md) v1.2, en v1.3 voor ronde 3 (#18), met de stappen uit [de testscenario's](testscenarios.md) |
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Datum | 25 september 2026 (ronde 1) en 30 september 2026 (ronde 2) |
+| Datum | 25 september 2026 (ronde 1) en 30 september 2026 (ronde 2 en 3) |
 
 > **Beoordelingscriterium – T3 Testrapport:** testresultaten van alle functionaliteiten, met juiste
 > conclusies. Elke functionaliteit uit §3 van het testplan staat in [§2](#2-testresultaten-per-functionaliteit),
@@ -21,7 +21,7 @@
 | Geteste versie | **Ronde 1:** `6a91d8da2` op branch `feat/epistola-document-dialog` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. ZAC-image `0290677afd13`, gebouwd van die commit. **Ronde 2:** `main` van de fork op `c4dbdcca1`, waarin alle pull requests #24 t/m #34 zijn gemerged. ZAC-image `814c2e22a459`, gebouwd door `./gradlew itest` van die commit |
 | Testperiode | 25 september 2026 (ronde 1, het hele plan) en 30 september 2026 (ronde 2, de scenario's die op #7 en #8 wachtten, met een controle van de rest na #30) |
 | Geteste functionaliteiten | 10 — de acht gebieden uit de examenafspraken en de twee randvoorwaarden uit de DoD |
-| Aantal testscenario's uitgevoerd | 36 van de 36 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
+| Aantal testscenario's uitgevoerd | 36 van de 36, in testscenario 1 t/m 10 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
 | Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %). Daarnaast slagen de 8 scenario's voor het optionele #9 (ronde 3, hieronder apart) |
 | Totaal mislukt | 0. In ronde 1 mislukten TS-06, TS-31 en TS-32. Alle drie slaagden in ronde 2, en TS-35 slaagde bij de eerste uitvoering |
 | Gevonden bugs | 8 bugs: 7 opgelost, 1 open. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08 is een kleine opmerking over een algemene regel in het foutvenster |
@@ -30,6 +30,8 @@
 | Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 scenario's zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
 
 ## 2. Testresultaten per functionaliteit
+
+Het nummer in de eerste kolom is het nummer van het testscenario in [de testscenario's](testscenarios.md).
 
 | # | Functionaliteit | Testscenario ID | Uitkomst | Bugs gevonden | Conclusie |
 |---|---|---|---|---|---|
@@ -213,11 +215,16 @@ groen: 2729 backend-, 2980 frontend- en 386 integratietests, en de live-check (7
 SmartDocuments werkt ongewijzigd, dus de eerste randvoorwaarde uit de DoD is gehaald. Epistola is beperkt tot
 CMMN-zaken, met een uitleg in de UI, dus de tweede ook.
 
+Het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9), is in ronde 3 getest met acht
+scenario's (TS-36 t/m TS-43), die alle slagen. Dat blok staat in testplan 1.3, dat de stakeholders nog niet hebben
+goedgekeurd, en telt daarom niet mee in de 36.
+
 Zeven van de acht gevonden bugs zijn opgelost en nagegaan. B-08 is een kleine, open opmerking over een algemene
 regel in het foutvenster, zonder gevolgen voor de gegevens.
 
-De stakeholders hebben het testplan op 28 september goedgekeurd (B14). De gebruikerstest (UAT) en de
-acceptatietest vinden plaats op de einddemo van 12 oktober.
+De stakeholders hebben versie 1.1 van het testplan op 28 september goedgekeurd (B14). Het prototype is daarmee
+klaar voor oplevering aan de opdrachtgever. De gebruikerstest (UAT) en de acceptatietest met de stakeholders moeten
+dat nog bevestigen, op de einddemo van 12 oktober.
 
 ## 6. Aanbevelingen
 
@@ -234,17 +241,29 @@ acceptatietest vinden plaats op de einddemo van 12 oktober.
 
 ## 7. Zelfbeoordeling rubric
 
-*In te vullen door de kandidaat.* Vul voor jezelf in hoe je denkt te scoren (0 = niet/nauwelijks,
+Zo denk ik te scoren op de rubric (0 = niet/nauwelijks,
 3 = volledig).
 
 | Criterium | 0 | 1 | 2 | 3 (volledig) |
 |---|---|---|---|---|
-| T1 Testplan – testcases sluiten aan op alle functionaliteiten | ☐ | ☐ | ☐ | ☐ |
-| T1 Testscenario – voor alle functionaliteiten gemaakt | ☐ | ☐ | ☐ | ☐ |
-| T2 Testen – correct uitgevoerd volgens testplan | ☐ | ☐ | ☐ | ☐ |
-| T3 Testrapport – resultaten en conclusies volledig | ☐ | ☐ | ☐ | ☐ |
+| T1 Testplan – testcases sluiten aan op alle functionaliteiten | ☐ | ☐ | ☐ | ☒ |
+| T1 Testscenario – voor alle functionaliteiten gemaakt | ☐ | ☐ | ☒ | ☐ |
+| T2 Testen – correct uitgevoerd volgens testplan | ☐ | ☐ | ☒ | ☐ |
+| T3 Testrapport – resultaten en conclusies volledig | ☐ | ☐ | ☐ | ☒ |
 
-**Toelichting op de zelfbeoordeling:** *in te vullen door de kandidaat.*
+**Toelichting op de zelfbeoordeling:**
+
+- **T1 Testplan (3):** elke functionaliteit uit §3 van het testplan komt terug als testcase in §8, met een positief
+  en, waar dat kan, een negatief geval. De testscenario's laten zien welke testcases bij welke functionaliteit horen,
+  en de stakeholders hebben het plan goedgekeurd.
+- **T1 Testscenario (2):** elke functionaliteit heeft een eigen testscenario met teststappen, maar testscenario 8
+  (preview) heeft geen negatieve stap. Die vond ik voor de preview niet echt nodig, maar het format vraagt er per
+  scenario minstens één.
+- **T2 Testen (2):** alle 36 testcases zijn uitgevoerd en met bewijs vastgelegd, en de drie die mislukten, zijn na de
+  fixes opnieuw uitgevoerd en geslaagd. De gebruikerstest (UAT) uit het testplan moet nog plaatsvinden, en TS-31 heb
+  ik als geslaagd beoordeeld terwijl B-08 nog open staat.
+- **T3 Testrapport (3):** het rapport geeft voor elke functionaliteit het resultaat en een conclusie, met alle bugs
+  en hun status, en het benoemt ook wat niet goed ging.
 
 ---
 
