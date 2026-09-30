@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -303,9 +303,13 @@ nieuwste contract, en dat is een *concept* zodra een auteur er een heeft aangema
 ongepubliceerd concept dat een nieuw verplicht veld vraagt, keurt `validate` de data af, terwijl de job met
 dezelfde data gewoon rendert. Een toets vooraf zou dus goede documenten weigeren zolang een auteur aan een
 wijziging werkt, en niets vangen wat de job zelf niet vangt. De client-kant `ValidatingGenerationApi` helpt
-evenmin. Die leest het oude veld `schema`, dat Epistola altijd leeg laat, en valideert dus niets. De volgende
-contractrelease geeft `validate` een `versionId` en per veld `missingFields` en `invalidFields`. Tegen de
-versie die gerenderd wordt, is het dan wel bruikbaar, als bron voor de melding uit #8.
+evenmin. Die leest het oude veld `schema`, dat Epistola altijd leeg laat, en valideert dus niets. Contract 1.4.0
+(30 september) geeft `validate` een `variantId`, `versionId` en `environmentId` en per veld `missingFields` en
+`invalidFields`. Tegen de versie die gerenderd wordt, is het dan wel bruikbaar, als bron voor de melding uit #8. De
+server doet dat voor `validate` nog niet. Op 30 september gaf de testserver op data met vier fouten alleen de velden
+`errors` en `valid` terug, en [epistola-suite#978](https://github.com/epistola-app/epistola-suite/issues/978)
+laat dat onderdeel wachten op deze contractrelease. ZAC gaat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) naar de 1.4.0-client, die de velden al
+kent.
 
 Epistola neemt deze als templatevariabelen aan, naast een `correlationId`. De variabelenamen zijn de
 JSON-B-namen van `DocumentCreationData` (`zaak.identificatie`, `aanvrager.naam`, …), dezelfde die een
@@ -585,4 +589,6 @@ uit #16. De Epistola-kant is gelezen uit
 `EpistolaConfig.java` van de Jakarta-client. Op 24 september nagelopen tegen contract 1.3.1, met
 `docs/auth.md`, en tegen de broncode van Epistola Suite (`main` op `3c92193`, na release 1.2.0). Wat §3 en §5 over
 datumformaat, validatie, contractversies, annuleren en verwijderen zeggen, is die dag ook met losse
-testtemplates op de testtenant nagegaan, en de templates zijn daarna weer verwijderd.
+testtemplates op de testtenant nagegaan, en de templates zijn daarna weer verwijderd. Contract 1.4.0 van
+30 september is daarna nagelopen op wat het voor ZAC verandert: niets in de operaties die ZAC aanroept, en de
+validatievelden uit §3 zitten nog niet in de server.

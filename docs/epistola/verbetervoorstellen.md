@@ -147,9 +147,14 @@ weet dat de allow-list daar niets versmalt. De controle staat al in de allow-lis
 **VV-10 · Velden en contractversie uit Epistola halen** · S–M · afhankelijk van Epistola
 *Aanleiding.* Twee vragen uit de review op #24 en een open bug.
 *Voorstel.* (a) Vraag welk contract bij de gerenderde templateversie hoort, of beter: welke velden die versie werkelijk
-leest. Dat geeft een strakkere allow-list dan een contract declareert en beslist de versievraag. (b) Zodra Epistola's
-volgende contractrelease `missingFields` per veld levert, noemt de foutmelding bij een contractfout het ontbrekende
-veld. Nu zegt de melding al dat opnieuw proberen niet helpt (#8); het veld noemen is de volgende stap.
+leest. Dat geeft een strakkere allow-list dan een contract declareert en beslist de versievraag. (b) Contract 1.4.0
+(30 september) beschrijft voor `validate` per veld `missingFields` en `invalidFields`, en een `variantId`, `versionId` of
+`environmentId` om tegen de versie te toetsen die gerenderd wordt. De server doet dat voor `validate` nog niet: op
+30 september gaf de testserver op data met vier fouten alleen de velden `errors` en `valid` terug, en in
+[epistola-suite#978](https://github.com/epistola-app/epistola-suite/issues/978) staat dat onderdeel te wachten op deze
+contractrelease. ZAC's client kent de velden al, want hij gaat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) naar 1.4.0. Zodra de server ze levert, noemt
+de foutmelding bij een contractfout het ontbrekende veld. Nu zegt de melding al dat opnieuw proberen niet helpt (#8); het
+veld noemen is de volgende stap.
 
 **VV-11 · Vertrouwelijkheid ook bij SmartDocuments afleiden** (R6, restant) · S · ZAC-team
 *Voorstel.* Laat de SmartDocuments-flow de vertrouwelijkheid van het informatieobjecttype overnemen, zoals de

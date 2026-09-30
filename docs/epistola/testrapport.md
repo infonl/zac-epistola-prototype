@@ -25,7 +25,8 @@
 | Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %) |
 | Totaal mislukt | 0. In ronde 1 mislukten TS-06, TS-31 en TS-32. Alle drie slaagden in ronde 2, en TS-35 slaagde bij de eerste uitvoering |
 | Gevonden bugs | 8 bugs: 7 opgelost, 1 open. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08 is een kleine opmerking over een algemene regel in het foutvenster |
-| Geautomatiseerde tests | Ronde 2, op `c4dbdcca1`: 2729 backend-unittests, 2980 frontend-unittests (257 suites), 386 integratietests en de live-check (8 van 8 controles). Alle geslaagd |
+| Geautomatiseerde tests | Ronde 2, op `c4dbdcca1`: 2729 backend-unittests, 2980 frontend-unittests (257 suites), 386 integratietests en de live-check (7 van 7 controles). Alle geslaagd |
+| Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 scenario's zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
 
 ## 2. Testresultaten per functionaliteit
 
@@ -188,7 +189,7 @@ melding voor BPMN-zaken (#7) nog niet gebouwd waren.
 Die zijn daarna gebouwd en gemerged. Ronde 2 (30 september) heeft de scenario's die erop wachtten opnieuw
 uitgevoerd op de gemergede versie: TS-06, TS-31 en TS-32 slagen nu, en TS-35 slaagt bij de eerste uitvoering.
 Daarmee zijn alle 36 scenario's uitgevoerd en geslaagd. De geautomatiseerde tests zijn op die versie allemaal
-groen: 2729 backend-, 2980 frontend- en 386 integratietests, en de live-check (8 van 8 controles).
+groen: 2729 backend-, 2980 frontend- en 386 integratietests, en de live-check (7 van 7 controles).
 SmartDocuments werkt ongewijzigd, dus de eerste randvoorwaarde uit de DoD is gehaald. Epistola is beperkt tot
 CMMN-zaken, met een uitleg in de UI, dus de tweede ook.
 
@@ -317,7 +318,7 @@ Alle runs op de geteste versie `6a91d8da2`, op 25 september 2026.
 | Backend-unittests (Kotest, MockK) | `./gradlew test` | 2634 tests, 0 mislukt, 0 overgeslagen |
 | Frontend-unittests (Jest, Testing Library) | `npm test` | 255 suites, 2960 tests, 0 mislukt |
 | Integratietests (TestContainers, SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 8 min 21 s (12:01–12:09). De taak bouwt zijn eigen image van dezelfde commit. Waaronder 14 in `DocumentCreationRestServiceTest` (de SmartDocuments-flow) en 6 in `ZaaktypeCmmnConfigurationRestServiceSmartDocumentsTest` en `ZaaktypeBpmnConfigurationRestServiceSmartDocumentsTest` |
-| Live-check tegen Epistola's testserver | harness en `check_live_run.py` in `~/Documents/Exam/epistola-live-check/` | 8 van de 8 controles geslaagd |
+| Live-check tegen Epistola's testserver | harness en `check_live_run.py` in `~/Documents/Exam/epistola-live-check/` | 7 van de 7 controles geslaagd |
 
 De backendtests voor de Epistola-onderdelen, per testklasse:
 
@@ -349,7 +350,7 @@ Alle runs op `main` van de fork, `c4dbdcca1`.
 | Backend-unittests (Kotest, MockK) | `./gradlew test` | 2729 tests, 0 mislukt, 0 overgeslagen |
 | Frontend-unittests (Jest, Testing Library) | `npx ng test` | 257 suites, 2980 tests, 0 mislukt |
 | Integratietests (TestContainers, SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 6 min 28 s (09:08–09:14). De taak bouwt zijn eigen image van dezelfde commit (`814c2e22a459`) |
-| Live-check tegen Epistola's testserver | harness en `check_live_run.py` in `~/Documents/Exam/epistola-live-check/` | 8 van de 8 controles geslaagd. De harness is bijgewerkt voor #8: de statusopslag en het vijfde argument van `generateDocument` |
+| Live-check tegen Epistola's testserver | harness en `check_live_run.py` in `~/Documents/Exam/epistola-live-check/` | 7 van de 7 controles geslaagd. De harness is bijgewerkt voor #8: de statusopslag en het vijfde argument van `generateDocument` |
 
 De testklassen die sinds ronde 1 zijn toegevoegd of uitgebreid, per scenario:
 
@@ -366,3 +367,16 @@ De testklassen die sinds ronde 1 zijn toegevoegd of uitgebreid, per scenario:
 
 In de frontend dekken `zaak-view-menu.builder.spec.ts` en `side-nav.component.explained-item.spec.ts` de uitgeschakelde
 actie met uitleg (TS-06).
+
+### Na ronde 2 — client 1.4.0, 30 september 2026
+
+Alle runs op de branch `build/epistola-client-1-4-0` ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)), die alleen de versie van
+`epistola-client-jakarta` in `gradle/libs.versions.toml` van 1.3.1 naar 1.4.0 zet.
+
+| Wat | Commando | Resultaat |
+|---|---|---|
+| Vergelijking van de twee jars | `javap` op de klassen van 1.3.1 en 1.4.0 | Alleen toevoegingen: drie modelklassen, `missingFields` en `invalidFields` in het validatieresultaat, `variantId`, `versionId` en `environmentId` in het validatieverzoek. Alle klassen in het pakket `api` en `META-INF` zijn gelijk, dus ook de CDI-koppeling. Eén nieuwe deprecation die ZAC niet gebruikt |
+| Backend-unittests | `./gradlew test` | 2729 tests, 0 mislukt, 0 overgeslagen |
+| Integratietests (SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 6 min 12 s (11:32–11:38). Een eerste poging mislukte na 46 s met verbindingsfouten, omdat de lokale stack nog draaide en dezelfde poorten bezette. Na `./stop-docker-compose.sh` slaagde de tweede |
+| Live-check tegen Epistola's testserver | harness en `check_live_run.py` | 7 van de 7 controles geslaagd |
+| Aanroep van `validate` op de testserver | direct, met data met vier fouten | Antwoord met alleen `errors` en `valid`: de velden uit contract 1.4.0 zitten nog niet in de server |
