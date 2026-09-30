@@ -52,7 +52,7 @@ When(
     // Typing filters the autocomplete, so the option clicked below is the only one left.
     // By role, not by label: an open autocomplete panel carries the same label as its input.
     const templateGroupField = this.page.getByRole("combobox", {
-      name: "Sjabloongroep",
+      name: "Templategroep",
     });
     await templateGroupField.click();
     await templateGroupField.fill(templateInput.group);
@@ -62,7 +62,7 @@ When(
 
     // Leaving the template to its default sends SmartDocuments to its own selection screen.
     const templateField = this.page.getByRole("combobox", {
-      name: "Sjabloon",
+      name: "Template",
       exact: true,
     });
     await templateField.click();
