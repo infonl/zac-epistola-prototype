@@ -1,6 +1,6 @@
 # zaakafhandelcomponent
 
-![Version: 1.0.327](https://img.shields.io/badge/Version-1.0.327-informational?style=flat-square) ![AppVersion: 5.7](https://img.shields.io/badge/AppVersion-5.7-informational?style=flat-square)
+![Version: 1.0.328](https://img.shields.io/badge/Version-1.0.328-informational?style=flat-square) ![AppVersion: 5.7](https://img.shields.io/badge/AppVersion-5.7-informational?style=flat-square)
 
 A Helm chart for installing Zaakafhandelcomponent
 
@@ -84,10 +84,10 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | db.password | string | `""` |  |
 | db.user | string | `""` |  |
 | documentCreationProvider | string | `""` | Selects the document creation integration ZAC uses. One of: SMARTDOCUMENTS, EPISTOLA, NONE (case-insensitive). ZAC supports one provider at a time; configuring two is rejected on startup. When left empty, the provider is derived from `smartDocuments.enabled`, so existing installations keep working unchanged. |
-| epistola.apiKey | string | `""` | Epistola API key, issued per consumer by an Epistola administrator. Injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA. |
-| epistola.catalogId | string | `""` | Epistola catalog identifier that holds the templates ZAC generates from. Required when documentCreationProvider is EPISTOLA. |
+| epistola.apiKey | string | `""` | Epistola API key for the tenant, issued by an Epistola tenant manager with the roles DOCUMENT_GENERATOR and CONTENT_VIEWER. Injected as a Kubernetes Secret. Required when documentCreationProvider is EPISTOLA. |
+| epistola.catalogId | string | `""` | Epistola catalog identifier that holds the templates ZAC generates from. A slug of 3 to 50 characters matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, for example "default". Required when documentCreationProvider is EPISTOLA. |
 | epistola.generationTimeoutSeconds | string | `""` | Seconds ZAC waits for an Epistola generation job before giving up. Defaults to 60 when left empty. |
-| epistola.tenantId | string | `""` | Epistola tenant identifier that scopes the available templates. Required when documentCreationProvider is EPISTOLA. |
+| epistola.tenantId | string | `""` | Epistola tenant identifier that scopes the available templates. A slug of 3 to 63 characters matching `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, for example "acme-corp". Required when documentCreationProvider is EPISTOLA. |
 | epistola.url | string | `""` | URL to the Epistola API. Required when documentCreationProvider is EPISTOLA. |
 | extraDeploy | list | `[]` | Extra objects to deploy (value evaluated as a template) |
 | fullnameOverride | string | `""` | fullname to use |

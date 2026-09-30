@@ -1,0 +1,94 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/tenants/[a-z][a-z0-9]*(-[a-z0-9]+)*/catalogs/[a-z][a-z0-9]*(-[a-z0-9]+)*/templates/[a-z][a-z0-9]*(-[a-z0-9]+)*"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.epistola.v1+json"
+    },
+    "jsonBody": {
+      "id": "{{request.pathSegments.[5]}}",
+      "tenantId": "{{request.pathSegments.[1]}}",
+      "name": "Standaardbrief",
+      "variants": [],
+      "createdAt": "2026-09-01T08:00:00Z",
+      "lastModified": "2026-09-01T08:00:00Z",
+      "dataModel": {
+        "type": "object",
+        "properties": {
+          "zaak": {
+            "type": "object",
+            "properties": {
+              "identificatie": {
+                "type": "string"
+              },
+              "omschrijving": {
+                "type": "string"
+              },
+              "toelichting": {
+                "type": "string"
+              },
+              "zaaktype": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "behandelaar": {
+                "type": "string"
+              },
+              "groep": {
+                "type": "string"
+              },
+              "communicatiekanaal": {
+                "type": "string"
+              },
+              "vertrouwelijkheidaanduiding": {
+                "type": "string"
+              },
+              "startdatum": {
+                "type": "string"
+              },
+              "einddatumGepland": {
+                "type": "string"
+              },
+              "uiterlijkeEinddatumAfdoening": {
+                "type": "string"
+              }
+            }
+          },
+          "aanvrager": {
+            "type": "object",
+            "properties": {
+              "naam": {
+                "type": "string"
+              },
+              "straat": {
+                "type": "string"
+              },
+              "huisnummer": {
+                "type": "string"
+              },
+              "postcode": {
+                "type": "string"
+              },
+              "woonplaats": {
+                "type": "string"
+              }
+            }
+          },
+          "gebruiker": {
+            "type": "object",
+            "properties": {
+              "naam": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

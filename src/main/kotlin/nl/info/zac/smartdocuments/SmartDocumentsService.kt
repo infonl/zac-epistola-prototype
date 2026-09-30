@@ -10,7 +10,7 @@ import jakarta.inject.Inject
 import jakarta.ws.rs.core.UriBuilder
 import net.atos.zac.util.MediaTypes
 import nl.info.client.smartdocuments.SmartDocumentsClient
-import nl.info.client.smartdocuments.model.document.Data
+import nl.info.zac.documentcreation.model.DocumentCreationData
 import nl.info.client.smartdocuments.model.document.Deposit
 import nl.info.client.smartdocuments.model.document.Document
 import nl.info.client.smartdocuments.model.document.File
@@ -80,7 +80,7 @@ class SmartDocumentsService @Inject constructor(
      * Sends a request to SmartDocuments to create a document using the Smart Documents wizard (= attended mode).
      */
     fun createDocumentAttended(
-        data: Data,
+        data: DocumentCreationData,
         smartDocument: SmartDocument
     ): DocumentCreationAttendedResponse {
         val deposit = Deposit(

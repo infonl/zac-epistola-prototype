@@ -13,6 +13,7 @@ src/generated
 wildfly-*
 .env*
 !.env.example
+!.env.epistola.tpl
 src/e2e/ExportData/*
 src/main/app/.nvmrc
 bin

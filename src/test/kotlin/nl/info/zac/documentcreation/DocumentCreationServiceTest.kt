@@ -14,7 +14,7 @@ import io.mockk.slot
 import io.mockk.verify
 import jakarta.enterprise.inject.Instance
 import nl.info.client.smartdocuments.model.createFile
-import nl.info.client.smartdocuments.model.document.Data
+import nl.info.zac.documentcreation.model.DocumentCreationData
 import nl.info.client.smartdocuments.model.document.Selection
 import nl.info.client.smartdocuments.model.document.SmartDocument
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
@@ -177,7 +177,7 @@ class DocumentCreationServiceTest : BehaviorSpec({
         val documentCreationToken = UUID.randomUUID()
         val templateGroupName = "fakeTemplateGroupName"
         val templateName = "fakeTemplateName"
-        val dataSlot = slot<Data>()
+        val dataSlot = slot<DocumentCreationData>()
         val smartDocumentSlot = slot<SmartDocument>()
 
         every { loggedInUserInstance.get() } returns loggedInUser

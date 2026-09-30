@@ -9,9 +9,11 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import nl.info.zac.configuration.exception.InvalidDocumentCreationProviderConfigurationException
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
+import java.time.Duration
 import java.util.Optional
 
 private fun configuration(
@@ -20,14 +22,16 @@ private fun configuration(
     epistolaRestUrl: String? = null,
     epistolaTenantId: String? = null,
     epistolaCatalogId: String? = null,
-    epistolaApiKey: String? = null
+    epistolaApiKey: String? = null,
+    epistolaGenerationTimeoutSeconds: Long = 60L
 ) = DocumentCreationProviderConfiguration(
     configuredProvider = Optional.ofNullable(provider),
     smartDocumentsEnabled = Optional.ofNullable(smartDocumentsEnabled),
     epistolaRestUrl = Optional.ofNullable(epistolaRestUrl),
     epistolaTenantId = Optional.ofNullable(epistolaTenantId),
     epistolaCatalogId = Optional.ofNullable(epistolaCatalogId),
-    epistolaApiKey = Optional.ofNullable(epistolaApiKey)
+    epistolaApiKey = Optional.ofNullable(epistolaApiKey),
+    epistolaGenerationTimeoutSeconds = epistolaGenerationTimeoutSeconds
 )
 
 private fun epistolaConfiguration(
@@ -35,14 +39,16 @@ private fun epistolaConfiguration(
     epistolaRestUrl: String? = "https://epistola.example.com",
     epistolaTenantId: String? = "zac-gemeente",
     epistolaCatalogId: String? = "zac-catalogus",
-    epistolaApiKey: String? = "fakeApiKey"
+    epistolaApiKey: String? = "fakeApiKey",
+    epistolaGenerationTimeoutSeconds: Long = 60L
 ) = configuration(
     provider = "Epistola",
     smartDocumentsEnabled = smartDocumentsEnabled,
     epistolaRestUrl = epistolaRestUrl,
     epistolaTenantId = epistolaTenantId,
     epistolaCatalogId = epistolaCatalogId,
-    epistolaApiKey = epistolaApiKey
+    epistolaApiKey = epistolaApiKey,
+    epistolaGenerationTimeoutSeconds = epistolaGenerationTimeoutSeconds
 )
 
 class DocumentCreationProviderConfigurationTest : BehaviorSpec({
@@ -82,6 +88,43 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
             then("Epistola is the active provider and startup is accepted") {
                 configuration.activeProvider shouldBe DocumentCreationProvider.EPISTOLA
                 shouldNotThrowAny { configuration.onStartup(Any()) }
+            }
+        }
+    }
+
+    given("Epistola selected with all its settings and a generation timeout of 45 seconds") {
+        val configuration = epistolaConfiguration(epistolaGenerationTimeoutSeconds = 45L)
+
+        `when`("the Epistola settings are produced") {
+            val epistolaSettings = configuration.epistolaSettings()
+
+            then("they carry the configured values, with the timeout as a duration") {
+                epistolaSettings shouldBe EpistolaSettings(
+                    restUrl = "https://epistola.example.com",
+                    tenantId = "zac-gemeente",
+                    catalogId = "zac-catalogus",
+                    apiKey = "fakeApiKey",
+                    generationTimeout = Duration.ofSeconds(45)
+                )
+            }
+
+            and("printing them does not reveal the API key") {
+                epistolaSettings.toString() shouldNotContain "fakeApiKey"
+            }
+        }
+    }
+
+    given("an installation that does not use Epistola") {
+        val configuration = configuration(smartDocumentsEnabled = true)
+
+        `when`("the Epistola settings are asked for anyway") {
+            val invalidDocumentCreationProviderConfigurationException =
+                shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                    configuration.epistolaSettings()
+                }
+
+            then("they are refused, naming what is missing") {
+                invalidDocumentCreationProviderConfigurationException.message shouldContain "EPISTOLA_CLIENT_API_KEY"
             }
         }
     }
@@ -191,4 +234,77 @@ class DocumentCreationProviderConfigurationTest : BehaviorSpec({
         }
     }
 
+    given("Epistola selected with a tenant identifier that is not a slug") {
+        val configuration = epistolaConfiguration(epistolaTenantId = "ZAC_Gemeente")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails rather than every Epistola call being rejected later") {
+                exception.message!! shouldContain "EPISTOLA_TENANT_ID"
+                exception.message!! shouldContain "ZAC_Gemeente"
+            }
+        }
+    }
+
+    given("Epistola selected with a tenant identifier shorter than Epistola accepts") {
+        val configuration = epistolaConfiguration(epistolaTenantId = "ab")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails naming the accepted length") {
+                exception.message!! shouldContain "3 to 63"
+            }
+        }
+    }
+
+    given("Epistola selected with a tenant identifier that carries trailing whitespace") {
+        val configuration = epistolaConfiguration(epistolaTenantId = "zac-gemeente ")
+
+        `when`("the configuration is validated on startup") {
+            val invalidDocumentCreationProviderConfigurationException =
+                shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                    configuration.onStartup(Any())
+                }
+
+            then("startup fails, because ZAC sends the identifier to Epistola exactly as it is configured") {
+                invalidDocumentCreationProviderConfigurationException.message shouldContain "'zac-gemeente '"
+            }
+        }
+    }
+
+    given("Epistola selected with a catalog identifier that is not a slug") {
+        val configuration = epistolaConfiguration(epistolaCatalogId = "ZAC/Catalogus")
+
+        `when`("the configuration is validated on startup") {
+            val exception = shouldThrow<InvalidDocumentCreationProviderConfigurationException> {
+                configuration.onStartup(Any())
+            }
+
+            then("startup fails naming the accepted length, which is shorter than the tenant's") {
+                exception.message!! shouldContain "EPISTOLA_CATALOG_ID"
+                exception.message!! shouldContain "ZAC/Catalogus"
+                exception.message!! shouldContain "3 to 50"
+            }
+        }
+    }
+
+    given("SmartDocuments selected with a tenant identifier that is not a slug") {
+        val configuration = configuration(
+            provider = "SmartDocuments",
+            smartDocumentsEnabled = true,
+            epistolaTenantId = "ZAC_Gemeente"
+        )
+
+        `when`("the configuration is validated on startup") {
+            then("the unused Epistola setting is not held against it") {
+                shouldNotThrowAny { configuration.onStartup(Any()) }
+            }
+        }
+    }
 })

@@ -33,10 +33,13 @@ import nl.info.client.zgw.model.createRolVestiging
 import nl.info.client.zgw.model.createStatus
 import nl.info.client.zgw.model.createVerlenging
 import nl.info.client.zgw.model.createZaak
+import nl.info.client.zgw.model.createZaakEigenschap
 import nl.info.client.zgw.model.createZaakobjectProductaanvraag
 import nl.info.client.zgw.shared.ZgwApiService
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
+import nl.info.client.zgw.zrc.model.generated.GeoJSONGeometry
+import nl.info.client.zgw.zrc.model.generated.GeometryTypeEnum
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createResultaatType
 import nl.info.client.zgw.ztc.model.createRolType
@@ -48,8 +51,10 @@ import nl.info.zac.identity.IdentityService
 import nl.info.zac.identity.model.createUser
 import nl.info.zac.identity.model.getFullName
 import nl.info.zac.productaanvraag.ProductaanvraagService
+import nl.info.zac.documentcreation.model.ZaakGeometrieData
 import nl.info.zac.productaanvraag.model.createProductaanvraagDimpact
 import org.flowable.task.api.TaskInfo
+import java.math.BigDecimal
 import java.net.URI
 import java.util.UUID
 
@@ -566,6 +571,114 @@ class DocumentCreationDataServiceTest : BehaviorSpec({
                     naam shouldBe taskInfo.name
                     behandelaar shouldBe null
                 }
+            }
+        }
+    }
+    given("A zaak with a point location and two eigenschappen") {
+        val loggedInUser = createLoggedInUser()
+        val zaakType = createZaakType()
+        val zaak = createZaak(zaaktypeUri = zaakType.url).apply {
+            zaakgeometrie = GeoJSONGeometry().apply {
+                type = GeometryTypeEnum.POINT
+                coordinates = listOf(BigDecimal("5.1214"), BigDecimal("52.0907"))
+            }
+        }
+
+        every { zgwApiService.findInitiatorRoleForZaak(zaak) } returns null
+        every { zrcClientService.listZaakobjecten(any()) } returns Results(emptyList(), 0)
+        every { zgwApiService.findBehandelaarMedewerkerRoleForZaak(zaak) } returns null
+        every { zgwApiService.findGroepForZaak(zaak) } returns null
+        every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
+        every { zrcClientService.listZaakeigenschappen(zaak.uuid) } returns listOf(
+            createZaakEigenschap(naam = "fakeAanvraagnummer", waarde = "fakeAanvraagnummerWaarde"),
+            createZaakEigenschap(naam = "fakeDossiernummer", waarde = "fakeDossiernummerWaarde")
+        )
+
+        `when`("Epistola data is created") {
+            val data = documentCreationDataService.createEpistolaData(
+                loggedInUser = loggedInUser,
+                zaak = zaak
+            )
+
+            then("the location is named as a latitude and a longitude") {
+                data.zaakData.zaakgeometrie shouldBe ZaakGeometrieData(
+                    type = "Point",
+                    latitude = 52.0907,
+                    longitude = 5.1214
+                )
+            }
+
+            and("the eigenschappen are available by name") {
+                data.zaakData.eigenschappen shouldBe mapOf(
+                    "fakeAanvraagnummer" to "fakeAanvraagnummerWaarde",
+                    "fakeDossiernummer" to "fakeDossiernummerWaarde"
+                )
+            }
+        }
+
+        `when`("SmartDocuments data is created for the same zaak") {
+            val data = documentCreationDataService.createData(
+                loggedInUser = loggedInUser,
+                zaak = zaak
+            )
+
+            then("neither reaches the payload an existing integration receives") {
+                data.zaakData.zaakgeometrie shouldBe null
+                data.zaakData.eigenschappen shouldBe null
+            }
+        }
+    }
+
+    given("A zaak with two eigenschappen sharing a name and one without a name") {
+        val loggedInUser = createLoggedInUser()
+        val zaakType = createZaakType()
+        val zaak = createZaak(zaaktypeUri = zaakType.url)
+
+        every { zgwApiService.findInitiatorRoleForZaak(zaak) } returns null
+        every { zrcClientService.listZaakobjecten(any()) } returns Results(emptyList(), 0)
+        every { zgwApiService.findBehandelaarMedewerkerRoleForZaak(zaak) } returns null
+        every { zgwApiService.findGroepForZaak(zaak) } returns null
+        every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
+        every { zrcClientService.listZaakeigenschappen(zaak.uuid) } returns listOf(
+            createZaakEigenschap(naam = "fakeDuplicaat", waarde = "fakeEersteWaarde"),
+            createZaakEigenschap(naam = "fakeDuplicaat", waarde = "fakeTweedeWaarde"),
+            createZaakEigenschap(naam = "", waarde = "fakeNaamloosWaarde"),
+            createZaakEigenschap(naam = "fakeUniek", waarde = "fakeUniekeWaarde")
+        )
+
+        `when`("Epistola data is created") {
+            val data = documentCreationDataService.createEpistolaData(
+                loggedInUser = loggedInUser,
+                zaak = zaak
+            )
+
+            then("only the eigenschap a template can address unambiguously is offered") {
+                data.zaakData.eigenschappen shouldBe mapOf("fakeUniek" to "fakeUniekeWaarde")
+            }
+        }
+    }
+
+    given("A zaak without a location and without eigenschappen") {
+        val loggedInUser = createLoggedInUser()
+        val zaakType = createZaakType()
+        val zaak = createZaak(zaaktypeUri = zaakType.url)
+
+        every { zgwApiService.findInitiatorRoleForZaak(zaak) } returns null
+        every { zrcClientService.listZaakobjecten(any()) } returns Results(emptyList(), 0)
+        every { zgwApiService.findBehandelaarMedewerkerRoleForZaak(zaak) } returns null
+        every { zgwApiService.findGroepForZaak(zaak) } returns null
+        every { ztcClientService.readZaaktype(zaak.zaaktype) } returns zaakType
+        every { zrcClientService.listZaakeigenschappen(zaak.uuid) } returns emptyList()
+
+        `when`("Epistola data is created") {
+            val data = documentCreationDataService.createEpistolaData(
+                loggedInUser = loggedInUser,
+                zaak = zaak
+            )
+
+            then("both are absent rather than empty") {
+                data.zaakData.zaakgeometrie shouldBe null
+                data.zaakData.eigenschappen shouldBe null
             }
         }
     }

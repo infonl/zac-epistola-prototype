@@ -11,7 +11,7 @@ help()
 {
    echo "Starts the ZAC Docker Compose environment using the 1Password CLI tools to retrieve secrets."
    echo
-   echo "Syntax: $0 [-d|e|h|z|b|l|m|t|o|n|a|f]"
+   echo "Syntax: $0 [-d|e|h|z|b|l|E|W|m|t|o|n|a|f]"
    echo
    echo "General:"
    echo "   -d     Delete local Docker named volumes before starting Docker Compose."
@@ -22,6 +22,8 @@ help()
    echo "   -z     Start last-known-good ZAC Docker container."
    echo "   -b     Build and start local ZAC Docker image."
    echo "   -l     Start locally built ZAC Docker image."
+   echo "   -E     Run ZAC with Epistola as its document creation provider, against the real Epistola API (credentials from 1Password)."
+   echo "   -W     As -E, but against a local WireMock stand-in instead of the real Epistola API."
    echo
    echo "Additional components:"
    echo "   -m     Start the containers used for handling metrics and traces."
@@ -44,6 +46,8 @@ buildZac=false
 localZac=false
 disableZacOpenTelemetry=true
 disableOnePassword=false
+epistolaProvider=false
+epistolaWireMock=false
 profiles=()
 namedVolumes=(
   "zac-keycloak-database-data"
@@ -58,7 +62,7 @@ namedVolumes=(
   "grafana-data"
 )
 
-while getopts ':dhzblmtonafe' OPTION; do
+while getopts ':dhzblEWmtonafe' OPTION; do
   case $OPTION in
     d)
       echo "Deleting named Docker volumes .."
@@ -81,6 +85,13 @@ while getopts ':dhzblmtonafe' OPTION; do
     l)
       profiles+=("zac")
       localZac=true
+      ;;
+    E)
+      epistolaProvider=true
+      ;;
+    W)
+      epistolaProvider=true
+      epistolaWireMock=true
       ;;
     m)
       profiles+=("metrics")
@@ -154,13 +165,28 @@ fi
 # Please see docs/INSTALL.md for details on how to use this script.
 echo "Starting Docker Compose environment with profiles [$profilesList] ..."
 compose_files=""
+overlays=()
 if [ -n "${DOCKER_USE_ARM64_CONTAINERS:-}" ]; then
   echo "Using arm64 containers ..."
+  overlays+=("docker-compose.arm64-override.yaml")
+fi
+if [ "$epistolaProvider" = "true" ]; then
+  overlays+=("docker-compose.epistola.yaml")
+  if [ "$epistolaWireMock" = "true" ]; then
+    echo "Using Epistola as the document creation provider, against the local WireMock stand-in ..."
+    overlays+=("docker-compose.epistola-wiremock.yaml")
+  else
+    echo "Using Epistola as the document creation provider, against the real Epistola API ..."
+  fi
+fi
+if [ ${#overlays[@]} -ne 0 ]; then
   compose_files="-f docker-compose.yaml"
   if [ -f docker-compose.override.yml ]; then
     compose_files="$compose_files -f docker-compose.override.yml"
   fi
-  compose_files="$compose_files -f docker-compose.arm64-override.yaml"
+  for overlay in "${overlays[@]}"; do
+    compose_files="$compose_files -f $overlay"
+  done
 fi
 
 op_script=""
@@ -169,7 +195,11 @@ if [ "$disableOnePassword" = "false" ]; then
     echo "1Password CLI ('op') not found. Only using environment variables set manually."
   elif op vault get Dimpact; then
     echo "Using 1Password CLI tools to retrieve secrets from vault 'Dimpact'..."
-    op_script='op run --env-file=./.env.tpl --no-masking --'
+    op_env_files="--env-file=./.env.tpl"
+    if [ "$epistolaProvider" = "true" ] && [ "$epistolaWireMock" = "false" ]; then
+      op_env_files="$op_env_files --env-file=./.env.epistola.tpl"
+    fi
+    op_script="op run $op_env_files --no-masking --"
   else
     echo "No access to 1Password vault 'Dimpact'. Only using environment variables set manually."
   fi
