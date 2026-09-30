@@ -559,6 +559,31 @@ class RestExceptionMapperTest : BehaviorSpec({
             }
         }
 
+        given("A server error exception with a detail for the user") {
+            val exception = ServerErrorException(
+                errorCode = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED,
+                message = "fakeLoggedMessage",
+                detail = "fakeDetailForTheUser"
+            )
+
+            `when`("the exception is mapped to a response") {
+                val response = restExceptionMapper.toResponse(exception)
+
+                then("the detail is returned next to the error code") {
+                    checkResponse(
+                        response = response,
+                        errorMessage = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED.value,
+                        exceptionMessage = "fakeDetailForTheUser",
+                        expectedStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR
+                    )
+                }
+
+                and("only the message is logged, never the detail") {
+                    verify(exactly = 1) { log(any(), Level.SEVERE, "fakeLoggedMessage", exception) }
+                }
+            }
+        }
+
         given("An exception chain IllegalArgumentException->InvocationTargetException->ServerErrorException") {
             val exception = ServerErrorException(ErrorCode.ERROR_CODE_BAD_BRP_PROTOCOLLERING_CONFIGURATION, "message")
             val chain = IllegalArgumentException(InvocationTargetException(exception))
@@ -577,6 +602,32 @@ class RestExceptionMapperTest : BehaviorSpec({
 
                 and("it should log the exception") {
                     verify(exactly = 1) { log(any(), Level.SEVERE, exception.message!!, exception) }
+                }
+            }
+        }
+
+        given("An exception chain IllegalArgumentException->InvocationTargetException->ServerErrorException with a detail for the user") {
+            val exception = ServerErrorException(
+                errorCode = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED,
+                message = "fakeLoggedMessage",
+                detail = "fakeDetailForTheUser"
+            )
+            val chain = IllegalArgumentException(InvocationTargetException(exception))
+
+            `when`("the chain is mapped to a response") {
+                val response = restExceptionMapper.toResponse(chain)
+
+                then("the detail is returned next to the error code, and not the message meant for the log") {
+                    checkResponse(
+                        response = response,
+                        errorMessage = ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED.value,
+                        exceptionMessage = "fakeDetailForTheUser",
+                        expectedStatus = HttpStatus.SC_INTERNAL_SERVER_ERROR
+                    )
+                }
+
+                and("only the message is logged, never the detail") {
+                    verify(exactly = 1) { log(any(), Level.SEVERE, "fakeLoggedMessage", exception) }
                 }
             }
         }

@@ -9,9 +9,12 @@ import { lastValueFrom, map, Observable } from "rxjs";
 import { UtilService } from "../core/service/util.service";
 import { DeleteBody, PostBody, PutBody } from "../shared/http/http-client";
 import { mergeMutationOptions } from "../shared/http/merge-mutation-options";
+import { SKIP_GLOBAL_ERROR_HANDLING } from "../shared/http/query-client";
 import { ZacHttpClient } from "../shared/http/zac-http-client";
 import { StaleTimes, ZacQueryClient } from "../shared/http/zac-query-client";
 import { GeneratedType } from "../shared/utils/generated-types";
+
+const EPISTOLA_STATUS_POLL_INTERVAL = 1000;
 
 @Injectable({
   providedIn: "root",
@@ -97,6 +100,28 @@ export class InformatieObjectenService {
     return this.zacQueryClient.POST(
       "/rest/document-creation/epistola/create-document",
     );
+  }
+
+  /**
+   * Polled while the request that generates the document waits. Kept for no time once nothing polls it, so the
+   * next generation does not start from the last one's status.
+   *
+   * The status only adds detail to a request that reports its own outcome, so a failed poll is not reported,
+   * and polling stops at the first failure rather than repeating it every second.
+   */
+  readEpistolaDocumentCreationStatusQuery(zaakUuid: string) {
+    return {
+      ...this.zacQueryClient.GET(
+        "/rest/document-creation/epistola/create-document/{zaakUuid}/status",
+        { path: { zaakUuid } },
+      ),
+      refetchInterval: (query: { state: { status: string } }) =>
+        query.state.status === "error" ? false : EPISTOLA_STATUS_POLL_INTERVAL,
+      meta: SKIP_GLOBAL_ERROR_HANDLING,
+      staleTime: StaleTimes.Instant,
+      gcTime: StaleTimes.Instant,
+      retry: false,
+    };
   }
 
   readHuidigeVersieEnkelvoudigInformatieObject(uuid: string) {

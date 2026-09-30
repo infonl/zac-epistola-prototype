@@ -6,18 +6,23 @@ package nl.info.client.zgw.shared
 
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
+import jakarta.ws.rs.ProcessingException
+import jakarta.ws.rs.NotFoundException
 import nl.info.client.zgw.zrc.model.Rol
 import nl.info.client.zgw.zrc.model.RolListParameters
 import nl.info.client.zgw.zrc.model.RolMedewerker
 import nl.info.client.zgw.zrc.model.RolOrganisatorischeEenheid
 import nl.info.client.zgw.zrc.model.zaakUUID
 import nl.info.client.zgw.drc.DrcClientService
+import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.zac.document.content.DocumentContent
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObject
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.Gebruiksrechten
 import nl.info.client.zgw.shared.exception.ResultTypeNotFoundException
 import nl.info.client.zgw.shared.exception.StatusTypeNotFoundException
+import nl.info.client.zgw.shared.exception.ZgwErrorException
+import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
 import nl.info.client.zgw.util.convertToDateTime
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
@@ -259,22 +264,55 @@ class ZgwApiService @Inject constructor(
         } ?: drcClientService.createEnkelvoudigInformatieobject(
             enkelvoudigInformatieObjectCreateLockRequest
         )
-        // Gebruiksrechten are required for every created zaakinformatieobject or else
-        // the zaak in question can no longer be aborted or closed (OpenZaak will return a 400 error on aborting or closing in that case).
-        val gebruiksrechten = Gebruiksrechten().apply {
-            informatieobject = newInformatieObjectData.url
-            startdatum = newInformatieObjectData.creatiedatum.convertToDateTime().toOffsetDateTime()
-            omschrijvingVoorwaarden = omschrijvingVoorwaardenGebruiksrechten
-        }
-        drcClientService.createGebruiksrechten(gebruiksrechten)
+        var isLinkedToZaak = false
+        try {
+            // Gebruiksrechten are required for every created zaakinformatieobject or else the zaak in question
+            // can no longer be aborted or closed (OpenZaak will return a 400 error on aborting or closing in that case).
+            val gebruiksrechten = Gebruiksrechten().apply {
+                informatieobject = newInformatieObjectData.url
+                startdatum = newInformatieObjectData.creatiedatum.convertToDateTime().toOffsetDateTime()
+                omschrijvingVoorwaarden = omschrijvingVoorwaardenGebruiksrechten
+            }
+            drcClientService.createGebruiksrechten(gebruiksrechten)
 
-        val zaakInformatieObjectRequest = ZaakInformatieObjectRequest().apply {
-            informatieobject = newInformatieObjectData.url
-            this.zaak = zaak.url
-            this.titel = titel
-            this.beschrijving = beschrijving
+            val zaakInformatieObjectRequest = ZaakInformatieObjectRequest().apply {
+                informatieobject = newInformatieObjectData.url
+                this.zaak = zaak.url
+                this.titel = titel
+                this.beschrijving = beschrijving
+            }
+            return zrcClientService.createZaakInformatieobject(zaakInformatieObjectRequest).also { isLinkedToZaak = true }
+        } finally {
+            if (!isLinkedToZaak) deleteUnlinkedInformatieobject(newInformatieObjectData, zaak)
         }
-        return zrcClientService.createZaakInformatieobject(zaakInformatieObjectRequest)
+    }
+
+    /**
+     * An informatieobject that no zaak links to is in no dossier, so nobody would find it. What the caller sees is
+     * the failure that left it unlinked, so a failure to delete it does not replace that one: an informatieobject
+     * that is already gone is fine, and any other failure is logged for a beheerder to resolve.
+     */
+    private fun deleteUnlinkedInformatieobject(enkelvoudigInformatieObject: EnkelvoudigInformatieObject, zaak: Zaak) {
+        val failureToDelete = try {
+            drcClientService.deleteEnkelvoudigInformatieobject(enkelvoudigInformatieObject.url.extractUuid())
+            null
+        } catch (_: NotFoundException) {
+            null
+        } catch (drcRuntimeException: DrcRuntimeException) {
+            drcRuntimeException.message
+        } catch (zgwValidationErrorException: ZgwValidationErrorException) {
+            zgwValidationErrorException.message
+        } catch (zgwErrorException: ZgwErrorException) {
+            zgwErrorException.zgwError.toString()
+        } catch (processingException: ProcessingException) {
+            processingException.message
+        }
+        failureToDelete?.let {
+            LOG.severe {
+                "Informatieobject '${enkelvoudigInformatieObject.url}' was created for zaak '${zaak.identificatie}' " +
+                    "but could not be linked to it, and deleting it failed too ($it). Link it to the zaak or delete it."
+            }
+        }
     }
 
     /**

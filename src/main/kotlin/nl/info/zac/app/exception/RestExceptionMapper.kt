@@ -130,6 +130,7 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
                 responseStatus = Response.Status.INTERNAL_SERVER_ERROR,
                 errorCode = exception.errorCode,
                 exception = exception,
+                exceptionMessage = exception.detail,
                 logLevel = Level.SEVERE
             )
             is ZaakWithABesluitCannotBeTerminatedException -> generateResponse(
@@ -170,7 +171,7 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
                     generateServerErrorResponse(
                         exception = this,
                         errorCode = this.errorCode,
-                        exceptionMessage = this.message
+                        exceptionMessage = this.detail ?: this.message
                     )
                 }
             }

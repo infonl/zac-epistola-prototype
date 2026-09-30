@@ -8,9 +8,13 @@ package nl.info.zac.exception
  * Exception thrown when a server error occurs in the ZAC application.
  * Contains an error code which can be translated to a user-friendly message.
  * These exceptions typically result in a 500 Internal Server Error response.
+ *
+ * [detail] is shown to the user next to the translated error code, and is kept out of the message so that it never
+ * reaches the log: it may carry what an external system said about the user's data.
  */
 open class ServerErrorException(
     val errorCode: ErrorCode,
     message: String,
-    cause: Throwable? = null
+    cause: Throwable? = null,
+    val detail: String? = null
 ) : RuntimeException(message, cause)

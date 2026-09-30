@@ -17,9 +17,16 @@ data class EpistolaSettings(
     val tenantId: String,
     val catalogId: String,
     val apiKey: String,
-    val generationTimeout: Duration
+    val generationTimeout: Duration,
+    val jobHeldUpAfter: Duration = DEFAULT_JOB_HELD_UP_AFTER
 ) {
     companion object {
+        /**
+         * A document normally takes 5 to 10 seconds from submitting to downloading, so a job that has waited or rendered
+         * longer than this is held up at Epistola rather than merely slow.
+         */
+        val DEFAULT_JOB_HELD_UP_AFTER: Duration = Duration.ofSeconds(15)
+
         /** Epistola identifies a tenant and a catalog by a slug and rejects anything else on every call. */
         private val SLUG_PATTERN = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
         private val TENANT_ID_LENGTH = 3..63
@@ -82,5 +89,5 @@ data class EpistolaSettings(
     /** Keeps the API key out of logs and exception messages that print these settings. */
     override fun toString() =
         "EpistolaSettings(restUrl=$restUrl, tenantId=$tenantId, catalogId=$catalogId, apiKey=<hidden>, " +
-            "generationTimeout=$generationTimeout)"
+            "generationTimeout=$generationTimeout, jobHeldUpAfter=$jobHeldUpAfter)"
 }

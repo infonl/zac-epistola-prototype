@@ -11,6 +11,7 @@ import app.epistola.client.jakarta.model.PageMeta
 import app.epistola.client.jakarta.model.TemplateDto
 import app.epistola.client.jakarta.model.TemplateListResponse
 import app.epistola.client.jakarta.model.TemplateSummaryDto
+import java.time.OffsetDateTime
 import java.util.UUID
 
 fun createGenerationJobResponse(
@@ -25,13 +26,17 @@ fun createDocumentGenerationItem(
     status: DocumentGenerationItemDto.StatusEnum = DocumentGenerationItemDto.StatusEnum.COMPLETED,
     documentId: UUID? = UUID.randomUUID(),
     correlationId: String = "fakeCorrelationId",
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    createdAt: OffsetDateTime? = null,
+    startedAt: OffsetDateTime? = null
 ): DocumentGenerationItemDto = DocumentGenerationItemDto()
     .id(id)
     .status(status)
     .documentId(documentId)
     .correlationId(correlationId)
     .errorMessage(errorMessage)
+    .createdAt(createdAt)
+    .startedAt(startedAt)
 
 fun createGenerationJobDetail(
     items: List<DocumentGenerationItemDto> = listOf(createDocumentGenerationItem())

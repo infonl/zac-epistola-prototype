@@ -9,12 +9,14 @@ import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.IN_PROGRESS
+import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.PENDING
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.comparables.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
 import io.mockk.just
@@ -22,8 +24,12 @@ import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
+import jakarta.ws.rs.ProcessingException
+import jakarta.ws.rs.core.Response
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
+import nl.info.client.epistola.exception.EpistolaRequestFailedException
+import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
@@ -31,6 +37,12 @@ import nl.info.client.epistola.model.createTemplate
 import nl.info.client.epistola.model.createTemplateListResponse
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.createEpistolaSettings
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_RENDERING
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_NOT_FOUND
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
+import java.net.ConnectException
 import java.nio.file.Files
 import java.time.Duration
 import java.util.UUID
@@ -56,6 +68,8 @@ class EpistolaClientServiceTest : BehaviorSpec({
             generationTimeout = generationTimeout
         )
     )
+
+    fun createApiException(status: Int) = ApiException(mockk<Response> { every { this@mockk.status } returns status })
 
     afterEach { checkUnnecessaryStub() }
 
@@ -162,8 +176,15 @@ class EpistolaClientServiceTest : BehaviorSpec({
                     )
                 }
 
-                then("the reason Epistola gave is part of the failure") {
-                    exception.message shouldContain "fakeTemplateRenderingError"
+                then("the reason Epistola gave is shown to the behandelaar") {
+                    exception.detail shouldBe "fakeTemplateRenderingError"
+                }
+
+                and("the reason stays out of the message that is logged, because Epistola may quote the data") {
+                    exception.message shouldNotContain "fakeTemplateRenderingError"
+                    exception.message shouldContain requestId.toString()
+                    exception.message shouldContain FAKE_TEMPLATE_ID
+                    exception.message shouldContain FAKE_CORRELATION_ID
                 }
 
                 and("no document is downloaded") {
@@ -178,7 +199,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
         given("a job whose status Epistola fails to report, for example with a 503 while ZAC polls") {
             val requestId = UUID.randomUUID()
-            val apiException = ApiException()
+            val apiException = createApiException(503)
 
             every {
                 generationApi.generateDocument(FAKE_TENANT_ID, any())
@@ -187,7 +208,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } just runs
 
             `when`("the document is generated") {
-                val exception = shouldThrow<ApiException> {
+                val exception = shouldThrow<EpistolaRequestFailedException> {
                     createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
@@ -196,8 +217,14 @@ class EpistolaClientServiceTest : BehaviorSpec({
                     )
                 }
 
-                then("the failure reaches the caller") {
-                    exception shouldBe apiException
+                then("the behandelaar learns that Epistola is unavailable") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
+                    exception.cause shouldBe apiException
+                }
+
+                and("the log names the request and the HTTP status") {
+                    exception.message shouldContain requestId.toString()
+                    exception.message shouldContain "HTTP 503"
                 }
 
                 and("the job Epistola accepted is cancelled, so trying again does not leave a second document") {
@@ -229,6 +256,10 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
                 then("waiting stops and the request is named") {
                     exception.message shouldContain requestId.toString()
+                }
+
+                and("the job is reported as held up while Epistola rendered it, not as a general failure") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_RENDERING
                 }
 
                 and("the job is cancelled, so trying again does not leave a second document at Epistola") {
@@ -290,6 +321,130 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 then("waiting stops at the timeout instead of sleeping out the next full back-off") {
                     epistolaDocumentGenerationTimeoutException.message shouldContain requestId.toString()
                     waitingTime shouldBeLessThan 1.4.seconds
+                }
+            }
+        }
+
+        given("a job that is still waiting in Epistola's queue when the timeout passes") {
+            val requestId = UUID.randomUUID()
+
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
+                items = listOf(createDocumentGenerationItem(status = PENDING))
+            )
+            every { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) } just runs
+
+            `when`("the configured timeout passes") {
+                val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
+                    createService().generateDocument(
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap(),
+                        fileName = FAKE_FILE_NAME,
+                        correlationId = FAKE_CORRELATION_ID
+                    )
+                }
+
+                then("the job is reported as held up in Epistola's queue") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE
+                }
+
+                and("it is still cancelled at ZAC's own timeout") {
+                    verify(exactly = 1) { generationApi.cancelGenerationJob(FAKE_TENANT_ID, requestId) }
+                }
+            }
+        }
+
+        given("a job that waits in the queue, then renders, then completes") {
+            val requestId = UUID.randomUUID()
+            val documentId = UUID.randomUUID()
+            val reportedJobStatuses = mutableListOf<EpistolaJobStatus>()
+
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returnsMany listOf(
+                createGenerationJobDetail(items = listOf(createDocumentGenerationItem(status = PENDING))),
+                createGenerationJobDetail(items = listOf(createDocumentGenerationItem(status = IN_PROGRESS))),
+                createGenerationJobDetail(items = listOf(createDocumentGenerationItem(documentId = documentId)))
+            )
+            every {
+                generationApi.downloadDocument(FAKE_TENANT_ID, documentId)
+            } returns Files.createTempFile("epistola", ".pdf").toFile()
+
+            `when`("the document is generated") {
+                createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
+                    templateId = FAKE_TEMPLATE_ID,
+                    data = emptyMap(),
+                    fileName = FAKE_FILE_NAME,
+                    correlationId = FAKE_CORRELATION_ID,
+                    onJobStatus = reportedJobStatuses::add
+                )
+
+                then("each status Epistola reported is passed on, and the finished one is not") {
+                    reportedJobStatuses shouldBe listOf(EpistolaJobStatus.WAITING_IN_QUEUE, EpistolaJobStatus.RENDERING)
+                }
+            }
+        }
+
+        given("a template that Epistola does not know when the job is submitted") {
+            every { generationApi.generateDocument(FAKE_TENANT_ID, any()) } throws createApiException(404)
+
+            `when`("the document is generated") {
+                val exception = shouldThrow<EpistolaRequestFailedException> {
+                    createService().generateDocument(
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap(),
+                        fileName = FAKE_FILE_NAME,
+                        correlationId = FAKE_CORRELATION_ID
+                    )
+                }
+
+                then("the behandelaar learns that the configured template no longer exists") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_TEMPLATE_NOT_FOUND
+                    exception.message shouldContain FAKE_TEMPLATE_ID
+                    exception.message shouldContain FAKE_CORRELATION_ID
+                }
+
+                and("no job is polled or cancelled, because Epistola accepted none") {
+                    verify(exactly = 0) { generationApi.getGenerationJobStatus(any(), any()) }
+                    verify(exactly = 0) { generationApi.cancelGenerationJob(any(), any()) }
+                }
+            }
+        }
+
+        given("a completed job whose document cannot be downloaded") {
+            val requestId = UUID.randomUUID()
+            val documentId = UUID.randomUUID()
+
+            every {
+                generationApi.generateDocument(FAKE_TENANT_ID, any())
+            } returns createGenerationJobResponse(requestId = requestId)
+            every { generationApi.getGenerationJobStatus(FAKE_TENANT_ID, requestId) } returns createGenerationJobDetail(
+                items = listOf(createDocumentGenerationItem(documentId = documentId))
+            )
+            every {
+                generationApi.downloadDocument(FAKE_TENANT_ID, documentId)
+            } throws ProcessingException(ConnectException("fakeConnectionRefused"))
+            every { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) } just runs
+
+            `when`("the document is generated") {
+                val exception = shouldThrow<EpistolaRequestFailedException> {
+                    createService().generateDocument(
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap(),
+                        fileName = FAKE_FILE_NAME,
+                        correlationId = FAKE_CORRELATION_ID
+                    )
+                }
+
+                then("the behandelaar learns that Epistola is unavailable") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
+                }
+
+                and("Epistola's copy is deleted, because nothing will download it any more") {
+                    verify(exactly = 1) { generationApi.deleteDocument(FAKE_TENANT_ID, documentId) }
                 }
             }
         }
@@ -383,6 +538,23 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
     }
 
+    context("reading a template that Epistola refuses to show") {
+        given("an API key that Epistola rejects") {
+            every { templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } throws createApiException(401)
+
+            `when`("the schema is read") {
+                val exception = shouldThrow<EpistolaRequestFailedException> {
+                    createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+                }
+
+                then("the behandelaar learns that ZAC has no access to Epistola") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_ACCESS_DENIED
+                    exception.message shouldContain "HTTP 401"
+                }
+            }
+        }
+    }
+
     context("listing templates") {
         given("a catalog that fits on one page") {
             val templateSummary = createTemplateSummary()
@@ -430,6 +602,25 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 then("no templates are returned and no further page is requested") {
                     templates shouldBe emptyList()
                     verify(exactly = 1) { templatesApi.listTemplates(any(), any(), any(), any(), any(), any(), any()) }
+                }
+            }
+        }
+    }
+
+    context("listing templates while Epistola cannot be reached") {
+        given("a connection that Epistola's host refuses") {
+            every {
+                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
+            } throws ProcessingException(ConnectException("fakeConnectionRefused"))
+
+            `when`("the templates are listed") {
+                val exception = shouldThrow<EpistolaRequestFailedException> {
+                    createService().listTemplates()
+                }
+
+                then("Epistola counts as unavailable, instead of the catalog as empty") {
+                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
+                    exception.message shouldContain FAKE_CATALOG_ID
                 }
             }
         }

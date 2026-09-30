@@ -17,7 +17,14 @@ import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.
  * then rethrows the message it built, so what reaches the cache is a string
  * rather than a response. Reporting that too would close the dialog it just
  * opened and replace it with a generic one, so only a response is reported.
+ *
+ * A read that repeats itself, or that only adds detail to a request that reports
+ * its own outcome, sets `meta: SKIP_GLOBAL_ERROR_HANDLING` to report nothing.
  */
+export const SKIP_GLOBAL_ERROR_HANDLING = {
+  skipGlobalErrorHandling: true,
+} as const;
+
 export const QUERY_CLIENT = new InjectionToken<QueryClient>("QUERY_CLIENT", {
   providedIn: "root",
   factory: () => {
@@ -25,8 +32,9 @@ export const QUERY_CLIENT = new InjectionToken<QueryClient>("QUERY_CLIENT", {
 
     return new QueryClient({
       queryCache: new QueryCache({
-        onError: (error) => {
+        onError: (error, query) => {
           if (!(error instanceof HttpErrorResponse)) return;
+          if (query.meta?.skipGlobalErrorHandling) return;
 
           foutAfhandelingService.foutAfhandelen(error);
         },
