@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional
 import jakarta.transaction.Transactional.TxType.REQUIRED
 import jakarta.transaction.Transactional.TxType.SUPPORTS
 import nl.info.client.epistola.EpistolaClientService
+import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.admin.ZaaktypeConfigurationService
@@ -29,9 +30,12 @@ import nl.info.zac.epistola.rest.toRestMappedEpistolaTemplateGroup
 import nl.info.zac.epistola.rest.validate
 import nl.info.zac.epistola.templates.EpistolaTemplateGroupRepository
 import nl.info.zac.epistola.templates.model.copyTo
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
+import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 import java.util.logging.Logger
 
 /**
@@ -40,6 +44,9 @@ import java.util.logging.Logger
  *
  * Only the template id is stored. Its name is read from Epistola each time, the same way ZAC handles
  * SmartDocuments templates, so a template renamed in Epistola never shows a stale name.
+ *
+ * The names of the last successful listing are kept in memory, and used only to read the mapping while Epistola
+ * cannot be reached. A restart empties them; the mapping then fails as it does without them.
  */
 @ApplicationScoped
 @Transactional(SUPPORTS)
@@ -56,22 +63,32 @@ class EpistolaTemplatesService @Inject constructor(
         private val LOG = Logger.getLogger(EpistolaTemplatesService::class.java.name)
     }
 
+    private val lastReadTemplateNames = AtomicReference<ReadTemplateNames?>(null)
+
     /**
      * Empty when Epistola is not the active provider. Epistola's settings are only validated when it is, so
      * reaching the client in any other configuration would fail.
+     *
+     * Every successful listing replaces the names kept for the fallback, so a template Epistola has dropped
+     * cannot come back from it.
      */
     fun listTemplates(): List<RestEpistolaTemplate> =
         if (isEpistolaActive()) {
             epistolaClientService.listTemplates()
                 .map { it.toRestEpistolaTemplate() }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                .also { templates ->
+                    lastReadTemplateNames.set(
+                        ReadTemplateNames(namesById = templates.associate { it.id to it.name }, readAt = Instant.now())
+                    )
+                }
         } else {
             emptyList()
         }
 
     fun readTemplateMapping(zaaktypeUuid: UUID): List<RestMappedEpistolaTemplateGroup> =
         readStoredTemplateGroups(zaaktypeUuid).takeIf { it.isNotEmpty() }?.let { templateGroups ->
-            val templateNamesById = listTemplates().associate { it.id to it.name }
+            val templateNamesById = readTemplateNamesById()
             templateGroups
                 .map { it.toRestMappedEpistolaTemplateGroup(templateNamesById) }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -145,6 +162,24 @@ class EpistolaTemplatesService @Inject constructor(
 
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 
+    /**
+     * Only an Epistola that cannot be reached falls back to the names of the last listing. Refused access, a
+     * rate limit or a rejected request say something the beheerder needs to see, and saving a mapping checks
+     * the live list, never these names.
+     */
+    private fun readTemplateNamesById(): Map<String, String> =
+        try {
+            listTemplates().associate { it.id to it.name }
+        } catch (epistolaRequestFailedException: EpistolaRequestFailedException) {
+            lastReadTemplateNames.get()
+                ?.takeIf { epistolaRequestFailedException.errorCode == ERROR_CODE_EPISTOLA_UNAVAILABLE }
+                ?.also {
+                    LOG.warning { "Epistola cannot be reached; listing the templates by the names read at ${it.readAt}" }
+                }
+                ?.namesById
+                ?: throw epistolaRequestFailedException
+        }
+
     private fun readStoredTemplateGroups(zaaktypeUuid: UUID) =
         if (isEpistolaActive()) {
             zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
@@ -160,3 +195,5 @@ class EpistolaTemplatesService @Inject constructor(
                 "No zaaktype configuration found for zaaktype UUID '$zaaktypeUuid'"
             )
 }
+
+private data class ReadTemplateNames(val namesById: Map<String, String>, val readAt: Instant)
