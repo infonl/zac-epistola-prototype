@@ -185,8 +185,8 @@ productkeuze en geen technische.
 *Nu.* Gebouwd in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43), nagegaan met TS-36 t/m TS-43 (testrapport, ronde 3).
 De actie *Nieuwe versie genereren* staat op de pagina van een document dat Epistola maakte, en zet de volgende versie van
 hetzelfde informatieobject in Open Zaak. Wat het kostte, week af van de schatting: Open Zaak's versiestroom bestond al, maar ZAC
-moest onthouden welk template een document maakte (`epistola_document`, `V101`). Dat is een ontwerpkeuze die de stakeholders nog
-niet hebben gezien (TFO §6).
+moest onthouden welk template een document maakte (`epistola_document`, `V101`). Of die tabel mag blijven, beslissen de
+stakeholders als ze het prototype in ZAC willen opnemen (TFO §6).
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
 *Voorstel.* Niet beginnen voordat de belastingtest laat zien wat één document kost. Een bulkstroom die een thread

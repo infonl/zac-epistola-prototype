@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -548,13 +548,13 @@ Er zijn drie, elk voor iets anders:
 - **Een informatieobject dat niet aan de zaak gekoppeld kon worden, wordt verwijderd** in de gedeelde
   `ZgwApiService` (B21), dus ook voor de andere aanroepers.
 
-### Gekozen bij de bouw van #9, nog niet met de stakeholders besproken
+### Gekozen bij de bouw van #9
 
 - **ZAC onthoudt per Epistola-document welk template het maakte**, in `epistola_document` (`V101`). Een nieuwe versie
   genereren heeft dat nodig, en Open Zaak heeft er geen veld voor: `titel` en `beschrijving` zijn tekst die een
   gebruiker kan wijzigen. Dit wijkt af van de formulering van 21 september dat ZAC geen documentregistratie bijhoudt.
   Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
-  Een document van vóór `V101` heeft geen rij en dus geen actie.
+  Een document van vóór `V101` heeft geen rij en dus geen actie. Of de tabel mag blijven, staat onder *Nog open*.
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
   hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
 
@@ -563,10 +563,11 @@ Er zijn drie, elk voor iets anders:
 - **Mag documenten maken alleen vanuit de zaak, niet vanuit een taakformulier, een bekende beperking blijven?** Het
   endpoint ondersteunt een taak wel (TS-28); de dialoog opent alleen vanuit de zaak. Geagendeerd op 28 september,
   niet beantwoord.
-- **Mag ZAC een tabel met de herkomst van documenten bijhouden (`epistola_document`)?** Het ontwerp van 21 september zei dat
-  ZAC geen documentregistratie bijhoudt. De tabel is klein en bewaart geen inhoud, maar het is wel een wijziging ten
-  opzichte van wat de stakeholders hebben gezien. Een alternatief is het template in een veld van Open Zaak zetten, en
-  dat is een tekstveld dat een gebruiker kan wijzigen.
+- **Bij opname in ZAC: mag ZAC een tabel met de herkomst van documenten bijhouden (`epistola_document`)?** Het ontwerp
+  van 21 september zei dat ZAC geen documentregistratie bijhoudt. De tabel is klein en bewaart geen inhoud, maar het is
+  wel een wijziging ten opzichte van wat de stakeholders hebben gezien. Een alternatief is het template in een veld van
+  Open Zaak zetten, en dat is een tekstveld dat een gebruiker kan wijzigen. Dit besluiten de stakeholders als ze het
+  prototype in ZAC willen opnemen; voor het prototype zelf hoeft het niet beslist te worden (30 september).
 - **Dekt de bestaande BRP-doelbinding per zaaktype ook documentcreatie?** Een vraag voor de privacy officer. Niet
   blokkerend voor het prototype, niet beantwoord.
 - **BPMN-zaken.** Epistola werkt alleen voor CMMN-zaken (DoD 2). Wat ondersteuning voor BPMN kost, staat als
