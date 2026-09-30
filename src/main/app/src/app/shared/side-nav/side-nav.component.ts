@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
-import { NgFor, NgIf, NgSwitch, NgSwitchCase } from "@angular/common";
+import { NgTemplateOutlet } from "@angular/common";
 import { Component, inject, input, output, signal } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
@@ -30,10 +30,7 @@ import { SideNavUtil } from "./side-nav.util";
   animations: [rotate180, sideNavToggle],
   standalone: true,
   imports: [
-    NgFor,
-    NgIf,
-    NgSwitch,
-    NgSwitchCase,
+    NgTemplateOutlet,
     MatListModule,
     MatDividerModule,
     MatIconModule,

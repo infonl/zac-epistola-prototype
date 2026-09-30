@@ -34,6 +34,7 @@ enum class ErrorCode(val value: String) {
     ERROR_CODE_ZRC_CLIENT("msg.error.zrc.client.exception"),
     ERROR_CODE_ZTC_CLIENT("msg.error.ztc.client.exception"),
     ERROR_CODE_EPISTOLA_ACCESS_DENIED("msg.error.epistola.access-denied"),
+    ERROR_CODE_EPISTOLA_CMMN_ONLY("msg.error.epistola.cmmn-only"),
     ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED("msg.error.epistola.document.not-stored"),
     ERROR_CODE_EPISTOLA_GENERATION_FAILED("msg.error.epistola.generation.failed"),
     ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE("msg.error.epistola.generation.held-up-in-queue"),

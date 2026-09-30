@@ -151,6 +151,15 @@ function zaakMenuItems(zaak: Zaak, handlers: ZaakMenuHandlers) {
       (epistola?.isEnabledGlobally && epistola.isEnabledForZaaktype);
     if (isDocumentCreationEnabled) {
       menu.push(new ButtonMenuItem("actie.document.maken", open, "note_add"));
+    } else if (zaak.isProcesGestuurd && epistola?.isEnabledGlobally) {
+      const documentMakenItem = new ButtonMenuItem(
+        "actie.document.maken",
+        open,
+        "note_add",
+      );
+      documentMakenItem.disabled = true;
+      documentMakenItem.tooltip = "msg.document.maken.epistola.alleen-cmmn";
+      menu.push(documentMakenItem);
     }
 
     menu.push(

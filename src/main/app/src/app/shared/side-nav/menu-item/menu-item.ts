@@ -9,6 +9,8 @@ export abstract class MenuItem {
   abstract readonly icon?: string;
   activated = false;
   disabled = false;
+  /** Translation key of the explanation shown on hover and focus, for example of why an item is disabled. */
+  tooltip?: string;
 }
 
 export enum MenuItemType {
