@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september |
+| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31) |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
 | Raakt | #2, #3, #6 |
 
@@ -62,7 +62,7 @@ erDiagram
     epistola_template {
         bigint id PK "NIEUW"
         varchar epistola_id
-        bigint sjabloon_groep_id FK
+        bigint template_group_id FK
         uuid informatie_object_type_uuid
     }
 ```
@@ -101,11 +101,11 @@ en spaties te letten, zodat een behandelaar nooit twee groepen ziet die hij niet
 | `id` | bigint | nee | PK, eigen sequence |
 | `epistola_id` | varchar | nee | Identificatie van het template in Epistola |
 | `aanmaakdatum` | timestamptz | nee | |
-| `sjabloon_groep_id` | bigint | nee | FK → Epistola-templategroep |
+| `template_group_id` | bigint | nee | FK → Epistola-templategroep |
 | `zaaktype_configuration_id` | bigint | nee | FK → `zaaktype_configuration` |
 | `informatie_object_type_uuid` | uuid | nee | Als welk informatieobjecttype de gegenereerde PDF in Open Zaak wordt geregistreerd (#6) |
 
-`(zaaktype_configuration_id, epistola_id)` is uniek: een sjabloon staat hoogstens één keer in een zaaktype
+`(zaaktype_configuration_id, epistola_id)` is uniek: een template staat hoogstens één keer in een zaaktype
 (zie de ontwerpbesluiten).
 
 ### `zaaktype_configuration` *(één nieuwe kolom)*
@@ -158,29 +158,39 @@ beheerder de groepen in ZAC** en hangt er platte Epistola-templates onder. Daaro
 bovenstrooms om tegen af te stemmen. Een `parent_id` is niet nodig: de groepen zijn één niveau diep, wat
 overeenkomt met wat het SmartDocuments-scherm in de praktijk aanbiedt.
 
-### Een sjabloon staat hoogstens één keer in een zaaktype
+### Een template staat hoogstens één keer in een zaaktype
 
-Het datamodel liet eerst toe dat hetzelfde sjabloon in twee groepen van één zaaktype stond, elk met een
+Het datamodel liet eerst toe dat hetzelfde template in twee groepen van één zaaktype stond, elk met een
 eigen informatieobjecttype. Dan zou de groep die de behandelaar opent bepalen hoe het document in Open Zaak
 wordt opgeslagen, en dat is niet te voorspellen.
 
 Een unieke sleutel op `(zaaktype_configuration_id, epistola_id)` sluit dat uit. De groep is daarmee alleen
-een indeling, en #5 en #6 vinden het informatieobjecttype met het sjabloon-id alleen. Dat telt, omdat de
+een indeling, en #5 en #6 vinden het informatieobjecttype met het template-id alleen. Dat telt, omdat de
 groeprijen bij elke keer opslaan opnieuw worden aangemaakt en hun id's dus niet stabiel zijn. Besloten bij
 de bouw van #3.
 
-### Geen opgeslagen naam: de richting die ZAC zelf koos
+### Geen opgeslagen naam in de database, wel een geheugen van de laatste lijst
 
 Deze vraag lag open bij de stakeholders (#21). Bij de bouw van #3 bleek dat het ZAC-team hem voor
 SmartDocuments al beantwoord heeft: `V98__remove_smartdocuments_naam_column.sql` ([infonl/dimpact-zaakafhandelcomponent#6978](https://github.com/infonl/dimpact-zaakafhandelcomponent/pull/6978), 7 september 2026)
 verwijderde de `naam`-kolommen, omdat de naam altijd live bij de provider wordt opgehaald en de kolom
-"dead weight" was.
+"dead weight" was. De Epistola-tabellen volgden die lijn en slaan alleen `epistola_id` op.
 
-De Epistola-tabellen volgen die lijn en slaan alleen `epistola_id` op. De zwakte blijft zoals hij was: als
-Epistola onbereikbaar is, toont het beheerscherm de sjablonen niet. Een sjabloon dat in Epistola verdwijnt
-valt stil uit het scherm, en zijn rij verdwijnt pas bij de volgende keer opslaan. Een groep blijft wel
-staan, ook leeg, omdat die van ZAC is. Een
-`naam`-kolom toevoegen blijft een migratie van één kolom, mocht de bevestiging bij #21 anders uitvallen.
+De zwakte was dat het beheerscherm zonder Epistola geen templates toonde. De stakeholders besloten op 28
+september (B16, #30) dat de naam bewaard moet blijven, en dat het id het enige is waarop ZAC zoekt. Dat is
+gebouwd **zonder kolom**: `EpistolaTemplatesService` onthoudt in het geheugen de namen van de laatste geslaagde
+lijst uit de catalogus. Is Epistola daarna niet bereikbaar (geen verbinding, of een 5xx), dan leest ZAC de
+mapping met die namen, zodat de beheerkaart en de dialoog de templates blijven tonen.
+
+Waarom geen kolom: die zou `V100` aanpassen en daarmee zes gestapelde pull requests herstapelen, en hij zou
+bij het lezen moeten schrijven. De prijs is dat een herstart van ZAC het geheugen leegt. Is Epistola dan nog
+onbereikbaar, dan geldt de melding uit #8 zoals voorheen.
+
+De terugval is smal op twee manieren. Hij geldt alleen voor het lezen van de mapping, en alleen bij een
+onbereikbaar Epistola. Geweigerde toegang en een rate limit gaan door, omdat de beheerder die moet zien, en
+opslaan controleert altijd de live lijst. Elke geslaagde lijst vervangt de bewaarde namen, dus een template dat
+Epistola verwijdert, komt niet terug uit het geheugen. Een groep blijft ook zonder Epistola staan, omdat die
+van ZAC is. Een `naam`-kolom blijft een migratie van één kolom, mocht het geheugen onvoldoende blijken.
 
 ---
 

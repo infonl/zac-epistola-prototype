@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -20,7 +20,7 @@ data die oversteekt, en wie op de knop mag drukken.
 | [§3](#3--datamapping) | Datamapping | De ZAC-kant is exact; Epistola krijgt templatevariabelen plus een correlatie-id |
 | [§4](#4--autorisatiemodel) | Autorisatiemodel | Hergebruik van `creeren_document`, dat al samenvalt met zaaktype- en zaakautorisatie |
 | [§5](#5--api-integratie) | API-integratie | Endpoints, contracten en foutsemantiek, uit Epistola's gepubliceerde OpenAPI-contract |
-| [§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat) | Besluiten en openstaande punten | Wat het overleg van 21 september heeft beslist, en wat nog open is |
+| [§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat) | Besluiten en openstaande punten | Wat de overleggen van 21 en 28 september hebben beslist, wat bij de bouw van #8 is besloten, en wat nog open is |
 
 ---
 
@@ -447,24 +447,29 @@ Fouten zijn RFC 7807 problem details met getypeerde URI's, wat beter is dan stat
 clientbibliotheek vertaalt ze naar getypeerde excepties. De regel uit #16 geldt overal — log een
 correlatie-id, het template-id, de zaakidentificatie en de status; nooit de payload, nooit de response body.
 
-De laatste kolom zegt wat er al staat. #4 vangt af wat binnen de generatie zelf misgaat. Alles daarbuiten
-bereikt de behandelaar nu als generieke fout (HTTP 500). Dat hoort zo bij deze stap: het endpoint dat een
-behandelaar aanroept komt in #5, en het eerste criterium van #8 is precies de vertaling van Epistola's
-4xx/5xx naar een melding.
+Elke fout krijgt een eigen foutcode, en de frontend vertaalt die naar een melding die zegt wat er mis is en of
+opnieuw proberen helpt. Zonder deze vertaling zag de behandelaar overal dezelfde algemene fout (HTTP 500). De
+vertaling is gebouwd in #8; de laatste kolom zegt in welk scenario van het [testrapport](testrapport.md) ze is
+nagegaan.
 
-| Situatie | Gedrag van ZAC | Wat de behandelaar ziet | Stand |
+| Situatie | Gedrag van ZAC | Wat de behandelaar ziet | Nagegaan in |
 |---|---|---|---|
-| Data breekt het contract van het template: een verplicht veld ontbreekt, of een waarde heeft het verkeerde type | Epistola neemt de job aan en laat hem mislukken, met de JSON Pointer van het veld: `Data validation failed: /zaak: required property 'identificatie' not found`. ZAC geeft die reden door. Niet herhaalbaar | Nu de algemene melding "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder." Het doel is een melding die het template noemt en geen nieuwe poging aanraadt | Afgevangen in #4. Een eigen melding is #8 |
-| Template zonder schema | ZAC weigert het vóór het indienen ([§3](#3--datamapping)) | "De gekozen sjabloon geeft niet aan welke zaakgegevens hij kan gebruiken." | Afgevangen in #4 |
-| Job loopt niet af binnen de timeout | ZAC annuleert de job. Weigert Epistola dat, dan logt ZAC het request-id | "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw." | Afgevangen in #4 |
-| Pollen mislukt, bijvoorbeeld een 503 of een verbroken verbinding | ZAC annuleert de job en geeft de fout door | Een generieke fout | Annuleren in #4, de melding is #8 |
-| Job mislukt bij het renderen | Er is niets opgeslagen. ZAC geeft Epistola's reden door | De algemene melding hierboven | Afgevangen in #4 |
-| 400 bij het indienen | Een verzoek dat ZAC verkeerd opbouwt, bijvoorbeeld zonder `catalogId` | Een generieke fout; het detail hoort in de log | #8 — nu een generieke 500 |
-| 401 / 403 | De API key is afgewezen, verlopen of ingetrokken, of mist een van de twee rollen | Een generieke fout; het detail hoort in de log | #8 — nu een generieke 500 |
-| 404 | Onbekend template of onbekende tenant — meestal een verouderde zaaktypemapping | Een melding dat het geconfigureerde template niet meer bestaat | #8 — nu een generieke 500 |
-| 429 rate limited | Herhaalbaar na wachten | Een herhaalbare fout, geen mislukking | #8 — nu een generieke 500 |
-| PDF gedownload, opslag in DRC mislukt | Gooi het artefact weg en meld het — geen stil verlies | "Document gegenereerd, maar opslag in Open Zaak is mislukt" | #6, #8 |
-| Opgeslagen in DRC, koppeling in ZRC mislukt | Een verweesd `EnkelvoudigInformatieObject`. Opruimen of zichtbaar maken | Een expliciete melding; het mag niet onzichtbaar uit het dossier verdwijnen | #6, #8 |
+| Data breekt het contract van het template: een verplicht veld ontbreekt, of een waarde heeft het verkeerde type | Epistola neemt de job aan en laat hem mislukken, met de JSON Pointer van het veld: `Data validation failed: /zaak: required property 'identificatie' not found`. ZAC geeft die reden door aan de dialoog en logt haar niet | "Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm. Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder." Eronder staat Epistola's reden | TS-32 |
+| Template zonder schema | ZAC weigert het vóór het indienen ([§3](#3--datamapping)) | "Het gekozen template geeft niet aan welke zaakgegevens het kan gebruiken. Neem contact op met de beheerder." | TS-21 |
+| Job loopt niet af binnen de timeout | ZAC annuleert de job. Weigert Epistola dat, dan logt ZAC het request-id. De melding hangt af van wat de job op dat moment deed | In de wachtrij: "Het document stond te lang in de wachtrij bij Epistola en is geannuleerd. Epistola is waarschijnlijk druk. Probeer het later opnieuw." Tijdens het renderen: "Epistola deed te lang over het maken van het document, en het is geannuleerd. …" Status onbekend: "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw." | TS-33 |
+| Pollen mislukt, bijvoorbeeld een 503 of een verbroken verbinding | ZAC annuleert de job en geeft de fout door | "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." | TS-33 |
+| Job mislukt bij het renderen, om een andere reden | Er is niets opgeslagen. ZAC geeft Epistola's reden door | "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder." | TS-32 |
+| 400 bij het indienen | Een verzoek dat ZAC verkeerd opbouwt, bijvoorbeeld zonder `catalogId` | "Epistola kon het verzoek van ZAC niet verwerken. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
+| 401 / 403 | De API key is afgewezen, verlopen of ingetrokken, of mist een van de twee rollen | "ZAC heeft geen toegang tot Epistola. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
+| 404 op een template | Onbekend template of onbekende tenant — meestal een verouderde zaaktypemapping | "Het gekozen template bestaat niet meer in Epistola. Neem contact op met de beheerder." | TS-34 |
+| 429 rate limited | Herhaalbaar na wachten | "Epistola krijgt op dit moment te veel verzoeken. Probeer het over een paar minuten opnieuw." | `EpistolaRequestFailedExceptionTest` |
+| 5xx of Epistola onbereikbaar | Geen document, geen halve toestand. Het lezen van de mapping valt terug op de namen van de laatste geslaagde lijst ([datamodel](datamodel.md)) | Bij het genereren: "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." Bij het openen van de dialoog: "De templates kunnen nu niet worden geladen." | TS-31 |
+| PDF gedownload, opslag in DRC mislukt | De PDF wordt niet bewaard en de kopie bij Epistola wordt verwijderd (B20). De reden van Open Zaak staat niet in het log | "Het document is gemaakt, maar het opslaan in Open Zaak is mislukt. Er is niets aan de zaak toegevoegd. Probeer het later opnieuw." | TS-26 |
+| Opgeslagen in DRC, koppeling in ZRC mislukt | Het informatieobject wordt verwijderd, in de gedeelde `ZgwApiService` en dus voor alle vijf aanroepers (B21). Lukt dat niet, dan een SEVERE-logregel met de URL | Dezelfde melding als hierboven | TS-35 |
+
+Terwijl Epistola de job verwerkt, pollt de dialoog zijn status en toont *in de wachtrij*, *Epistola maakt het
+document*, of dat het langer duurt dan gebruikelijk. ZAC pollt Epistola zelf minstens één keer per seconde, zodat
+de getoonde status niet achterloopt.
 
 ### Bewaartermijn bij Epistola
 
@@ -509,15 +514,35 @@ Er zijn drie, elk voor iets anders:
   toegangsverzoek verstuurd te worden. De mockserver uit de contractrepository dekt de geautomatiseerde
   tests (#10, #18).
 
+### Beslist in het stakeholderoverleg van 28 september
+
+- **De templatenaam wordt niet in de database bewaard, maar wel onthouden** (B16, #30). Het id blijft de sleutel
+  en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst in het geheugen, en toont ze als
+  Epistola niet bereikbaar is ([datamodel](datamodel.md)). Dit herziet "geen opgeslagen naam" uit #3.
+- **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel (B17). Dat is
+  een bewuste keuze van de templatebouwer, en de allow-list uit [§3](#3--datamapping) versmalt daar niets. Een
+  waarschuwing in de beheerkaart is een verbetervoorstel (#39).
+- **Namen en variabelen volgen Epistola** (B18, #31): *template*, *templategroep* en *catalog*, ook in het Nederlands.
+- **Het testplan is goedgekeurd zoals het was** (B14), en de volgorde tot de einddemo is eerst #8, dan #7, dan
+  opnieuw testen (B15). De einddemo is op maandag 12 oktober (B19).
+
+### Beslist bij de bouw van #8, met Symon
+
+- **Mislukt de opslag in Open Zaak, dan wordt het document niet bewaard** en ook bij Epistola verwijderd (B20). De
+  behandelaar genereert opnieuw. Dit herziet #6, dat de kopie bij Epistola liet staan, terwijl ZAC geen verwijzing
+  ernaar houdt en niemand hem dus kon ophalen.
+- **Een informatieobject dat niet aan de zaak gekoppeld kon worden, wordt verwijderd** in de gedeelde
+  `ZgwApiService` (B21), dus ook voor de andere aanroepers.
+
 ### Nog open
 
-- **Wordt de templatenaam in ZAC opgeslagen?** Gebouwd zonder (#3), in de lijn die ZAC zelf koos: `V98`
-  ([infonl/dimpact-zaakafhandelcomponent#6978](https://github.com/infonl/dimpact-zaakafhandelcomponent/pull/6978), 7 september) verwijderde de SmartDocuments-namen, omdat ze toch altijd live worden opgehaald. De
-  zwakte blijft: zonder Epistola toont het beheerscherm geen sjablonen. Ligt ter bevestiging bij de
-  stakeholders (#21); een `naam`-kolom is dan één migratie ([datamodel](datamodel.md)).
-- **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel, en de
-  allow-list uit [§3](#3--datamapping) kan daar niets aan versmallen. Vastgelegd in een test; vraagt een
-  besluit van de stakeholders.
+- **Mag documenten maken alleen vanuit de zaak, niet vanuit een taakformulier, een bekende beperking blijven?** Het
+  endpoint ondersteunt een taak wel (TS-28); de dialoog opent alleen vanuit de zaak. Geagendeerd op 28 september,
+  niet beantwoord.
+- **Dekt de bestaande BRP-doelbinding per zaaktype ook documentcreatie?** Een vraag voor de privacy officer. Niet
+  blokkerend voor het prototype, niet beantwoord.
+- **BPMN-zaken.** Epistola werkt alleen voor CMMN-zaken (DoD 2). Wat ondersteuning voor BPMN kost, staat als
+  verbetervoorstel in #40.
 
 ### Vragen aan Epistola
 
@@ -532,6 +557,12 @@ Uit de review op #24, en elk nagegaan tegen de testtenant of de broncode van Epi
   gezegd. Rich-text-`$ref`s blijven URL's, recursieve verwijzingen zijn niet op te lossen, en alleen `allOf` laat
   zich zonder verlies samenvoegen. Dat ZAC elk `anyOf`- en `oneOf`-alternatief toelaat, is ZAC's eigen beleid, en
   dat blijft.
+- **Een rendertimeout en een maximum aantal pogingen.** Na onderzoek van de broncode van Epistola Suite (`e2484c7`) en
+  het contract (`257770d`): één Postgres-wachtrij voor alle tenants, 20 renderplekken per node (50 in productie), dus
+  één hangend document bezet één plek. Er is geen rendertimeout en geen maximum aantal pogingen. `StaleJobRecovery`
+  zet een job na 10 minuten (15 in productie) terug op `PENDING` zonder de thread te stoppen, en annuleren markeert
+  alleen. Het contract kent geen status "vastgelopen", geen wachtrijdiepte en geen webhook. Een geannuleerde job wordt
+  nooit opnieuw opgepakt, dus ZAC's annulering bij de timeout helpt wel ([§5](#foutafhandeling)).
 - **De bewaartermijn.** Dertig dagen genoemd, drie tot vier maanden in de code, en inhoud van een geannuleerde
   job die achterblijft ([§5](#bewaartermijn-bij-epistola)).
 

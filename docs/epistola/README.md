@@ -20,7 +20,7 @@ bijbehorende projectbord.
 | [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de drie wijzigingen die Epistola nodig heeft, met ERD | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testscenario's, positief en negatief, over de acht afgesproken gebieden. Volgens het examensjabloon (B1-K1-W4) | #18 |
-| [Testrapport](testrapport.md) | De uitvoering van 25 september: resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
+| [Testrapport](testrapport.md) | De uitvoering in twee rondes, op 25 en 30 september: resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
 | [Verbetervoorstellen](verbetervoorstellen.md) | De uitkomst van het prototype als besluiten: de negen risico's uit de ontwerpverantwoording met hun uitkomst, vijftien voorstellen voor productie en daarna, wat al is opgelost, en wat bewust niet wordt voorgesteld. Procesverbeteringen staan in de reflectie (#23) | #20 |
 
 De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan
@@ -38,6 +38,9 @@ voorlopig alleen als artifact, gelinkt vanuit hun issue.
 | Templategroepen | Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder |
 | Autorisatie | Het bestaande recht `creeren_document` wordt hergebruikt, er komt geen Epistola-specifiek recht |
 | Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee. Datums in ISO 8601 |
+| Templatenaam | Het id is de sleutel en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst in het geheugen, en toont ze als Epistola niet bereikbaar is (B16) |
+| Foutafhandeling | Elke Epistola-fout krijgt een eigen foutcode en een melding die zegt of opnieuw proberen helpt. Mislukt de opslag in Open Zaak, dan wordt het document niet bewaard en ook bij Epistola verwijderd (B20, B21) |
+| Namen | Volgen Epistola, niet SmartDocuments: *template* en *templategroep*, ook in het Nederlands (B18) |
 
 De onderbouwing van elk van deze besluiten staat in het
 [technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md).

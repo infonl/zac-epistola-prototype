@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de foutmelding van scherm 4 dezelfde dag |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de schermen 2, 3 en 4 naar wat #7, #8 en #30 hebben gebouwd (30 september) |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -18,29 +18,29 @@ volledig genoeg om zonder de mockups te bouwen — die zijn er voor de vorm, nie
 
 ---
 
-## 1 · Admin — Epistola documentsjablonen per zaaktype
+## 1 · Admin — Epistola-documenttemplates per zaaktype
 
 > Mockup: [`wireframes/1-admin.html`](wireframes/1-admin.html) ·
 > Route: `/admin/parameters` → CMMN-zaaktype → stap *Koppelingen*
 
 Spiegelt `smart-documents-form.component`: een kaart die alleen verschijnt wanneer de provider actief is,
-een schuifknop per zaaktype, en sjablonen die elk aan een informatieobjecttype gekoppeld zijn. Anders dan
+een schuifknop per zaaktype, en templates die elk aan een informatieobjecttype gekoppeld zijn. Anders dan
 bij SmartDocuments bouwt de beheerder de groepen zelf op, omdat Epistola er geen levert.
 
 ### Opbouw
 
 | Element | Type | Gedrag |
 |---|---|---|
-| Kaart *Epistola documentsjablonen* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
+| Kaart *Epistola-documenttemplates* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
 | Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder is verborgen zolang hij uit staat |
-| Sjabloongroep | tekstveld, één niveau | De naam die de beheerder de groep geeft. Verplicht, en uniek binnen het zaaktype, ongeacht hoofdletters en spaties |
-| Sjabloongroep verwijderen | icoonknop | Verwijdert de groep, met de sjablonen erin |
-| Sjabloonnaam | tekst | Live opgehaald bij Epistola; er wordt geen naam opgeslagen |
+| Templategroep | tekstveld, één niveau | De naam die de beheerder de groep geeft. Verplicht, en uniek binnen het zaaktype, ongeacht hoofdletters en spaties |
+| Templategroep verwijderen | icoonknop | Verwijdert de groep, met de templates erin |
+| Templatenaam | tekst | Live opgehaald bij Epistola. Is Epistola niet bereikbaar, dan staat hier de naam van de laatste geslaagde lijst, bewaard in het geheugen van ZAC (#30) |
 | Documenttype | `mat-select` | Verplicht. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6) |
 | Vertrouwelijkheid | read-only tekst | Afgeleid van het gekozen informatieobjecttype, niet apart in te stellen |
-| Sjabloon verwijderen | icoonknop | Haalt het sjabloon uit de groep; daarna is het weer te kiezen voor een groep |
-| Sjabloon toevoegen | `mat-select` per groep | Biedt alleen de sjablonen die nog in geen enkele groep van dit zaaktype staan |
-| Sjabloongroep toevoegen | knop | Voegt een lege groep toe |
+| Template verwijderen | icoonknop | Haalt het template uit de groep; daarna is het weer te kiezen voor een groep |
+| Template toevoegen | `mat-select` per groep | Biedt alleen de templates die nog in geen enkele groep van dit zaaktype staan |
+| Templategroep toevoegen | knop | Voegt een lege groep toe |
 
 ### Aantekeningen
 
@@ -51,24 +51,24 @@ bij SmartDocuments bouwt de beheerder de groepen zelf op, omdat Epistola er geen
    zolang hij uit staat.
 3. **Groepen zijn een platte lijst, geen uitklapbare boom.** SmartDocuments gebruikt `mat-tree` omdat zijn
    groepen nesten. Epistola heeft helemaal geen groepen, dus dit zijn die van ZAC zelf: de beheerder maakt
-   een groep, geeft hem een naam en zet er platte Epistola-sjablonen in, één niveau diep.
-4. **Geen selectievakje per sjabloon.** De eerste versie van deze wireframe had er wel een, zoals
+   een groep, geeft hem een naam en zet er platte Epistola-templates in, één niveau diep.
+4. **Geen selectievakje per template.** De eerste versie van deze wireframe had er wel een, zoals
    SmartDocuments. Daar levert de provider de boom en vinkt de beheerder aan wat beschikbaar is. Bij
-   Epistola is er geen boom om in aan te vinken: een sjabloon staat in een groep, of het is niet
-   beschikbaar. *Sjabloon toevoegen* en de verwijderknop vervangen het selectievakje. Aangepast bij de bouw
+   Epistola is er geen boom om in aan te vinken: een template staat in een groep, of het is niet
+   beschikbaar. *Template toevoegen* en de verwijderknop vervangen het selectievakje. Aangepast bij de bouw
    van #3.
-5. **Een sjabloon staat hoogstens één keer in een zaaktype.** Zo hangt het informatieobjecttype waaronder
-   een document wordt opgeslagen nooit af van de groep die de behandelaar opent. *Sjabloon toevoegen* biedt
-   daarom alleen sjablonen die nog nergens staan, en de backend weigert een dubbel sjabloon ook.
-6. **Informatieobjecttype per sjabloon**: een `mat-select`, precies zoals SmartDocuments het doet. Dit is
+5. **Een template staat hoogstens één keer in een zaaktype.** Zo hangt het informatieobjecttype waaronder
+   een document wordt opgeslagen nooit af van de groep die de behandelaar opent. *Template toevoegen* biedt
+   daarom alleen templates die nog nergens staan, en de backend weigert een dubbel template ook.
+6. **Informatieobjecttype per template**: een `mat-select`, precies zoals SmartDocuments het doet. Dit is
    wat #6 nodig heeft om de PDF in Open Zaak te registreren.
 7. **Vertrouwelijkheidaanduiding is read-only** en afgeleid van het gekozen informatieobjecttype. Geen
    nieuw idee: zo gedraagt de SmartDocuments-rij zich al.
-8. **Opslaan wacht op het zaaktype.** De sjablooninstellingen worden pas opgeslagen nadat het zaaktype zelf
+8. **Opslaan wacht op het zaaktype.** De templateinstellingen worden pas opgeslagen nadat het zaaktype zelf
    is opgeslagen, omdat ze bij die zaaktypeconfiguratie horen. Een ongeldige instelling (een groep zonder
-   naam, een sjabloon zonder documenttype) houdt de knop *Opslaan* van de hele stap uitgeschakeld.
+   naam, een template zonder documenttype) houdt de knop *Opslaan* van de hele stap uitgeschakeld.
 
-De sjabloonnaam, de documenttype-select en de afgeleide vertrouwelijkheid reproduceren
+De templatenaam, de documenttype-select en de afgeleide vertrouwelijkheid reproduceren
 `smart-documents-form-item.component.html` veld voor veld; het selectievakje niet (aantekening 4).
 
 ---
@@ -84,7 +84,7 @@ verandert.
 | Zaaktype | Actie *Document maken* | Toelichting |
 |---|---|---|
 | CMMN | Actief | De bestaande actie, met de bestaande vertaalsleutel `actie.document.maken` |
-| BPMN | Zichtbaar maar uitgeschakeld, met tooltip | "Documentcreatie met Epistola is in deze versie alleen beschikbaar voor CMMN-zaken." |
+| BPMN | Zichtbaar maar uitgeschakeld, met tooltip | "Een document maken met Epistola kan voorlopig alleen bij zaken van een CMMN-zaaktype, niet bij zaken die door een BPMN-proces worden gestuurd." |
 
 ### Aantekeningen
 
@@ -95,8 +95,12 @@ verandert.
 2. **Uitgeschakeld, niet verborgen, voor BPMN.** Een verdwenen actie leest als een rechtenprobleem; een
    uitgeschakelde actie met een tooltip benoemt de werkelijke beperking, en dat is wat #7 in de interface
    vraagt.
-3. **De backend weigert het hoe dan ook** met 400/422 — de uitgeschakelde staat is een beleefdheid, geen
-   handhaving.
+3. **De backend weigert het hoe dan ook** met 400 `msg.error.epistola.cmmn-only` — de uitgeschakelde staat is
+   een beleefdheid, geen handhaving. Is Epistola niet de actieve provider, dan blijft de actie voor BPMN-zaken
+   zoals ze was.
+4. **De knop zit in een focusbare omhulling**, zodat de toelichting ook met het toetsenbord en voor een
+   schermlezer bereikbaar is. Een uitgeschakelde knop kan geen focus krijgen, en dan was de uitleg onzichtbaar.
+   Gebouwd in #7.
 
 ---
 
@@ -110,26 +114,31 @@ niet-onderhandelbaar.
 
 | Veld | Type | Verplicht | Herkomst |
 |---|---|---|---|
-| Sjabloongroep | `mat-select` | Ja | De groepen die voor dit zaaktype zijn geconfigureerd |
-| Sjabloon | `mat-select` | Ja | Leeg tot er een groep is gekozen; toont alleen templates die aan dit zaaktype gekoppeld zijn |
+| Templategroep | `mat-select` | Ja | De groepen die voor dit zaaktype zijn geconfigureerd |
+| Template | `mat-select` | Ja | Leeg tot er een groep is gekozen; toont alleen templates die aan dit zaaktype gekoppeld zijn |
 | Titel | tekstveld | Ja | Door de behandelaar in te vullen |
 | Toelichting | tekstveld | Nee | Door de behandelaar in te vullen |
-| Documenttype | read-only | — | Uit de beheermapping, zodra het sjabloon is gekozen |
+| Documenttype | read-only | — | Uit de beheermapping, zodra het template is gekozen |
 | Vertrouwelijkheid | read-only | — | Afgeleid van het documenttype |
 | Formaat | read-only, statische tekst "PDF" | — | Vast; er is geen keuze |
 | Auteur | read-only | Ja | De ingelogde gebruiker |
 
 Tijdens het genereren blokkeert de dialoog: een spinner met "Document wordt gegenereerd…", een melding dat
-het enkele seconden kan duren, en een uitgeschakelde knop *Genereren*.
+het enkele seconden kan duren, en een uitgeschakelde knop *Genereren*. Daaronder staat wat Epistola met de job
+doet, en dat wordt elke seconde ververst: *Het document staat in de wachtrij bij Epistola*, *Epistola maakt het
+document*, en bij een lange wachttijd *… langer dan gebruikelijk. ZAC wacht nog even.* (#8).
+
+Kan de dialoog de templates niet laden omdat Epistola niet bereikbaar is, dan staat er *De templates kunnen nu
+niet worden geladen*, en niet een lege lijst (#8).
 
 ### Aantekeningen
 
 1. **Geen keuze voor het uitvoerformaat.** "Formaat: PDF" staat er als statische tekst en niet als een
    keuzelijst met één optie — een select die de gebruiker niet kan wijzigen is een dode besturing. #5
    vereist alleen PDF.
-2. **Documenttype en vertrouwelijkheid zijn read-only**, gevuld uit de beheermapping zodra er een sjabloon
+2. **Documenttype en vertrouwelijkheid zijn read-only**, gevuld uit de beheermapping zodra er een template
    gekozen is. De behandelaar kan een document niet onder het verkeerde informatieobjecttype wegzetten.
-3. **Sjabloon is leeg tot er een groep gekozen is** en toont alleen templates die voor dit zaaktype zijn
+3. **Template is leeg tot er een groep gekozen is** en toont alleen templates die voor dit zaaktype zijn
    geconfigureerd.
 4. **Genereren blokkeert de dialoog** in plaats van hem te sluiten, zodat een mislukking in context getoond
    kan worden en niet als een losse toast op de zaakpagina.
@@ -143,24 +152,31 @@ flow blijft binnen ZAC en vertrekt nooit naar een externe editor.
 
 > Mockup: [`wireframes/4-foutpaden.html`](wireframes/4-foutpaden.html)
 
-Twee mislukkingen die andere woorden nodig hebben, omdat ze het systeem in een andere toestand achterlaten.
+Twee mislukkingen die andere woorden nodig hebben, omdat ze het systeem in een andere toestand achterlaten. De
+teksten zijn die van de gebouwde versie (#8). Het ontwerp kende er twee; de bouw onderscheidt er meer, elk met een
+eigen foutcode. De overige staan in [§5 van het ontwerp](technisch-functioneel-ontwerp.md#foutafhandeling).
 
 | Situatie | Melding |
 |---|---|
-| Epistola onbereikbaar | **Genereren mislukt.** Het document kon niet worden aangemaakt. Probeer het later opnieuw of neem contact op met de beheerder. *(referentie: 7f3a91c4)* |
-| Gegenereerd, opslag mislukt | **Document gegenereerd, maar opslag in Open Zaak is mislukt.** Het document is niet aan de zaak gekoppeld en moet opnieuw worden gegenereerd. *(referentie: 91ba02de)* |
+| Epistola onbereikbaar | **Epistola is op dit moment niet bereikbaar.** Probeer het later opnieuw. |
+| Gegenereerd, opslag mislukt | **Het document is gemaakt, maar het opslaan in Open Zaak is mislukt.** Er is niets aan de zaak toegevoegd. Probeer het later opnieuw. |
+| Data breekt het contract van het template | **Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm.** Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder. *(met Epistola's reden eronder)* |
 
 ### Aantekeningen
 
 1. **De tweede melding zegt wat er met het document gebeurd is**, en niet alleen dat er iets misging.
    "Genereren gelukt, opslaan niet" is het geval waar een gebruiker anders geen chocola van kan maken — en
    het is het pad van gedeeltelijke mislukking dat #8 gedefinieerd wil zien.
-2. **Een correlatiereferentie, nooit een stacktrace.** Daarmee kan support de logregel vinden; #8 vereist
-   dat de log zelf detail draagt zonder BSN of andere persoonsgegevens in platte tekst.
+2. **Nooit een stacktrace.** De oorspronkelijke tekeningen hadden een correlatiereferentie voor support. Die is
+   niet gebouwd: de melding noemt in plaats daarvan de oorzaak, en bij een gebroken contract Epistola's eigen
+   reden, zodat de behandelaar genoeg heeft om de beheerder te vertellen wat er mis is. Voor het log geldt de regel uit #16: identificaties
+   en statussen, nooit de payload.
 3. **Fouten verschijnen binnen de dialoog**, die nog openstaat omdat het genereren hem blokkeerde.
-4. **De melding noemt de provider niet**, net zomin als de rest van de zaakkant (zie het ontwerpbesluit
-   hieronder). Tot 24 september stond hier "Epistola is niet bereikbaar". De tekst sluit nu aan op de melding
-   die #4 heeft ingebouwd.
+4. **De meldingen noemen Epistola wel.** De tekeningen van 24 september hadden het bewust niet, in lijn met het
+   ontwerpbesluit hieronder dat de behandelaar de provider niet hoeft te kennen. De gebouwde meldingen per
+   oorzaak noemen het systeem dat niet reageert. Het besluit geldt nog voor de *actie* en het *label*: die
+   blijven *Document maken*. Dat de foutmeldingen afwijken van het ontwerp, is nog niet met de stakeholders
+   besproken.
 
 ---
 
@@ -201,8 +217,8 @@ tenant — dus de beheerder maakt de groepen hier in ZAC en zet er platte Episto
 is genoeg, het scherm blijft een lijst, en de groeptabel heeft geen zelfverwijzende `parent_id` nodig
 (#3, [datamodel](datamodel.md)).
 
-Bij de bouw van #3 viel het selectievakje per sjabloon weg. Het veronderstelde een boom die de provider
-levert, zoals bij SmartDocuments, en die heeft Epistola niet. De beheerder voegt nu een sjabloon aan een
+Bij de bouw van #3 viel het selectievakje per template weg. Het veronderstelde een boom die de provider
+levert, zoals bij SmartDocuments, en die heeft Epistola niet. De beheerder voegt nu een template aan een
 groep toe in plaats van het aan te vinken (scherm 1, aantekening 4).
 
 ---
