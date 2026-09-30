@@ -40,6 +40,7 @@ enum class ErrorCode(val value: String) {
     ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE("msg.error.epistola.generation.held-up-in-queue"),
     ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_RENDERING("msg.error.epistola.generation.held-up-in-rendering"),
     ERROR_CODE_EPISTOLA_GENERATION_TIMED_OUT("msg.error.epistola.generation.timed-out"),
+    ERROR_CODE_EPISTOLA_NEW_VERSION_NOT_POSSIBLE("msg.error.epistola.document.no-new-version"),
     ERROR_CODE_EPISTOLA_RATE_LIMITED("msg.error.epistola.rate-limited"),
     ERROR_CODE_EPISTOLA_REQUEST_FAILED("msg.error.epistola.request-failed"),
     ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED("msg.error.epistola.template.data-rejected"),

@@ -562,4 +562,50 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             }
         }
     }
+    context("checking that a zaaktype still offers a template") {
+        given("a zaaktype whose group offers the template") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+                .apply { isEpistolaEnabled = true }
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
+            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
+                createEpistolaTemplateGroup(
+                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
+                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-template-1" to UUID.randomUUID())
+                )
+            )
+
+            `when`("it is checked") {
+                epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaaktypeUuid, templateId = "fake-template-1")
+
+                then("nothing is refused") {
+                    verify(exactly = 1) { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) }
+                }
+            }
+        }
+
+        given("a zaaktype whose groups no longer offer the template") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+                .apply { isEpistolaEnabled = true }
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
+            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns emptyList()
+
+            `when`("it is checked") {
+                val epistolaTemplateNotConfiguredException = shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaTemplatesService.assertTemplateIsOffered(
+                        zaaktypeUuid = zaaktypeUuid,
+                        templateId = "fake-template-1"
+                    )
+                }
+
+                then("it is refused, so a document is not generated again from a template the beheerder took away") {
+                    epistolaTemplateNotConfiguredException.message shouldBe
+                        "Epistola template 'fake-template-1' is not configured for zaaktype '$zaaktypeUuid'."
+                }
+            }
+        }
+    }
 })

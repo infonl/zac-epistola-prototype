@@ -18,6 +18,7 @@ import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
 import jakarta.enterprise.inject.Instance
+import jakarta.persistence.PersistenceException
 import jakarta.ws.rs.ProcessingException
 import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.epistola.EpistolaClientService
@@ -50,6 +51,8 @@ import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingExcep
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.documents.EpistolaDocumentRepository
+import nl.info.zac.epistola.documents.model.createEpistolaDocument
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
@@ -80,6 +83,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
     val epistolaClientService = mockk<EpistolaClientService>()
     val documentCreationDataService = mockk<DocumentCreationDataService>()
     val epistolaTemplatesService = mockk<EpistolaTemplatesService>()
+    val epistolaDocumentRepository = mockk<EpistolaDocumentRepository>(relaxed = true)
     val ztcClientService = mockk<ZtcClientService>()
     val enkelvoudigInformatieObjectUpdateService = mockk<EnkelvoudigInformatieObjectUpdateService>()
     val configurationService = mockk<ConfigurationService>()
@@ -89,6 +93,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
         epistolaClientService = epistolaClientService,
         documentCreationDataService = documentCreationDataService,
         epistolaTemplatesService = epistolaTemplatesService,
+        epistolaDocumentRepository = epistolaDocumentRepository,
         ztcClientService = ztcClientService,
         enkelvoudigInformatieObjectUpdateService = enkelvoudigInformatieObjectUpdateService,
         configurationService = configurationService,
@@ -263,6 +268,45 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                         )
                         epistolaClientService.deleteDocument(generatedDocument.documentId)
                     }
+                }
+
+                and("the template is remembered for the stored document, so a new version can be generated from it") {
+                    verify(exactly = 1) {
+                        epistolaDocumentRepository.createEpistolaDocument(
+                            informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            templateId = FAKE_TEMPLATE_ID
+                        )
+                    }
+                }
+            }
+        }
+
+        given("a document that is stored in the zaak, but whose template cannot be remembered") {
+            val zaak = createZaak()
+            val (generatedDocument, _) = givenAGeneratedDocument(zaak, UUID.randomUUID())
+            val zaakInformatieObject = createZaakInformatieobjectForReads()
+            every {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = any(),
+                    taskId = null
+                )
+            } returns zaakInformatieObject
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+            every {
+                epistolaDocumentRepository.createEpistolaDocument(any(), any())
+            } throws PersistenceException("fakeDatabaseFailure")
+
+            `when`("the document is created and stored") {
+                val storedZaakInformatieObject = epistolaDocumentCreationService.createAndStoreDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    title = FAKE_TITLE,
+                    description = null
+                )
+
+                then("the document is still linked to the zaak, because it only loses its new version action") {
+                    storedZaakInformatieObject shouldBe zaakInformatieObject
                 }
             }
         }

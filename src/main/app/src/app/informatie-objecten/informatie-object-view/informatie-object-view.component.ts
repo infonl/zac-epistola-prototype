@@ -31,7 +31,7 @@ import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { QueryClient } from "@tanstack/angular-query-experimental";
 import { Observable, of, throwError } from "rxjs";
-import { catchError, tap } from "rxjs/operators";
+import { catchError, map, switchMap, tap } from "rxjs/operators";
 import { AsyncButtonMenuItem } from "src/app/shared/side-nav/menu-item/subscription-button-menu-item";
 import { UtilService } from "../../core/service/util.service";
 import { ObjectType } from "../../core/websocket/model/object-type";
@@ -115,6 +115,7 @@ export class InformatieObjectViewComponent
   zaak?: GeneratedType<"RestZaak">;
   documentNieuweVersieGegevens?: GeneratedType<"RestEnkelvoudigInformatieObjectVersieGegevens">;
   documentPreviewBeschikbaar = false;
+  isEpistolaNewVersionAvailable = false;
   menu: MenuItem[] = [];
   activeSideAction: string | null = null;
   versieInformatie: string | null = null;
@@ -161,6 +162,7 @@ export class InformatieObjectViewComponent
             this.laatsteVersieInfoObject = infoObject;
             this.updateVersieInformatie();
             this.loadZaakInformatieobjecten();
+            this.loadEpistolaDocument();
           });
         this.documentPreviewBeschikbaar = FileFormatUtil.isPreviewAvailable(
           this.infoObject.formaat as FileFormat,
@@ -238,6 +240,20 @@ export class InformatieObjectViewComponent
               });
           },
           "difference",
+        ),
+      );
+    }
+
+    if (
+      this.zaak?.rechten?.creerenDocument &&
+      this.isEpistolaNewVersionAvailable &&
+      this.laatsteVersieInfoObject?.rechten?.toevoegenNieuweVersie
+    ) {
+      this.menu.push(
+        new AsyncButtonMenuItem(
+          "actie.epistola.nieuwe-versie.genereren",
+          () => this.createEpistolaDocumentVersion$(),
+          "note_add",
         ),
       );
     }
@@ -365,6 +381,40 @@ export class InformatieObjectViewComponent
         this.zaakInformatieObjecten = zaakInformatieObjecten;
         this.loadZaak();
       });
+  }
+
+  /**
+   * Only asked for a user who may add a version, because the answer only decides whether the action is offered.
+   */
+  private loadEpistolaDocument() {
+    if (!this.laatsteVersieInfoObject?.rechten?.toevoegenNieuweVersie) return;
+    this.informatieObjectenService
+      .readEpistolaDocument(this.infoObject.uuid!)
+      .subscribe((epistolaDocument) => {
+        this.isEpistolaNewVersionAvailable =
+          epistolaDocument.isNewVersionAvailable ?? false;
+        this.toevoegenActies();
+      });
+  }
+
+  private createEpistolaDocumentVersion$(): Observable<void> {
+    return this.informatieObjectenService
+      .createEpistolaDocumentVersion(this.infoObject.uuid!)
+      .pipe(
+        switchMap(() =>
+          this.informatieObjectenService.readEnkelvoudigInformatieobject(
+            this.infoObject.uuid!,
+          ),
+        ),
+        tap((infoObject) => {
+          this.utilService.openSnackbar(
+            "msg.document.epistola.nieuwe-versie.gegenereerd",
+            { document: infoObject.titel },
+          );
+          this.versieToegevoegd(infoObject);
+        }),
+        map(() => void 0),
+      );
   }
 
   private loadHistorie() {

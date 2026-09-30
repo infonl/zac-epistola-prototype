@@ -124,6 +124,24 @@ export class InformatieObjectenService {
     };
   }
 
+  readEpistolaDocument(uuid: string) {
+    return this.zacHttpClient.GET("/rest/epistola-documents/{uuid}", {
+      path: { uuid },
+    });
+  }
+
+  /**
+   * Returns once the new version is stored, as creating the document does: Epistola renders it while the request
+   * waits.
+   */
+  createEpistolaDocumentVersion(uuid: string): Observable<void> {
+    return this.zacHttpClient
+      .POST("/rest/epistola-documents/{uuid}/versions", undefined as never, {
+        path: { uuid },
+      })
+      .pipe(map(() => void 0));
+  }
+
   readHuidigeVersieEnkelvoudigInformatieObject(uuid: string) {
     return this.zacHttpClient.GET(
       "/rest/informatieobjecten/informatieobject/{uuid}/huidigeversie",

@@ -121,6 +121,7 @@ Versiegeschiedenis:
   - [Documenten raadplegen](#documenten-raadplegen)
   - [Document bewerken](#document-bewerken)
   - [Metadata bewerken](#metadata-bewerken)
+  - [Nieuwe versie genereren met Epistola](#nieuwe-versie-genereren-met-epistola)
   - [Document ondertekenen](#document-ondertekenen)
   - [Document converteren naar PDF](#document-converteren-naar-pdf)
   - [Document verwijderen](#document-verwijderen)
@@ -1365,6 +1366,20 @@ De metadata van een document kunnen aangepast worden. Hierdoor ontstaat een nieu
 2 In het scherm dat opent, bewerk je de metadata
 
 3 Klik op ‘Toevoegen’
+
+## Nieuwe versie genereren met Epistola
+
+Een document dat met Epistola is gemaakt, kan opnieuw worden gegenereerd met de zaakgegevens zoals die nu zijn. Dat wordt een nieuwe versie van hetzelfde document. De eerdere versies blijven bewaard en zijn met de &lt; en &gt; pijltjes te bekijken.
+
+De actie is er alleen bij een document dat met Epistola is gemaakt, zolang Epistola de documentcreatieapplicatie is en het template nog bij het zaaktype hoort. Net als bij *Metadata bewerken* kan dit alleen als de zaak open is en de status van het document niet ‘Definitief’ is. Je hebt ook het recht nodig om voor deze zaak documenten te maken.
+
+**Stappen**
+
+1 Op de documentgegevenspagina kies je de actie *Nieuwe versie genereren*
+
+2 Wacht tot Epistola het document heeft gemaakt, dat duurt enkele seconden
+
+3 De pagina toont de nieuwe versie van het document. Gaat er iets mis, dan blijft de huidige versie zoals ze was en krijg je een melding
 
 ## Document ondertekenen
 
