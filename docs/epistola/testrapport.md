@@ -241,29 +241,17 @@ dat nog bevestigen, op de einddemo van 12 oktober.
 
 ## 7. Zelfbeoordeling rubric
 
-Zo denk ik te scoren op de rubric (0 = niet/nauwelijks,
+*In te vullen door de kandidaat.* Vul voor jezelf in hoe je denkt te scoren (0 = niet/nauwelijks,
 3 = volledig).
 
 | Criterium | 0 | 1 | 2 | 3 (volledig) |
 |---|---|---|---|---|
-| T1 Testplan – testcases sluiten aan op alle functionaliteiten | ☐ | ☐ | ☐ | ☒ |
-| T1 Testscenario – voor alle functionaliteiten gemaakt | ☐ | ☐ | ☒ | ☐ |
-| T2 Testen – correct uitgevoerd volgens testplan | ☐ | ☐ | ☒ | ☐ |
-| T3 Testrapport – resultaten en conclusies volledig | ☐ | ☐ | ☐ | ☒ |
+| T1 Testplan – testcases sluiten aan op alle functionaliteiten | ☐ | ☐ | ☐ | ☐ |
+| T1 Testscenario – voor alle functionaliteiten gemaakt | ☐ | ☐ | ☐ | ☐ |
+| T2 Testen – correct uitgevoerd volgens testplan | ☐ | ☐ | ☐ | ☐ |
+| T3 Testrapport – resultaten en conclusies volledig | ☐ | ☐ | ☐ | ☐ |
 
-**Toelichting op de zelfbeoordeling:**
-
-- **T1 Testplan (3):** elke functionaliteit uit §3 van het testplan komt terug als testcase in §8, met een positief
-  en, waar dat kan, een negatief geval. De testscenario's laten zien welke testcases bij welke functionaliteit horen,
-  en de stakeholders hebben het plan goedgekeurd.
-- **T1 Testscenario (2):** elke functionaliteit heeft een eigen testscenario met teststappen, maar testscenario 8
-  (preview) heeft geen negatieve stap. Die vond ik voor de preview niet echt nodig, maar het format vraagt er per
-  scenario minstens één.
-- **T2 Testen (2):** alle 36 testcases zijn uitgevoerd en met bewijs vastgelegd, en de drie die mislukten, zijn na de
-  fixes opnieuw uitgevoerd en geslaagd. De gebruikerstest (UAT) uit het testplan moet nog plaatsvinden, en TS-31 heb
-  ik als geslaagd beoordeeld terwijl B-08 nog open staat.
-- **T3 Testrapport (3):** het rapport geeft voor elke functionaliteit het resultaat en een conclusie, met alle bugs
-  en hun status, en het benoemt ook wat niet goed ging.
+**Toelichting op de zelfbeoordeling:** *in te vullen door de kandidaat.*
 
 ---
 
