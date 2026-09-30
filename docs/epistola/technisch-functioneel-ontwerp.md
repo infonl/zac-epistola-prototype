@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -15,7 +15,7 @@ data die oversteekt, en wie op de knop mag drukken.
 
 | § | Onderwerp | Dekking |
 |---|---|---|
-| [§1](#1--functioneel-ontwerp) | Functioneel ontwerp | Zes stappen van zaaktypeconfiguratie tot preview, elk met wat er waar wordt vastgelegd |
+| [§1](#1--functioneel-ontwerp) | Functioneel ontwerp | Zeven stappen van zaaktypeconfiguratie tot een nieuwe versie, elk met wat er waar wordt vastgelegd |
 | [§2](#2--provider-abstractie) | Provider-abstractie | Eén interface, twee interactievormen, en een sealed outcome in plaats van een geforceerd uniform retourtype |
 | [§3](#3--datamapping) | Datamapping | De ZAC-kant is exact; Epistola krijgt templatevariabelen plus een correlatie-id |
 | [§4](#4--autorisatiemodel) | Autorisatiemodel | Hergebruik van `creeren_document`, dat al samenvalt met zaaktype- en zaakautorisatie |
@@ -50,10 +50,19 @@ gebouwde versie noemen Epistola wel (§5).
    gedeeltelijke mislukking in context gemeld kan worden en niet als een losse toast.
 5. **Opslag en koppeling** — de teruggekregen PDF wordt in de Documenten API van Open Zaak opgeslagen als
    `EnkelvoudigInformatieObject` en aan de zaak gekoppeld als `ZaakInformatieObject` — binnen hetzelfde
-   geauthenticeerde verzoek ([§2](#2--provider-abstractie)). ZAC houdt geen documentregistratie bij.
+   geauthenticeerde verzoek ([§2](#2--provider-abstractie)). ZAC houdt geen documentregistratie bij. Het onthoudt alleen welk
+   template het document maakte, voor stap 7 ([datamodel](datamodel.md)).
 6. **Preview** — Solr-herindexering en de WebSocket-notificatie laten het document verschijnen op het
    tabblad Documenten van de zaak, waar het met metadata en een in-browserpreview opent zoals elk ander
    document.
+7. **Nieuwe versie** *(optioneel, DoD 11, #9)* — op de pagina van een document dat Epistola maakte, genereert de actie
+   *Nieuwe versie genereren* het opnieuw uit hetzelfde template, met de zaakgegevens zoals ze dan zijn. Het
+   resultaat is de volgende versie van hetzelfde informatieobject (`versie + 1`). De eerdere versies blijven staan,
+   en mislukt het opslaan, dan blijft de huidige versie zoals ze was. De zaak is de zaak waaraan het document hangt,
+   niet een zaak die de aanroeper noemt, zodat de gegevens van de ene zaak niet in het document van een andere
+   terechtkomen. De aanroeper heeft het recht nodig om voor die zaak documenten te maken én om aan het document een
+   versie toe te voegen (`creeren_document` en `toevoegen_nieuwe_versie`), en het zaaktype moet het template nog
+   aanbieden. De actie staat alleen bij een document waarvan ZAC het template kent, zolang Epistola de provider is.
 
 ---
 
@@ -539,11 +548,25 @@ Er zijn drie, elk voor iets anders:
 - **Een informatieobject dat niet aan de zaak gekoppeld kon worden, wordt verwijderd** in de gedeelde
   `ZgwApiService` (B21), dus ook voor de andere aanroepers.
 
+### Gekozen bij de bouw van #9, nog niet met de stakeholders besproken
+
+- **ZAC onthoudt per Epistola-document welk template het maakte**, in `epistola_document` (`V101`). Een nieuwe versie
+  genereren heeft dat nodig, en Open Zaak heeft er geen veld voor: `titel` en `beschrijving` zijn tekst die een
+  gebruiker kan wijzigen. Dit wijkt af van de formulering van 21 september dat ZAC geen documentregistratie bijhoudt.
+  Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
+  Een document van vóór `V101` heeft geen rij en dus geen actie.
+- **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
+  hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
+
 ### Nog open
 
 - **Mag documenten maken alleen vanuit de zaak, niet vanuit een taakformulier, een bekende beperking blijven?** Het
   endpoint ondersteunt een taak wel (TS-28); de dialoog opent alleen vanuit de zaak. Geagendeerd op 28 september,
   niet beantwoord.
+- **Mag ZAC een tabel met de herkomst van documenten bijhouden (`epistola_document`)?** Het ontwerp van 21 september zei dat
+  ZAC geen documentregistratie bijhoudt. De tabel is klein en bewaart geen inhoud, maar het is wel een wijziging ten
+  opzichte van wat de stakeholders hebben gezien. Een alternatief is het template in een veld van Open Zaak zetten, en
+  dat is een tekstveld dat een gebruiker kan wijzigen.
 - **Dekt de bestaande BRP-doelbinding per zaaktype ook documentcreatie?** Een vraag voor de privacy officer. Niet
   blokkerend voor het prototype, niet beantwoord.
 - **BPMN-zaken.** Epistola werkt alleen voor CMMN-zaken (DoD 2). Wat ondersteuning voor BPMN kost, staat als

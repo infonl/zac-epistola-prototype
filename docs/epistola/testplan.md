@@ -8,7 +8,7 @@
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
 | Datum | 25 september 2026, bijgewerkt op 30 september 2026 |
-| Versie | 1.2 — bijgewerkt op 30 september 2026. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
+| Versie | 1.3 — bijgewerkt op 30 september 2026 met de scenario's voor #9. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
 | Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
@@ -42,6 +42,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 | 1.0 | 25 september 2026 | Eerste versie, voor akkoord |
 | 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de behandelaarscenario's draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de scenario's met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
 | 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18) |
+| 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande scenario's zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
 
 ## 2. Testdoelstellingen
 
@@ -67,9 +68,10 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 | Datamapping: zaakdata in het document, de allow-list, datums, ontbrekende velden (#4) | Andere browsers dan Chrome |
 | Open Zaak-opslag: het document in de Documenten API, met metadata en vertrouwelijkheid (#6) | De Playwright/Cucumber-e2e-suite van ZAC. Die is onbetrouwbaar tegen de huidige ZAC (afspraak 16 september) |
 | Zaakkoppeling: het document hoort bij de zaak, en bij de taak als het vanuit een taak komt (#6) | Productie-inrichting: sleutelrotatie, een echte Epistola-tenant, een verwerkersovereenkomst (#20) |
-| Preview: het document openen in de browser, met metadata (#6) | Een nieuwe versie van een Epistola-document (#9, optioneel en nog niet gebouwd) |
+| Preview: het document openen in de browser, met metadata (#6) | |
 | Foutafhandeling: Epistola onbereikbaar, een mislukte job, een template dat verdwijnt, een timeout (#8) | |
 | Randvoorwaarden: SmartDocuments ongewijzigd (DoD 1), alleen CMMN (DoD 2, #7) | |
+| Nieuwe versie: een Epistola-document opnieuw genereren als volgende versie (DoD 11, optioneel, #9) | |
 
 ## 4. Testomgeving
 
@@ -210,6 +212,15 @@ scenario's.
 | TS-33 | Timeout (−) | Laat een job langer duren dan de timeout | ZAC stopt met wachten, annuleert de job bij Epistola en meldt dat het te lang duurde | Midden | Automatisch (`EpistolaClientServiceTest`) |
 | TS-34 | Template verdwenen bij Epistola (−) | Verwijder *ZAC Verplichte aanvrager* bij Epistola terwijl het nog in de mapping staat, en open de dialoog | De dialoog biedt het template niet meer aan en loopt niet vast. De mapping blijft bewaard | Midden | Handmatig |
 | TS-35 | Gedeeltelijke mislukking (−) | Het document staat in de Documenten API, maar de koppeling aan de zaak mislukt | Het document wordt opgeruimd, de behandelaar krijgt een melding die zegt dat er niets aan de zaak is toegevoegd, en de kopie bij Epistola wordt verwijderd (#8, B20, B21) | Midden | Handmatig en automatisch (`ZgwApiServiceTest`, `EpistolaDocumentCreationServiceTest`) |
+| **Nieuwe versie** *(optioneel, #9)* | | | | | |
+| TS-36 | Actie op een Epistola-document (+) | Als `behandelaar1`: open de documentpagina van een document dat met Epistola is gemaakt, bij ZAAK-2026-0000000032 | Het menu toont *Nieuwe versie genereren*, naast *Nieuwe versie* | Hoog | Handmatig en automatisch (`informatie-object-view.component.spec.ts`) |
+| TS-37 | Nieuwe versie met de zaakgegevens van nu (+) | Wijzig de beschrijving van de zaak, kies *Nieuwe versie genereren* en wacht | Versie 2 van hetzelfde document, met de nieuwe beschrijving in de PDF. Versie 1 is nog te downloaden en ongewijzigd. Epistola bewaart niets van de zaak. De pagina toont de nieuwe versie | Hoog | Handmatig en script |
+| TS-38 | Document zonder herkomst (−) | Open een document dat met Epistola is gemaakt vóór de migratie `V101` en vraag `GET` en `POST /rest/epistola-documents/{uuid}/versions` | Geen actie *Nieuwe versie genereren*. Het `POST`-verzoek geeft 400 `msg.error.epistola.document.no-new-version` en er gaat niets naar Epistola | Midden | Handmatig en automatisch (`EpistolaDocumentVersionServiceTest`, `EpistolaDocumentRestServiceTest`) |
+| TS-39 | Template niet meer aangeboden (−) | Haal het template uit de mapping van het zaaktype en kies de actie | 400 `msg.error.epistola.template.not-configured`, de versie blijft zoals ze was en er gaat niets naar Epistola | Midden | Handmatig en automatisch (`EpistolaDocumentVersionServiceTest`) |
+| TS-40 | Epistola onbereikbaar (−) | Maak Epistola onbereikbaar voor de ZAC-container en kies de actie. Herstel de verbinding en kies hem opnieuw | Een melding dat Epistola niet bereikbaar is, en de versie blijft zoals ze was. Na het herstel lukt de actie weer | Midden | Handmatig |
+| TS-41 | Definitief document (−) | Onderteken het document, zodat het *Definitief* is, en kijk naar het menu en vraag `POST …/versions` | Geen actie. Het `POST`-verzoek geeft 403 | Midden | Handmatig en automatisch (`EpistolaDocumentRestServiceTest`: het recht `toevoegen_nieuwe_versie` ontbreekt) |
+| TS-42 | Open Zaak weigert de nieuwe versie (−) | Laat het opslaan van de nieuwe versie in de Documenten API falen | De behandelaar krijgt de melding dat het document is gemaakt maar niet is opgeslagen, de huidige versie blijft en Epistola's kopie wordt verwijderd | Midden | Automatisch (`EpistolaDocumentVersionServiceTest`) |
+| TS-43 | Geen zaakgegevens van een andere zaak (−) | Vraag een nieuwe versie van een document dat niet aan een zaak hangt | Geweigerd met `msg.error.epistola.document.no-new-version`. De zaak komt uit het document en niet uit het verzoek, en zonder zaak is er niets om te genereren | Midden | Automatisch (`EpistolaDocumentRestServiceTest`) |
 
 ### Stappen van de handmatige scenario's
 
@@ -262,6 +273,20 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
   Open Zaak de volgorde `POST` document 201, `POST` zaakkoppeling 400, `DELETE` document 204 nagaan → de aantallen
   documenten en zaakkoppelingen in Open Zaak vergelijken met de aantallen van vóór de proef → met
   `epistola_copy_check.py` nagaan dat Epistola niets meer voor de zaak heeft → de waarde terugzetten.
+- **TS-36, TS-37** — Als `behandelaar1` op ZAAK-2026-0000000032: *Document maken* → *Brieven 2* → titel *Proef nieuwe versie* →
+  *Genereren* → de documentpagina openen (TS-36). Dan de beschrijving van de zaak wijzigen (*Edit case details*, met een
+  reden) → terug naar de documentpagina → *Nieuwe versie genereren* → wachten op de melding en op de pagina van versie 2
+  (TS-37). Versie 1 en 2 downloaden en de regel *Betreft* vergelijken (`pdftotext`). Met
+  `epistola_copy_check.py` nagaan dat Epistola niets meer voor de zaak heeft. Daarna de beschrijving terugzetten.
+- **TS-38** — Op de documentpagina van een document van vóór `V101` (*Testrapport TS-11*): het menu nakijken, en in DevTools
+  `GET /rest/epistola-documents/{uuid}` en `POST /rest/epistola-documents/{uuid}/versions` sturen.
+- **TS-39** — In de ZAC-database (`zaaktype_epistola_document_template_parameters`) de `epistola_id` van het template van *Test
+  zaaktype 2* tijdelijk wijzigen → de actie kiezen → melding nakijken en nagaan dat het versienummer gelijk blijft → de waarde
+  terugzetten.
+- **TS-40** — Als TS-31: minstens drie minuten geen Epistola aanroepen, `demo.epistola.app` in `/etc/hosts` van de
+  ZAC-container op `127.0.0.1` zetten, 35 seconden wachten, de actie kiezen → melding en versienummer nakijken → `/etc/hosts`
+  terugzetten → **nog eens 35 seconden wachten** (Java bewaart het adres zolang) → de actie opnieuw kiezen.
+- **TS-41** — Op de documentpagina *Sign* → *Yes* → menu nakijken → in DevTools `POST …/versions`.
 - **TS-34** — `author_required_field_template.py --delete` → als `beheerder1` de dialoog op
   ZAAK-2026-0000000001 openen → groep *Brieven* nakijken. In de ZAC-database nagaan dat de mapping-rij er nog
   is.

@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31) |
+| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31), en met de tabel `epistola_document` in `V101` voor een nieuwe versie van een document (#9) |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
-| Raakt | #2, #3, #6 |
+| Raakt | #2, #3, #6, #9 |
 
-De zaaktypeconfiguratietabellen zoals ze er nu staan, en de drie wijzigingen die Epistola nodig heeft. Het
+De zaaktypeconfiguratietabellen zoals ze er nu staan, en de vier wijzigingen die Epistola nodig heeft. Het
 ontwerp **spiegelt de SmartDocuments-structuur in plaats van hem te generaliseren** — de twee providers
 houden aparte tabellen, zodat een wijziging aan de één de ander niet kan breken.
 
@@ -65,6 +65,10 @@ erDiagram
         bigint template_group_id FK
         uuid informatie_object_type_uuid
     }
+    epistola_document {
+        uuid informatieobject_uuid PK "NIEUW, geen FK"
+        varchar template_id
+    }
 ```
 
 Tabelnamen zijn hierboven ingekort: `sd_template_group` en `sd_template` heten in werkelijkheid
@@ -108,6 +112,19 @@ en spaties te letten, zodat een behandelaar nooit twee groepen ziet die hij niet
 `(zaaktype_configuration_id, epistola_id)` is uniek: een template staat hoogstens één keer in een zaaktype
 (zie de ontwerpbesluiten).
 
+### `epistola_document` *(nieuw, `V101`, #9)*
+
+| Kolom | Type | Null | Toelichting |
+|---|---|---|---|
+| `informatieobject_uuid` | uuid | nee | PK. Het informatieobject in Open Zaak dat met Epistola is gegenereerd. Geen FK: dat object staat in een ander systeem |
+| `template_id` | varchar | nee | Identificatie van het template waarmee het document is gegenereerd |
+| `aanmaakdatum` | timestamptz | nee | Wanneer het document is gegenereerd |
+
+Er staat één rij per gegenereerd document, geschreven nadat het in Open Zaak staat. Een document zonder rij, omdat het
+ouder is of omdat het schrijven van de rij mislukte, heeft geen actie *Nieuwe versie genereren*. Een rij van een document
+dat later is verwijderd blijft staan. Dat doet geen kwaad, want ze wordt alleen gelezen met de UUID van een bestaand
+document.
+
 ### `zaaktype_configuration` *(één nieuwe kolom)*
 
 | Kolom | Type | Null | Toelichting |
@@ -135,11 +152,16 @@ wordt, en het opstarten weigert een configuratie die twee providers noemt. Beide
 vervangen zou schoner zijn, maar dwingt een datamigratie af op elke bestaande installatie zonder dat het
 prototype er iets mee opschiet.
 
-### Geen tabel voor gegenereerde documenten
+### Geen kopie van gegenereerde documenten, wel het template dat ze maakte
 
 Gegenereerde PDF's worden in Open Zaak geregistreerd als `EnkelvoudigInformatieObject` en gekoppeld met een
-`ZaakInformatieObject`. ZAC bewaart er geen kopie en geen verwijzing van, en daarom is documentversionering
-(#9) het `versie`-veld van Open Zaak en niet iets in dit schema.
+`ZaakInformatieObject`. ZAC bewaart er geen kopie van, en documentversionering (#9) is het `versie`-veld van Open Zaak.
+
+Tot #9 bewaarde ZAC ook geen verwijzing. Een nieuwe versie genereren heeft die wel nodig: ZAC moet weten *dat* Epistola
+het document maakte, en met welk template. Open Zaak kent geen veld voor die herkomst, en `beschrijving` of `titel`
+ervoor gebruiken zou een tekstveld dat een gebruiker kan wijzigen tot bron van waarheid maken. Daarom onthoudt
+`epistola_document` alleen het template, per informatieobject. Het is geen documentregistratie: er staat geen inhoud,
+titel, status of zaak in, want die leest ZAC bij elke aanroep uit Open Zaak.
 
 Het documentcreatietoken in `DocumentCreationUserStore` staat in het geheugen met een vervaltijd en wordt
 niet gepersisteerd — dus het staat hier ook niet.

@@ -177,9 +177,12 @@ productkeuze en geen technische.
 *Nu.* De dialoog opent alleen vanuit de zaak. Het endpoint ondersteunt een taak wel (getest in TS-28).
 *Vraag.* Blijft dit een bekende beperking, of moet het kunnen? Op 28 september geagendeerd, niet beantwoord.
 
-**VV-14 · Een nieuwe versie van een eerder gemaakt document** (#9) · M
-*Nu.* Optioneel deel van de DoD, niet gebouwd. De bijbehorende Epistola-mogelijkheden en de bestaande versiestroom
-van Open Zaak moeten worden onderzocht voordat de omvang klopt.
+**VV-14 · Een nieuwe versie van een eerder gemaakt document** (#9) · M · **gebouwd op 30 september**
+*Nu.* Gebouwd in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43), nagegaan met TS-36 t/m TS-43 (testrapport, ronde 3).
+De actie *Nieuwe versie genereren* staat op de pagina van een document dat Epistola maakte, en zet de volgende versie van
+hetzelfde informatieobject in Open Zaak. Wat het kostte, week af van de schatting: Open Zaak's versiestroom bestond al, maar ZAC
+moest onthouden welk template een document maakte (`epistola_document`, `V101`). Dat is een ontwerpkeuze die de stakeholders nog
+niet hebben gezien (TFO §6).
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
 *Voorstel.* Niet beginnen voordat de belastingtest laat zien wat één document kost. Een bulkstroom die een thread
@@ -244,6 +247,7 @@ belastingtest).
 | B-03 Contractfout raadt "probeer opnieuw" aan | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; TS-32 opnieuw uitgevoerd op 30 september, geslaagd |
 | TS-35 Gedeeltelijke mislukking: opgeslagen, niet gekoppeld | #8: het informatieobject wordt verwijderd | TS-35 uitgevoerd op 30 september, geslaagd: Open Zaak weigerde de koppeling, het document is verwijderd, en de kopie bij Epistola ook |
 | B-04 tot en met B-07 | Bij de bouw en de reviews | Nagegaan in het testrapport |
+| VV-14 Nieuwe versie van een Epistola-document | #9, [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43) | Live op 30 september met de echte testserver; TS-36 t/m TS-41 handmatig, TS-42 en TS-43 met unittests |
 | Templatenamen bij een onbereikbare Epistola | #30, [PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34) | Live op 29 september; TS-31 met de namen uit het geheugen op 30 september, geslaagd |
 
 ## Verantwoording

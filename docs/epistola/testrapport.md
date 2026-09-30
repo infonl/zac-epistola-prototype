@@ -22,10 +22,11 @@
 | Testperiode | 25 september 2026 (ronde 1, het hele plan) en 30 september 2026 (ronde 2, de scenario's die op #7 en #8 wachtten, met een controle van de rest na #30) |
 | Geteste functionaliteiten | 10 — de acht gebieden uit de examenafspraken en de twee randvoorwaarden uit de DoD |
 | Aantal testscenario's uitgevoerd | 36 van de 36 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
-| Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %) |
+| Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %). Daarnaast slagen de 8 scenario's voor het optionele #9 (ronde 3, hieronder apart) |
 | Totaal mislukt | 0. In ronde 1 mislukten TS-06, TS-31 en TS-32. Alle drie slaagden in ronde 2, en TS-35 slaagde bij de eerste uitvoering |
 | Gevonden bugs | 8 bugs: 7 opgelost, 1 open. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08 is een kleine opmerking over een algemene regel in het foutvenster |
 | Geautomatiseerde tests | Ronde 2, op `c4dbdcca1`: 2729 backend-unittests, 2980 frontend-unittests (257 suites), 386 integratietests en de live-check (7 van 7 controles). Alle geslaagd |
+| Ronde 3 (#9) | Op 30 september, op de branch `feat/epistola-new-document-version` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)): de 8 scenario's TS-36 t/m TS-43 voor het optionele DoD-item 11, *een nieuwe versie van een Epistola-document*. Ze staan in testplan 1.3, dat de stakeholders niet hebben goedgekeurd, en tellen daarom niet mee in de 36 |
 | Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 scenario's zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
 
 ## 2. Testresultaten per functionaliteit
@@ -42,6 +43,7 @@
 | 8 | Preview (#6) | TS-29, TS-30 | ✅ Geslaagd | Nee | De PDF opent in de browser, met alle metadata |
 | 9 | Foutafhandeling (#8) | TS-31 t/m TS-35 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ 2 van de 4 uitgevoerde scenario's) | Ja: B-02 en B-03 (opgelost, ronde 2), B-06 (opgelost), B-08 (open, laag) | Elke fout geeft een melding die zegt wat er mis is en of opnieuw proberen helpt. Er gaat niets verloren en er blijft niets half achter |
 | 10 | Randvoorwaarden: SmartDocuments ongewijzigd, alleen CMMN (DoD 1 en 2) | TS-22, TS-06 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ TS-06) | Ja: B-01 (opgelost, ronde 2) | SmartDocuments werkt ongewijzigd. Bij een BPMN-zaak staat *Create document* uitgeschakeld, met een uitleg |
+| 11 | Nieuwe versie van een Epistola-document (DoD 11, optioneel, #9) | TS-36 t/m TS-43 | ✅ Geslaagd (ronde 3) | Nee | De actie verschijnt bij een document dat Epistola maakte, genereert de volgende versie met de zaakgegevens van dat moment, en laat de eerdere versies en de huidige versie ongemoeid bij een fout |
 
 ## 3. Conclusies per functionaliteit
 
@@ -140,6 +142,24 @@ DoD 1). Een BPMN-zaaktype heeft geen Epistola-kaart, en het endpoint weigert een
 `msg.error.epistola.cmmn-only` (TS-06). In ronde 1 zei een BPMN-zaak nergens dat documenten maken daar niet kan
 (B-01). Sinds #7 staat *Create document* er uitgeschakeld, met een uitleg die met de muis en met het toetsenbord
 te bereiken is, dus DoD 2 is ook in de UI gehaald.
+
+### Functionaliteit 11 – Nieuwe versie van een Epistola-document (optioneel, #9)
+
+Dit onderdeel staat in testplan 1.3 en is niet door de stakeholders goedgekeurd. Het is het optionele DoD-item 11. Op de
+pagina van een document dat Epistola maakte staat de actie *Generate new version*. Ze genereert het document opnieuw uit
+hetzelfde template, met de zaakgegevens zoals ze dan zijn, en slaat het op als de volgende versie van hetzelfde
+informatieobject (TS-36, TS-37). Na het wijzigen van de beschrijving van de zaak stond die nieuwe beschrijving in de
+regel *Betreft* van versie 2, terwijl versie 1 nog de oude had. Epistola bewaarde daarna niets meer van de zaak.
+
+Elke weigering liet de huidige versie ongemoeid. Een document van vóór de migratie heeft geen herkomst en dus geen
+actie, en het verzoek geeft 400 (TS-38). Een template dat het zaaktype niet meer aanbiedt, geeft 400 zonder dat er iets
+naar Epistola gaat (TS-39). Is Epistola onbereikbaar, dan zegt de melding dat, en de versie blijft staan (TS-40).
+Een ondertekend document is *Definitief*: dan verdwijnt de actie, en het verzoek geeft 403 (TS-41). TS-42 en TS-43 zijn
+alleen met unittests gedekt: het weigeren van Open Zaak, en een document zonder zaak.
+
+Twee dingen zijn opgevallen die geen bug van de integratie zijn. Na het herstellen van de verbinding naar Epistola
+slaagde de actie pas na ongeveer een halve minuut, omdat Java het adres zolang bewaart, en het testplan zegt dat nu. En
+onder de melding van TS-40 staat dezelfde algemene regel *An error has occurred.* als bij B-08.
 
 ## 4. Gevonden bugs en status
 
@@ -294,6 +314,25 @@ schermen tonen de Engelse teksten.
 | TS-34 | beheerder1 | *ZAC Verplichte aanvrager* bij Epistola verwijderd (HTTP 204). Het genereerscherm op ZAAK-2026-0000000001 bood *Brieven* daarna alleen *ZAC Standaardbrief* aan (het enige template, dus voorgeselecteerd), ook al had ZAC de naam van het verwijderde template in het geheugen. De mapping-rij staat nog in de database. Daarna het template opnieuw aangemaakt | ✅ | [screenshot](testrapport/ts-34-ronde2-template-verdwenen.png); `psql` |
 | TS-35 | beheerder1 | Voorbereiding: in de database van ZAC tijdelijk het documenttype van *ZAC Standaardbrief* bij *Test zaaktype 1* gezet op het type *brief* `32e06e3a…`, dat in Open Zaak bij geen enkel zaaktype hoort, en daarna teruggezet. Genereren van *Hertest TS-35* op ZAAK-2026-0000000001 gaf na 3,7 seconden 500 `msg.error.epistola.document.not-stored`. Het foutvenster zegt *The document was created, but storing it in Open Zaak failed. Nothing was added to the case. Try again later.*, met Open Zaak's reden *Het informatieobjecttype hoort niet bij het zaaktype van de zaak.* Het log van Open Zaak toont de volgorde `POST …/enkelvoudiginformatieobjecten` 201, `POST …/zaakinformatieobjecten` 400, `DELETE …/enkelvoudiginformatieobjecten/…` 204. Daarna stonden er in Open Zaak 104 documenten en 99 zaakkoppelingen, zoals vóór de proef, geen document *Hertest TS-35*, en bij Epistola 0 documenten voor de zaak | ✅ | [screenshot](testrapport/ts-35-ronde2-opslag-mislukt.png); logs van Open Zaak en ZAC; `ZgwApiServiceTest` |
 
+### Ronde 3 — 30 september 2026 (#9)
+
+Uitgevoerd in de middag van 30 september op de branch `feat/epistola-new-document-version`, met de ZAC-image die
+`./gradlew itest` van die commit bouwde (`d59ffa595488`). De stack liep met `./start-docker-compose.sh -l -E`, dus met
+de echte testserver van Epistola, en migratie `V101` was toegepast. Google Chrome 153, bestuurd door Playwright,
+ingelogd als `behandelaar1` op ZAAK-2026-0000000032 (*Test zaaktype 2*). Het gegenereerde document is
+DOCUMENT-2026-0000000104.
+
+| # | Gebruiker | Wat er is gedaan en gezien |
+|---|---|---|
+| TS-36 | behandelaar1 | Het document *Proef nieuwe versie* met *ZAC Standaardbrief* gegenereerd: HTTP 200. In de database staat één rij in `epistola_document` met het template `zac-standaardbrief`. Op de documentpagina staat *Generate new version* naast *New version*, bij *Version 1 of 1*. ![](testrapport/ts-36-ronde3-actie-nieuwe-versie-genereren.png) |
+| TS-37 | behandelaar1 | De beschrijving van de zaak gewijzigd in *Omschrijving gewijzigd voor nieuwe versie* (met een reden), daarna de actie gekozen: HTTP 200 na 3,6 seconden, de melding *A new version … was created with Epistola* en de pagina van versie 2. Tijdens het genereren staat de actie grijs (eerste screenshot). Versie 1 (32 265 bytes) heeft *Betreft: E2E-test-20260828T114509496Z*, versie 2 (32 159 bytes) *Betreft: Omschrijving gewijzigd voor nieuwe versie*. Nog steeds één rij in `epistola_document`. `epistola_copy_check.py` vond 0 documenten bij Epistola voor de zaak. De beschrijving is daarna teruggezet. ![](testrapport/ts-37-ronde3-nieuwe-versie-bezig.png) ![](testrapport/ts-37-ronde3-nieuwe-versie-klaar.png) |
+| TS-38 | behandelaar1 | Het document *Testrapport TS-11* (van 25 september, dus van vóór `V101`): `GET /rest/epistola-documents/{uuid}` geeft `isNewVersionAvailable: false`, `POST …/versions` geeft 400 `msg.error.epistola.document.no-new-version`, en het menu heeft alleen *New version*. ![](testrapport/ts-38-ronde3-geen-actie-bij-oud-document.png) |
+| TS-39 | behandelaar1 | De `epistola_id` van het template van *Test zaaktype 2* tijdelijk gewijzigd en de actie gekozen: 400 `msg.error.epistola.template.not-configured` en de melding *The selected template is not configured for this zaaktype*. Het document bleef op versie 2 (*Version 2 of 2*). Dat er niets naar Epistola gaat, volgt uit de volgorde in de code (het template wordt gecontroleerd vóór het genereren) en is met `EpistolaDocumentVersionServiceTest` getest. De waarde is teruggezet. ![](testrapport/ts-39-ronde3-template-niet-meer-aangeboden.png) |
+| TS-40 | behandelaar1 | Ongeveer drie minuten na de laatste aanroep `demo.epistola.app` in `/etc/hosts` van de ZAC-container op `127.0.0.1` gezet, 35 seconden gewacht en de actie gekozen: 500 `msg.error.epistola.unavailable` na 0,4 seconden, de melding *Epistola cannot be reached right now. Try again later.* (met de algemene regel van B-08) en het document bleef op versie 2. Het log noemt het template en de zaak. Na het terugzetten van `/etc/hosts` faalde een direct nieuwe poging nog (het adres stond nog in Java's cache), en na 30 seconden extra slaagde hij: versie 3. ![](testrapport/ts-40-ronde3-epistola-onbereikbaar.png) |
+| TS-41 | behandelaar1 | Het document ondertekend (*Sign*, *Yes*): de status werd *definitief* (versie 4, door de ondertekening). `rechten.toevoegenNieuweVersie` is `false`, het menu heeft geen *Generate new version* en ook geen *New version*, en `POST …/versions` geeft 403. ![](testrapport/ts-41-ronde3-geen-actie-bij-definitief.png) |
+| TS-42 | — | Geautomatiseerd: `EpistolaDocumentVersionServiceTest` laat Open Zaak de update weigeren. De behandelaar krijgt `msg.error.epistola.document.not-stored` met Open Zaak's reden, het log noemt het document en de zaak zonder de exception te koppelen, en Epistola's kopie wordt verwijderd |
+| TS-43 | — | Geautomatiseerd: `EpistolaDocumentRestServiceTest` vraagt een nieuwe versie van een document zonder zaak: geweigerd zonder dat iets naar Epistola gaat. De andere tests van die klasse laten zien dat de zaak uit het document komt en dat beide rechten worden gevraagd |
+
 ### Testdata na afloop van ronde 1
 
 - Op ZAAK-2026-0000000032 staan twee testdocumenten (*Testrapport TS-11*, *TS-13*), op ZAAK-2026-0000000001 één
@@ -380,3 +419,14 @@ Alle runs op de branch `build/epistola-client-1-4-0` ([PR #42](https://github.co
 | Integratietests (SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 6 min 12 s (11:32–11:38). Een eerste poging mislukte na 46 s met verbindingsfouten, omdat de lokale stack nog draaide en dezelfde poorten bezette. Na `./stop-docker-compose.sh` slaagde de tweede |
 | Live-check tegen Epistola's testserver | harness en `check_live_run.py` | 7 van de 7 controles geslaagd |
 | Aanroep van `validate` op de testserver | direct, met data met vier fouten | Antwoord met alleen `errors` en `valid`: de velden uit contract 1.4.0 zitten nog niet in de server |
+
+### Ronde 3 — 30 september 2026 (#9)
+
+Alle runs op de branch `feat/epistola-new-document-version` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)), commit `ddad815ef`.
+
+| Suite | Commando | Resultaat |
+|---|---|---|
+| Backend-unittests (Kotest, MockK) | `./gradlew test` | 2754 tests, 0 mislukt, 0 overgeslagen. Dat zijn er 25 meer dan in ronde 2: 12 in `EpistolaDocumentVersionServiceTest`, 6 in `EpistolaDocumentRestServiceTest`, 3 in `EpistolaDocumentRepositoryTest`, 2 in `EpistolaTemplatesServiceTest` en 2 in `EpistolaDocumentCreationServiceTest` |
+| Frontend-unittests (Jest, Testing Library) | `npx ng test` | 257 suites, 2985 tests, 0 mislukt. Vijf meer dan in ronde 2, in `informatie-object-view.component.spec.ts` |
+| Integratietests (TestContainers, SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 7 min 12 s (12:01–12:08). Migratie `V101` is daarbij toegepast. Ze dekken de Epistola-paden niet, zie *Bekende beperkingen* |
+| Lint | `./gradlew spotlessApply detekt`, ESLint op de gewijzigde bestanden | Geen bevindingen, 0 fouten |
