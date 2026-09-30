@@ -9,13 +9,14 @@ import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { ActivatedRoute, RouterModule } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
-import { of } from "rxjs";
+import { of, Subject } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { ConfiguratieService } from "../../configuratie/configuratie.service";
 import { UtilService } from "../../core/service/util.service";
 import { IdentityService } from "../../identity/identity.service";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { MailtemplateBeheerService } from "../mailtemplate-beheer.service";
+import { EpistolaTemplatesFormComponent } from "../parameters-components/epistola-templates-form/epistola-templates-form.component";
 import { ReferentieTabelService } from "../referentie-tabel.service";
 import { ZaakafhandelParametersService } from "../zaakafhandel-parameters.service";
 import { ParametersEditCmmnComponent } from "./parameters-edit-cmmn.component";
@@ -248,6 +249,87 @@ describe("Koppelingen form step", () => {
     it("should not show smart documents form when enabledGlobally is false", () => {
       const component = fixture.componentInstance;
       expect(component.parameters.smartDocuments.enabledGlobally).toBe(false);
+    });
+  });
+
+  describe("Epistola templates", () => {
+    const savedParameters = fromPartial<
+      GeneratedType<"RestZaaktypeConfiguration">
+    >({ ...zaakafhandelParameters });
+    let update$: Subject<GeneratedType<"RestZaaktypeConfiguration">>;
+    let templatesMapping$: Subject<void>;
+    let saveEpistolaTemplatesMapping: jest.Mock;
+    let openSnackbar: jest.SpyInstance;
+
+    beforeEach(() => {
+      update$ = new Subject();
+      templatesMapping$ = new Subject();
+      saveEpistolaTemplatesMapping = jest.fn(() => templatesMapping$);
+      jest
+        .spyOn(zaakafhandelParametersService, "updateZaakafhandelparameters")
+        .mockReturnValue(update$);
+      openSnackbar = jest.spyOn(utilService, "openSnackbar");
+    });
+
+    function whenSaving({
+      isEnabledForZaaktype,
+    }: {
+      isEnabledForZaaktype: boolean;
+    }) {
+      const component = fixture.componentInstance;
+      component.epistolaTemplatesFormComponent =
+        fromPartial<EpistolaTemplatesFormComponent>({
+          enabledForZaaktypeValue: isEnabledForZaaktype,
+          saveEpistolaTemplatesMapping,
+        });
+      component["opslaan"]();
+      return component;
+    }
+
+    it("saves the template mapping only once the parameters are saved", () => {
+      whenSaving({ isEnabledForZaaktype: true });
+
+      expect(saveEpistolaTemplatesMapping).not.toHaveBeenCalled();
+
+      update$.next(savedParameters);
+
+      expect(saveEpistolaTemplatesMapping).toHaveBeenCalledTimes(1);
+    });
+
+    it("reports the parameters as saved only once the template mapping is saved too", () => {
+      const component = whenSaving({ isEnabledForZaaktype: true });
+      update$.next(savedParameters);
+
+      expect(openSnackbar).not.toHaveBeenCalled();
+      expect(component["isLoading"]).toBe(true);
+
+      templatesMapping$.next();
+
+      expect(openSnackbar).toHaveBeenCalledWith(
+        "msg.zaakafhandelparameters.opgeslagen",
+      );
+      expect(component["isLoading"]).toBe(false);
+    });
+
+    it("does not report the parameters as saved when saving the template mapping fails", () => {
+      const component = whenSaving({ isEnabledForZaaktype: true });
+      update$.next(savedParameters);
+
+      templatesMapping$.error("fakeFailure");
+
+      expect(openSnackbar).not.toHaveBeenCalled();
+      expect(component["isLoading"]).toBe(false);
+    });
+
+    it("saves no template mapping while Epistola is switched off for the zaaktype", () => {
+      whenSaving({ isEnabledForZaaktype: false });
+
+      update$.next(savedParameters);
+
+      expect(saveEpistolaTemplatesMapping).not.toHaveBeenCalled();
+      expect(openSnackbar).toHaveBeenCalledWith(
+        "msg.zaakafhandelparameters.opgeslagen",
+      );
     });
   });
 

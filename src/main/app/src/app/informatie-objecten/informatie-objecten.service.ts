@@ -49,6 +49,13 @@ export class InformatieObjectenService {
     );
   }
 
+  listInformatieobjecttypesQuery(zaakTypeUuid: string) {
+    return this.zacQueryClient.GET(
+      "/rest/informatieobjecten/informatieobjecttypes/{zaakTypeUuid}",
+      { path: { zaakTypeUuid } },
+    );
+  }
+
   listInformatieobjecttypesForZaak(zaakUuid: string) {
     return this.zacHttpClient.GET(
       "/rest/informatieobjecten/informatieobjecttypes/zaak/{zaakUuid}",

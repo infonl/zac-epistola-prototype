@@ -44,7 +44,15 @@ import { MatStepperModule } from "@angular/material/stepper";
 import { MatTableDataSource, MatTableModule } from "@angular/material/table";
 import { ActivatedRoute } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
-import { forkJoin, Subject, Subscription, takeUntil } from "rxjs";
+import {
+  forkJoin,
+  map,
+  of,
+  Subject,
+  Subscription,
+  switchMap,
+  takeUntil,
+} from "rxjs";
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -61,6 +69,7 @@ import {
   ProcessModelMethod,
   ProcessModelMethodSelection,
 } from "../model/parameters/process-model-method";
+import { EpistolaTemplatesFormComponent } from "../parameters-components/epistola-templates-form/epistola-templates-form.component";
 import { SmartDocumentsFormComponent } from "../parameters-components/smart-documents-form/smart-documents-form.component";
 import { ReferentieTabelService } from "../referentie-tabel.service";
 import { ZaakafhandelParametersService } from "../zaakafhandel-parameters.service";
@@ -107,6 +116,7 @@ type RestPristineZaakbeeindigParameterFormData = Omit<
     MaterialFormBuilderModule,
     SharedModule,
     SmartDocumentsFormComponent,
+    EpistolaTemplatesFormComponent,
   ],
 })
 export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
@@ -116,6 +126,9 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
 
   @ViewChild("smartDocumentsFormRef")
   smartDocumentsFormComponent!: SmartDocumentsFormComponent;
+
+  @ViewChild("epistolaTemplatesFormRef")
+  epistolaTemplatesFormComponent?: EpistolaTemplatesFormComponent;
 
   private readonly destroy$ = new Subject<void>();
 
@@ -883,7 +896,8 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
       this.zaakbeeindigFormGroup.valid &&
       this.automatischeOntvangstbevestigingFormGroup.valid &&
       this.betrokkeneKoppelingen.valid &&
-      this.brpProtocoleringFormGroup.valid
+      this.brpProtocoleringFormGroup.valid &&
+      (this.epistolaTemplatesFormComponent?.isValid() ?? true)
     );
   }
 
@@ -1007,6 +1021,11 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
     this.parameters.smartDocuments.enabledForZaaktype =
       this.smartDocumentsFormComponent?.enabledForZaaktypeValue ?? false;
 
+    if (this.parameters.epistola && this.epistolaTemplatesFormComponent) {
+      this.parameters.epistola.isEnabledForZaaktype =
+        this.epistolaTemplatesFormComponent.enabledForZaaktypeValue;
+    }
+
     this.parameters.betrokkeneKoppelingen = {
       kvkKoppelen: Boolean(
         this.betrokkeneKoppelingen.controls.kvkKoppelen.value,
@@ -1029,6 +1048,16 @@ export class ParametersEditCmmnComponent implements OnDestroy, AfterViewInit {
 
     this.zaakafhandelParametersService
       .updateZaakafhandelparameters(this.parameters)
+      .pipe(
+        // After the update, not beside it: the mapping needs the zaaktype configuration to exist.
+        switchMap((data) =>
+          this.epistolaTemplatesFormComponent?.enabledForZaaktypeValue
+            ? this.epistolaTemplatesFormComponent
+                .saveEpistolaTemplatesMapping()
+                .pipe(map(() => data))
+            : of(data),
+        ),
+      )
       .subscribe({
         next: (data) => {
           this.isLoading = false;
