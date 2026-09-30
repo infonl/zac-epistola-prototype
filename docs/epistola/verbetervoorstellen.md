@@ -233,7 +233,7 @@ belastingtest).
 | Mag document maken alleen vanuit de zaak blijven, niet vanuit een taak? | Stakeholders | Idem (VV-13) |
 | Rendertimeout en maximum aantal pogingen | Epistola | Nog niet gesteld (VV-04) |
 | Welk contract hoort bij de gerenderde templateversie, en welke velden leest die versie? | Epistola | Nog niet gesteld (VV-10) |
-| Waar horen release notes te staan? | Team | Open; de repository heeft geen release-notesbestand (#7) |
+| Waar horen release notes te staan? | Team | Beantwoord op 30 september: ZAC genereert ze uit de titels van de gemergede pull requests (de stap *Generate release notes* in `build-test-deploy.yml`), dus er is geen bestand nodig. Wat overblijft: de pull request naar de upstream-repository noemt de CMMN-beperking in titel en beschrijving (#7) |
 
 ## 9. Wat al is opgelost, met bewijs
 
