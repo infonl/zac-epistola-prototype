@@ -17,9 +17,10 @@
 ## 1. Samenvatting
 
 Het prototype laat ZAC documenten maken met Epistola, per zaaktype in te stellen, alleen als PDF, opgeslagen in
-Open Zaak en gekoppeld aan de zaak. De hoofdstroom is getest: van de 35 uitgevoerde scenario's slaagden er 32. De
-drie die mislukten (TS-06, TS-31, TS-32) betroffen meldingen voor de gebruiker. Die zijn inmiddels gebouwd (#7, #8);
-hun hertest staat nog open.
+Open Zaak en gekoppeld aan de zaak. De hoofdstroom is getest, in twee rondes: in ronde 1 (25 september) slaagden 32 van de
+35 uitgevoerde scenario's. De drie die mislukten (TS-06, TS-31, TS-32) betroffen meldingen voor de gebruiker. Die zijn
+daarna gebouwd (#7, #8, #30), en ronde 2 (30 september) heeft ze op de gemergede versie opnieuw uitgevoerd: alle 36
+scenario's slagen nu.
 
 **Wat productiegebruik nog tegenhoudt** is niet de code van de integratie, maar drie dingen eromheen:
 
@@ -42,7 +43,7 @@ Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie 
 
 | Bron | Gebruikt voor |
 |---|---|
-| [Testrapport](testrapport.md) (#19), 25 september | 36 scenario's, 7 bugs, bekende beperkingen, aanbevelingen |
+| [Testrapport](testrapport.md) (#19), 25 en 30 september | 36 scenario's in twee rondes, 8 bugs, bekende beperkingen, aanbevelingen |
 | Risicoregister R1 t/m R9 (#16, bijgehouden in #20) | [§3](#3-het-risicoregister-alle-negen) |
 | Stakeholderoverleggen van 21 en 28 september (#21) | Besluiten die risico's sloten of vernauwden, en nieuwe vragen |
 | Reviews op #24 (Marcel, Edgar, Copilot) | Vragen aan Epistola, contractversie, bewaartermijn |
@@ -233,12 +234,12 @@ belastingtest).
 
 | Bevinding | Opgelost in | Nagegaan |
 |---|---|---|
-| B-01 BPMN-zaak toont niet waarom er geen Epistola-actie is | #7, [PR #33](https://github.com/infonl/zac-epistola-prototype/pull/33) | Live op 29 september; **hertest van TS-06 volgt** |
-| B-02 Lege lijst zonder melding als Epistola onbereikbaar is | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; **hertest van TS-31 volgt** |
-| B-03 Contractfout raadt "probeer opnieuw" aan | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; **hertest van TS-32 volgt** |
-| TS-35 Gedeeltelijke mislukking: opgeslagen, niet gekoppeld | #8: het informatieobject wordt verwijderd | Live niet nagebootst; **hertest volgt** |
+| B-01 BPMN-zaak toont niet waarom er geen Epistola-actie is | #7, [PR #33](https://github.com/infonl/zac-epistola-prototype/pull/33) | Live op 29 september; TS-06 opnieuw uitgevoerd op 30 september, geslaagd |
+| B-02 Lege lijst zonder melding als Epistola onbereikbaar is | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; TS-31 opnieuw uitgevoerd op 30 september, geslaagd |
+| B-03 Contractfout raadt "probeer opnieuw" aan | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; TS-32 opnieuw uitgevoerd op 30 september, geslaagd |
+| TS-35 Gedeeltelijke mislukking: opgeslagen, niet gekoppeld | #8: het informatieobject wordt verwijderd | TS-35 uitgevoerd op 30 september, geslaagd: Open Zaak weigerde de koppeling, het document is verwijderd, en de kopie bij Epistola ook |
 | B-04 tot en met B-07 | Bij de bouw en de reviews | Nagegaan in het testrapport |
-| Templatenamen bij een onbereikbare Epistola | #30, [PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34) | Live op 29 september; **hertest van TS-31 met namen volgt** |
+| Templatenamen bij een onbereikbare Epistola | #30, [PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34) | Live op 29 september; TS-31 met de namen uit het geheugen op 30 september, geslaagd |
 
 ## Verantwoording
 

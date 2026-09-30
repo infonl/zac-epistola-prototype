@@ -7,9 +7,9 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Datum | 25 september 2026 |
-| Versie | 1.1 — concept, ter akkoord bij de stakeholders (#21) |
-| Geteste versie | Branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)). Daaronder liggen #27, #25 en #24, dus deze versie bevat alle Epistola-onderdelen |
+| Datum | 25 september 2026, bijgewerkt op 30 september 2026 |
+| Versie | 1.2 — goedgekeurd door de stakeholders op 28 september 2026 (B14) |
+| Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
 > bevatten alle scenario's. De functionaliteiten uit [§3](#3-testscope) komen elk terug in [§8](#8-testcases).
@@ -30,10 +30,10 @@ De opdrachtgever (Dimpact, met Team Geneva als eigenaar van ZAC) krijgt daarmee 
 - **wat niet werkt of nog niet gebouwd is**, vooraf benoemd als verwachte beperking, zodat het testrapport
   dat niet achteraf hoeft te ontdekken.
 
-DoD-item 8 vraagt om *overeengekomen* testcases. Deze versie 1.0 gaat daarom ter akkoord naar het
-stakeholderoverleg (#21). De eerste uitvoering op 25 september staat in het testrapport. Worden er bij het
-akkoord scenario's gewijzigd of toegevoegd, dan worden die opnieuw uitgevoerd en krijgt dit plan een nieuwe
-versie.
+DoD-item 8 vraagt om *overeengekomen* testcases. Het plan ging daarom ter akkoord naar het stakeholderoverleg
+(#21), en de stakeholders keurden versie 1.1 op 28 september goed zoals het was (B14). Het akkoord kwam na de
+eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die op #7 en #8 wachtten, zijn op
+30 september uitgevoerd, in de tweede ronde van het testrapport.
 
 ### Versie
 
@@ -41,6 +41,7 @@ versie.
 |---|---|---|
 | 1.0 | 25 september 2026 | Eerste versie, voor akkoord |
 | 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de behandelaarscenario's draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de scenario's met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
+| 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18) |
 
 ## 2. Testdoelstellingen
 
@@ -183,20 +184,20 @@ scenario's.
 | TS-12 | Alleen PDF, auteur vast (+) | Open de dialoog | *Bestandsformaat* toont *PDF* en is niet te wijzigen. Er is geen creatiedatum. De auteur is de ingelogde gebruiker en niet te wijzigen. Documenttype en vertrouwelijkheid komen uit de mapping | Hoog | Handmatig |
 | TS-13 | Voortgang tijdens genereren (+) | Klik op *Genereren* en kijk direct | Een spinner op de knop, beide knoppen uitgeschakeld, en de tekst *Het document wordt gegenereerd…* | Midden | Handmatig en automatisch (component spec) |
 | TS-14 | Verplichte velden (−) | Open de dialoog en vul geen titel in | *Genereren* blijft uitgeschakeld | Midden | Handmatig en automatisch (component spec) |
-| TS-15 | Niet-aangeboden template (−) | Stuur via DevTools een verzoek met `templateId` `niet-aangeboden` voor ZAAK-2026-0000000032 | 400 met de melding dat het sjabloon niet voor dit zaaktype is ingesteld. Niets naar Epistola | Hoog | Handmatig en automatisch (`EpistolaTemplatesServiceTest`, `EpistolaDocumentCreationServiceTest`) |
+| TS-15 | Niet-aangeboden template (−) | Stuur via DevTools een verzoek met `templateId` `niet-aangeboden` voor ZAAK-2026-0000000032 | 400 met de melding dat het template niet voor dit zaaktype is ingesteld. Niets naar Epistola | Hoog | Handmatig en automatisch (`EpistolaTemplatesServiceTest`, `EpistolaDocumentCreationServiceTest`) |
 | TS-16 | Doorlooptijd (prestatie) | Meet bij TS-11 de tijd van de klik op *Genereren* tot het antwoord van het endpoint | Ruim binnen de timeout van 60 seconden. De gemeten tijd wordt vastgelegd | Laag | Handmatig (netwerk-timing) |
 | **Datamapping** | | | | | |
 | TS-17 | Zaakgegevens in het document (+) | Bekijk het document uit TS-11 in de preview | De brief toont zaaknummer, zaaktype, status, groep, communicatiekanaal, de naam van de initiator, en de datums als `dd-MM-yyyy` | Hoog | Handmatig en live-check |
 | TS-18 | Alleen gedeclareerde velden (+) | Live-check: ZAC's klassen vullen de payload met tien geplante, niet-gedeclareerde waarden | Geen enkele geplante waarde staat in de payload of in de PDF. Elk veld in de payload is door het template gedeclareerd | Hoog | Live-check en automatisch (`EpistolaTemplateDataTest`) |
 | TS-19 | Datums in ISO 8601 (+) | Live-check met een contract dat datums als `format: date` declareert | De payload bevat `2026-09-01`, Epistola accepteert het, en de brief toont `01-09-2026` | Hoog | Live-check en automatisch (`EpistolaTemplateDataTest`) |
 | TS-20 | Ontbrekende optionele velden (+) | Bekijk in TS-17 de plekken voor de behandelaar en de geplande einddatum, die de zaak niet heeft | Die velden zijn leeg. Het document wordt toch gemaakt, zonder fout en zonder tekst als "null" | Midden | Handmatig en automatisch (`DocumentCreationDataServiceTest`) |
-| TS-21 | Template zonder schema (−) | Genereer met een template dat geen schema declareert | Geweigerd met de melding dat het sjabloon niet aangeeft welke zaakgegevens het gebruikt. Er gaat niets naar Epistola | Midden | Automatisch (`EpistolaDocumentCreationServiceTest`) |
+| TS-21 | Template zonder schema (−) | Genereer met een template dat geen schema declareert | Geweigerd met de melding dat het template niet aangeeft welke zaakgegevens het gebruikt. Er gaat niets naar Epistola | Midden | Automatisch (`EpistolaDocumentCreationServiceTest`) |
 | TS-22 | SmartDocuments ongewijzigd (regressie) | Serialiseer de SmartDocuments-deposit, en draai de integratietests | De deposit houdt `dd-MM-yyyy`, en de SmartDocuments-integratietests slagen | Hoog | Automatisch (`EpistolaTemplateDataTest`, integratietests) |
 | **Open Zaak-opslag** | | | | | |
 | TS-23 | Opslag met alle verplichte velden (+) | Open de documentpagina van het document uit TS-11, en vraag het informatieobject op via ZAC's REST API | Titel, auteur, taal, documenttype, bestandsnaam `…pdf`, grootte, status *in bewerking*, versie 1, beschrijving. `formaat` is `application/pdf` | Hoog | Handmatig en automatisch (`EpistolaDocumentCreationServiceTest`) |
 | TS-24 | Vertrouwelijkheid uit het documenttype (+) | Als `beheerder1`: genereer *ZAC Standaardbrief* op ZAAK-2026-0000000001, waar het documenttype *e-mail* zaakvertrouwelijk is | Het document is *zaakvertrouwelijk*, de waarde van het documenttype, en niet het vaste *openbaar* | Hoog | Handmatig en automatisch (`EpistolaDocumentCreationServiceTest`) |
 | TS-25 | Kopie bij Epistola verwijderd (+) | Vraag na TS-11 bij Epistola de documenten van deze zaak op | Epistola heeft geen document meer voor deze zaak | Midden | Handmatig (script) en automatisch |
-| TS-26 | Opslag in Open Zaak mislukt (−) | Laat het opslaan in de Documenten API falen | De fout komt bij de aanroeper, er wordt niets gekoppeld, en de kopie bij Epistola blijft staan | Midden | Automatisch (`EpistolaDocumentCreationServiceTest`) |
+| TS-26 | Opslag in Open Zaak mislukt (−) | Laat het opslaan in de Documenten API falen | De behandelaar krijgt de melding dat het document is gemaakt maar niet is opgeslagen, er wordt niets aan de zaak gekoppeld, en de kopie bij Epistola wordt verwijderd (B20) | Midden | Automatisch (`EpistolaDocumentCreationServiceTest`) |
 | **Zaakkoppeling** | | | | | |
 | TS-27 | Document hoort bij de zaak (+) | Bekijk na TS-11 het tabblad Documenten, zonder de pagina te verversen | Het document staat er meteen. De documentpagina noemt de zaak | Hoog | Handmatig |
 | TS-28 | Document hoort bij de taak (+) | Maak een document met een `taskId` | Het document hoort bij de zaak en bij de taak, en de taakrechten worden gecontroleerd | Midden | Automatisch (`EpistolaDocumentCreationServiceTest`, `DocumentCreationRestServiceTest`) |
@@ -204,11 +205,11 @@ scenario's.
 | TS-29 | Preview in de browser (+) | Klik in het tabblad Documenten op de titel van het document | De PDF opent in de browser, met de gerenderde brief | Hoog | Handmatig |
 | TS-30 | Metadata op de documentpagina (+) | Open het document via het oog-icoon | Alle metadata uit TS-23, en de preview | Hoog | Handmatig |
 | **Foutafhandeling** | | | | | |
-| TS-31 | Epistola onbereikbaar (−) | Maak `demo.epistola.app` onbereikbaar voor de ZAC-container, genereer, en maak hem daarna weer bereikbaar | Een begrijpelijke melding in de dialoog, die open blijft. Er wordt niets opgeslagen (#8) | Hoog | Handmatig |
+| TS-31 | Epistola onbereikbaar (−) | Maak `demo.epistola.app` onbereikbaar voor de ZAC-container, genereer, en maak hem daarna weer bereikbaar | Een begrijpelijke melding die zegt dat Epistola niet bereikbaar is, en de dialoog blijft open. De beheerkaart en de dialoog tonen de templates nog bij naam (#30). Er wordt niets opgeslagen (#8) | Hoog | Handmatig |
 | TS-32 | Data breekt het contract (−) | Als `beheerder1`: genereer met *ZAC Verplichte aanvrager* op ZAAK-2026-0000000001, die geen initiator heeft | Epistola weigert de data, ZAC toont een melding die uitlegt dat het template gegevens mist, en er wordt niets opgeslagen (#8) | Hoog | Handmatig en automatisch (`EpistolaClientServiceTest`) |
 | TS-33 | Timeout (−) | Laat een job langer duren dan de timeout | ZAC stopt met wachten, annuleert de job bij Epistola en meldt dat het te lang duurde | Midden | Automatisch (`EpistolaClientServiceTest`) |
 | TS-34 | Template verdwenen bij Epistola (−) | Verwijder *ZAC Verplichte aanvrager* bij Epistola terwijl het nog in de mapping staat, en open de dialoog | De dialoog biedt het template niet meer aan en loopt niet vast. De mapping blijft bewaard | Midden | Handmatig |
-| TS-35 | Gedeeltelijke mislukking (−) | Het document staat in de Documenten API, maar de koppeling aan de zaak mislukt | Het document wordt opgeruimd of zichtbaar gemaakt voor handmatige afhandeling (#8) | Midden | Niet uitvoerbaar zolang #8 niet gebouwd is |
+| TS-35 | Gedeeltelijke mislukking (−) | Het document staat in de Documenten API, maar de koppeling aan de zaak mislukt | Het document wordt opgeruimd, de behandelaar krijgt een melding die zegt dat er niets aan de zaak is toegevoegd, en de kopie bij Epistola wordt verwijderd (#8, B20, B21) | Midden | Handmatig en automatisch (`ZgwApiServiceTest`, `EpistolaDocumentCreationServiceTest`) |
 
 ### Stappen van de handmatige scenario's
 
@@ -244,13 +245,23 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
   voor `formaat`.
 - **TS-25** — `op run --env-file=./.env.epistola.tpl -- python3 …` met het controlescript dat de
   Epistola-documenten van de zaak telt.
-- **TS-31** — Als `behandelaar1`: `docker exec -u root zac-zac-1 sh -c 'echo "127.0.0.1 demo.epistola.app" >> /etc/hosts'` →
-  minstens 30 seconden wachten (Java's DNS-cache) → de dialoog openen als in TS-11 en een verzoek via DevTools →
-  melding en documenten nakijken → de regel weer uit `/etc/hosts` halen → nagaan dat ZAC Epistola weer bereikt.
+- **TS-31** — Eerst als `beheerder1` de dialoog openen, zodat ZAC de namen van de live lijst onthoudt, en daarna minstens
+  drie minuten geen Epistola aanroepen: ZAC hergebruikt anders nog zijn open verbinding en het blokkeren doet niets. Dan
+  `docker exec -u root zac-zac-1 sh -c 'cp /etc/hosts /tmp/h && echo "127.0.0.1 demo.epistola.app" >> /etc/hosts'` →
+  minstens 30 seconden wachten (Java's DNS-cache) → als `beheerder1` de beheerkaart van *Test zaaktype 1* openen en
+  nagaan dat de templates bij naam staan (#30) → als `behandelaar1` de dialoog op ZAAK-2026-0000000032 openen en
+  genereren → melding, het open blijven van de dialoog, documenten en het ZAC-log nakijken (*listing the templates by the
+  names read at …*) → `/tmp/h` terugzetten als `/etc/hosts` → nagaan dat ZAC direct weer genereert.
 - **TS-24** — Als `beheerder1` op ZAAK-2026-0000000001: *Document maken* → *Brieven* → *ZAC Standaardbrief* →
   titel *Testrapport TS-24* → *Genereren* → vertrouwelijkheid in de documentenlijst en via de REST API.
 - **TS-32** — Als `beheerder1` op ZAAK-2026-0000000001: als TS-24, maar met *ZAC Verplichte aanvrager* →
   melding nakijken → documenten van de zaak tellen → reden in het ZAC-log.
+- **TS-35** — Als `beheerder1`: in de ZAC-database (`zaaktype_epistola_document_template_parameters`) het
+  `informatie_object_type_uuid` van *ZAC Standaardbrief* bij *Test zaaktype 1* tijdelijk op een informatieobjecttype zetten
+  dat in Open Zaak bij geen enkel zaaktype hoort → op ZAAK-2026-0000000001 genereren → melding nakijken → in het log van
+  Open Zaak de volgorde `POST` document 201, `POST` zaakkoppeling 400, `DELETE` document 204 nagaan → de aantallen
+  documenten en zaakkoppelingen in Open Zaak vergelijken met de aantallen van vóór de proef → met
+  `epistola_copy_check.py` nagaan dat Epistola niets meer voor de zaak heeft → de waarde terugzetten.
 - **TS-34** — `author_required_field_template.py --delete` → als `beheerder1` de dialoog op
   ZAAK-2026-0000000001 openen → groep *Brieven* nakijken. In de ZAC-database nagaan dat de mapping-rij er nog
   is.
@@ -259,12 +270,12 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
 
 | Testfase | Datum | Verantwoordelijke | Status |
 |---|---|---|---|
-| Unittests (backend en frontend) | Doorlopend per pull request; testrun voor dit rapport op 25 september | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Integratietests | 25 september, op de geteste versie | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Handmatige systeemtest (dit plan, §8) | 25 september | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Akkoord op het testplan | Eerstvolgend stakeholderoverleg (#21) | Stakeholders | Open |
-| Gebruikerstest (UAT) | Einddemo (#22), datum volgt | Stakeholders | Nog te doen |
-| Acceptatietest | Na akkoord en UAT, vóór 9 oktober | Stakeholders met Symon Vleeshouwers | Nog te doen |
+| Unittests (backend en frontend) | Doorlopend per pull request; testruns voor het testrapport op 25 en 30 september | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Integratietests | 25 september op de geteste versie van ronde 1, en 30 september op `main` | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de scenario's die op #7 en #8 wachtten (ronde 2) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Akkoord op het testplan | Stakeholderoverleg van 28 september (#21), versie 1.1 zoals het was | Stakeholders | Goedgekeurd (B14) |
+| Gebruikerstest (UAT) | Einddemo op maandag 12 oktober 2026 (#22, B19) | Stakeholders | Nog te doen |
+| Acceptatietest | Na akkoord en UAT, op de einddemo van 12 oktober | Stakeholders met Symon Vleeshouwers | Nog te doen |
 
 > Een goed testplan is concreet en volledig: elke functionaliteit uit [§3](#3-testscope) komt terug als
 > testcase in [§8](#8-testcases).
