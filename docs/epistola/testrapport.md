@@ -153,6 +153,13 @@ te bereiken is, dus DoD 2 is ook in de UI gehaald.
 | B-07 | TS-05 | Een template dat het zaaktype aanbood, werd niet geweigerd terwijl de beheerder Epistola voor het zaaktype had uitgezet. De controle uit #27 keek alleen naar de mapping | Midden | Ja | Gevonden bij de bouw van #5. Opgelost in `ce1c8d806`, nagegaan in TS-05 |
 | B-08 | TS-31 | Bij een onbereikbaar Epistola toont ZAC's foutvenster onder de melding nog een algemene regel, *An error has occurred.* Het antwoord draagt geen `exception`-detail, en `fout-afhandeling.service.ts` valt dan terug op die regel | Laag | Nee | Gevonden in ronde 2. Geen gevolgen voor de gegevens, en de melding erboven is juist. Een detailregel in het antwoord zou de algemene tekst vervangen |
 
+**Aantekening bij TS-31 en B-08.** Volgens [het testplan](testplan.md) (§5.1 en §5.2) slaagt een test alleen zonder onverwachte foutmelding in het
+scherm. TS-31 is als **geslaagd** beoordeeld, en dat is een oordeel dat hier uitdrukkelijk staat. Het verwachte resultaat is volledig bereikt: een
+begrijpelijke melding die zegt dat Epistola niet bereikbaar is, een genereerscherm dat open blijft, niets dat is opgeslagen, en de templates die bij naam
+zichtbaar blijven. De algemene regel *An error has occurred.* onder die melding komt uit ZAC's gedeelde foutvenster (`fout-afhandeling.service.ts`), dat
+hem toont bij elk antwoord zonder detailtekst. Hij is dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, open).
+Wie het plan strenger leest, telt TS-31 als mislukt. Dan zijn 35 van de 36 scenario's geslaagd, en blijft de rest van de uitkomsten gelijk.
+
 ### Bekende beperkingen
 
 Deze staan niet als bug in de lijst, omdat ze bewust buiten de scope van het prototype vallen of buiten ZAC
