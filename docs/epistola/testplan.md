@@ -8,7 +8,7 @@
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
 | Datum | 25 september 2026, bijgewerkt op 30 september 2026 |
-| Versie | 1.2 — goedgekeurd door de stakeholders op 28 september 2026 (B14) |
+| Versie | 1.2 — bijgewerkt op 30 september 2026. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
 | Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
@@ -255,7 +255,7 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
 - **TS-24** — Als `beheerder1` op ZAAK-2026-0000000001: *Document maken* → *Brieven* → *ZAC Standaardbrief* →
   titel *Testrapport TS-24* → *Genereren* → vertrouwelijkheid in de documentenlijst en via de REST API.
 - **TS-32** — Als `beheerder1` op ZAAK-2026-0000000001: als TS-24, maar met *ZAC Verplichte aanvrager* →
-  melding nakijken → documenten van de zaak tellen → reden in het ZAC-log.
+  melding nakijken → documenten van de zaak tellen → nagaan dat Epistola's reden niet in het ZAC-log staat.
 - **TS-35** — Als `beheerder1`: in de ZAC-database (`zaaktype_epistola_document_template_parameters`) het
   `informatie_object_type_uuid` van *ZAC Standaardbrief* bij *Test zaaktype 1* tijdelijk op een informatieobjecttype zetten
   dat in Open Zaak bij geen enkel zaaktype hoort → op ZAAK-2026-0000000001 genereren → melding nakijken → in het log van

@@ -22,12 +22,12 @@ Open Zaak en gekoppeld aan de zaak. De hoofdstroom is getest, in twee rondes: in
 daarna gebouwd (#7, #8, #30), en ronde 2 (30 september) heeft ze op de gemergede versie opnieuw uitgevoerd: alle 36
 scenario's slagen nu.
 
-**Wat productiegebruik nog tegenhoudt** is niet de code van de integratie, maar drie dingen eromheen:
+**Wat productiegebruik nog vraagt** is niet de code van de integratie, maar drie dingen eromheen:
 
 1. **Afspraken met Epistola en de organisatie** (VV-02): een verwerkersovereenkomst, een vermelding in het
    verwerkingsregister, en de bewaartermijn die Epistola *werkelijk* toepast, want die is drie tot vier maanden en
    niet de dertig dagen die genoemd werd.
-2. **Sleutelbeheer** (VV-01): de API key is Epistola's ondersteunde methode, maar ZAC heeft geen vervaldatum en geen
+2. **Sleutelbeheer** (VV-01): de API key is Epistola's ondersteunde methode en geen blokkade meer (R1), maar ZAC heeft geen vervaldatum en geen
    beschreven rotatieprocedure voor hem.
 3. **Gedrag onder belasting** (VV-05): een verzoek houdt een thread vast zolang Epistola rendert. Bij één gebruiker
    is dat 5 tot 10 seconden. Niemand heeft het met meerdere gebruikers tegelijk gemeten.

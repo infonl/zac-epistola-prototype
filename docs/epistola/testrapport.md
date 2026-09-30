@@ -94,7 +94,7 @@ Het document staat in de Documenten API met `formaat` `application/pdf`, bestand
 TS-11.pdf`, grootte, status *in bewerking*, taal, auteur en versie 1 (TS-23). De vertrouwelijkheid volgt het
 documenttype: *zaakvertrouwelijk* bij *e-mail*, *openbaar* bij *brief* (TS-24). Het vaste *openbaar* van de
 SmartDocuments-flow geldt hier dus niet. Na het opslaan heeft Epistola geen document meer voor de zaak (TS-25).
-Mislukt het opslaan, dan blijft de kopie bij Epistola staan (TS-26, geautomatiseerd). Werkt correct.
+Mislukt het opslaan, dan meldt ZAC dat het document is gemaakt maar niet is opgeslagen, en verwijdert het de kopie bij Epistola (TS-26, geautomatiseerd, en live in ronde 2 via TS-35). Werkt correct.
 
 ### Functionaliteit 7 – Zaakkoppeling
 

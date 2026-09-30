@@ -26,9 +26,10 @@ data die oversteekt, en wie op de knop mag drukken.
 
 ## 1 · Functioneel ontwerp
 
-De flow hergebruikt bewust de schermen die ZAC al heeft. Volgens #15 krijgt een behandelaar nooit te zien
+De flow hergebruikt bewust de schermen die ZAC al heeft. Volgens #15 verraden de actie, het label en de dialoog niet
 welke documentengine de installatie draait — dat is een beslissing van de beheerder, en het tonen ervan
-zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verandert.
+zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verandert. De foutmeldingen van de
+gebouwde versie noemen Epistola wel (§5).
 
 1. **Zaaktypeconfiguratie** — een functioneel beheerder opent het zaaktype in ZAC Admin, ordent Epistola's
    templates in templategroepen en koppelt elk template aan een informatieobjecttype. De groepen zijn van
@@ -280,7 +281,7 @@ contract bij een templateversie hoort. Het ligt als vraag bij Epistola ([§6](#6
 Eén grens is bewust open en staat in een test: een template dat een sectie uitdrukkelijk als
 `type: object` of `type: array` declareert, zonder velden, krijgt hem heel. Dat is de templateauteur die om
 de hele zak vraagt en geen gat in het filter, maar het is wel de enige overgebleven route waarlangs
-ongereviewde startformulierdata een document bereikt. Het vraagt een besluit van de stakeholders.
+ongereviewde startformulierdata een document bereikt. De stakeholders hebben dit op 28 september geaccepteerd (B17), en een waarschuwing in de beheerkaart is het vervolg (#39).
 
 ### Ontbrekende optionele velden
 
@@ -402,7 +403,7 @@ mediatype `application/vnd.epistola.v1+json`.
 
 De rechten in de tabel staan per operatie in het contract (`x-required-permissions`). ZAC heeft er dus drie
 nodig, niet alleen `DOCUMENT_GENERATE`. Ontbreekt `DOCUMENT_VIEW`, dan wordt de job wel ingediend, maar krijgt
-de eerste poll een `403`, en blijft er bij Epistola een document staan dat niemand ophaalt. Een API key krijgt
+de eerste poll een `403`. ZAC annuleert de job dan ([§5](#foutafhandeling)), maar een job die al aan het renderen was, kan zijn inhoud laten staan ([bewaartermijn](#bewaartermijn-bij-epistola)). Een API key krijgt
 de drie rechten via twee rollen: `DOCUMENT_GENERATOR` geeft `DOCUMENT_GENERATE`, en `CONTENT_VIEWER` geeft onder
 meer `TEMPLATE_VIEW` en `DOCUMENT_VIEW`. Die twee rollen staan ook bij de sleutel in `.env.example` en in de
 Helm-chart.
@@ -553,7 +554,7 @@ Uit de review op #24, en elk nagegaan tegen de testtenant of de broncode van Epi
   Beter nog dan dat contract: laat `validate` de velden noemen die de gerenderde versie werkelijk leest. Dat
   geeft een strakkere allow-list dan wat een contract declareert, en het beslist de versievraag meteen.
 - **Een schema met de verwijzingen al opgelost.** Realistisch, want Epistola's nog niet uitgebrachte
-  veldanalyse lost lokale `$ref`s al op. Het maakt `TemplateSchemaAllowList` wel minder kleiner dan eerder op #24
+  veldanalyse lost lokale `$ref`s al op. Het maakt `TemplateSchemaAllowList` wel minder klein dan eerder op #24
   gezegd. Rich-text-`$ref`s blijven URL's, recursieve verwijzingen zijn niet op te lossen, en alleen `allOf` laat
   zich zonder verlies samenvoegen. Dat ZAC elk `anyOf`- en `oneOf`-alternatief toelaat, is ZAC's eigen beleid, en
   dat blijft.

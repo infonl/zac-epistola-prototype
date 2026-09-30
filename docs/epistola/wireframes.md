@@ -8,9 +8,9 @@
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
 Vier schermen, getekend tegen de Angular Material-componenten die ZAC al heeft in plaats van verzonnen.
-Het leidende besluit: **de behandelaar hoort nooit te weten welke provider er geconfigureerd is** — de
+Het leidende besluit: **de actie, het label en de dialoog verraden niet welke provider er geconfigureerd is** — de
 provider is een zaak van de beheerder, dus de zaakkant van de interface blijft het scherm dat mensen al
-kennen.
+kennen. De foutmeldingen van de gebouwde versie noemen Epistola wel (scherm 4).
 
 De getekende schermen staan als los te openen HTML-mockups in [`wireframes/`](wireframes/). GitHub toont
 die niet inline; download ze of open ze lokaal in een browser. De schermbeschrijvingen hieronder zijn
@@ -152,7 +152,7 @@ flow blijft binnen ZAC en vertrekt nooit naar een externe editor.
 
 > Mockup: [`wireframes/4-foutpaden.html`](wireframes/4-foutpaden.html)
 
-Twee mislukkingen die andere woorden nodig hebben, omdat ze het systeem in een andere toestand achterlaten. De
+Twee mislukkingen die andere woorden nodig hebben, omdat elke het systeem in een andere toestand achterlaat. De
 teksten zijn die van de gebouwde versie (#8). Het ontwerp kende er twee; de bouw onderscheidt er meer, elk met een
 eigen foutcode. De overige staan in [§5 van het ontwerp](technisch-functioneel-ontwerp.md#foutafhandeling).
 
@@ -182,7 +182,7 @@ eigen foutcode. De overige staan in [§5 van het ontwerp](technisch-functioneel-
 
 ## Ontwerpbesluiten
 
-### De behandelaar krijgt nooit te zien welke provider er draait
+### De actie en het label verraden de provider niet
 
 Elk zaakkant-scherm hierboven is het scherm dat ZAC al heeft. Zelfde actie, zelfde label, zelfde
 dialoogvelden — alleen de templates erachter verschillen.
