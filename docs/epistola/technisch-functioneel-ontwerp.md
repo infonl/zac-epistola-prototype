@@ -463,7 +463,7 @@ correlatie-id, het template-id, de zaakidentificatie en de status; nooit de payl
 
 Elke fout krijgt een eigen foutcode, en de frontend vertaalt die naar een melding die zegt wat er mis is en of
 opnieuw proberen helpt. Zonder deze vertaling zag de behandelaar overal dezelfde algemene fout (HTTP 500). De
-vertaling is gebouwd in #8; de laatste kolom zegt in welk scenario van het [testrapport](testrapport.md) ze is
+vertaling is gebouwd in #8; de laatste kolom zegt in welke testcase van het [testrapport](testrapport.md) ze is
 nagegaan.
 
 | Situatie | Gedrag van ZAC | Wat de behandelaar ziet | Nagegaan in |
@@ -528,7 +528,7 @@ Er zijn drie, elk voor iets anders:
   consumer nodig, en er hoeft geen toegangsverzoek verstuurd te worden. Er gaan alleen testgegevens heen. ~~De
   mockserver uit de contractrepository dekt de geautomatiseerde tests (#10, #18).~~ *Rechtgezet op 1 oktober: de
   integratietests draaien met SmartDocuments en dekken Epistola niet; de Epistola-paden zijn gedekt door unittests,
-  de live-check en de handmatige scenario's. Een stand-in in de integratietests is voorstel VV-06 (#38).*
+  de live-check en de handmatige testcases. Een stand-in in de integratietests is voorstel VV-06 (#38).*
 
 ### Beslist in het stakeholderoverleg van 28 september
 

@@ -11,7 +11,7 @@
 
 > **Beoordelingscriterium – T3 Testrapport:** testresultaten van alle functionaliteiten, met juiste
 > conclusies. Elke functionaliteit uit §3 van het testplan staat in [§2](#2-testresultaten-per-functionaliteit),
-> elk scenario met zijn bewijs in [bijlage A](#bijlage-a--testuitvoering-per-scenario).
+> elke testcase met zijn bewijs in [bijlage A](#bijlage-a--testuitvoering-per-testcase).
 
 ## 1. Samenvatting
 
@@ -19,21 +19,21 @@
 |---|---|
 | Projectnaam | Epistola-integratie in ZAC |
 | Geteste versie | **Ronde 1:** `6a91d8da2` op branch `feat/epistola-document-dialog` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. ZAC-image `0290677afd13`, gebouwd van die commit. **Ronde 2:** `main` van de fork op `c4dbdcca1`, waarin alle pull requests #24 t/m #34 zijn gemerged. ZAC-image `814c2e22a459`, gebouwd door `./gradlew itest` van die commit |
-| Testperiode | 25 september 2026 (ronde 1, het hele plan) en 30 september 2026 (ronde 2, de scenario's die op #7 en #8 wachtten, met een controle van de rest na #30) |
+| Testperiode | 25 september 2026 (ronde 1, het hele plan) en 30 september 2026 (ronde 2, de testcases die op #7 en #8 wachtten, met een controle van de rest na #30) |
 | Geteste functionaliteiten | 10 — de acht gebieden uit de examenafspraken en de twee randvoorwaarden uit de DoD |
-| Aantal testscenario's uitgevoerd | 36 van de 36, in testscenario 1 t/m 10 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
-| Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %). Daarnaast slagen de 8 scenario's voor het optionele #9 (ronde 3, hieronder apart) |
+| Aantal testcases uitgevoerd | 36 van de 36, verdeeld over testscenario 1 t/m 10 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
+| Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %). Daarnaast slagen de 8 testcases voor het optionele #9 (ronde 3, hieronder apart) |
 | Totaal mislukt | 0. In ronde 1 mislukten TS-06, TS-31 en TS-32. Alle drie slaagden in ronde 2, en TS-35 slaagde bij de eerste uitvoering |
 | Gevonden bugs | 8 bugs: 7 opgelost, 1 open. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08 is een kleine opmerking over een algemene regel in het foutvenster |
 | Geautomatiseerde tests | Ronde 2, op `c4dbdcca1`: 2729 backend-unittests, 2980 frontend-unittests (257 suites), 386 integratietests en de live-check (7 van 7 controles). Alle geslaagd |
-| Ronde 3 (#9) | Op 30 september, op de branch `feat/epistola-new-document-version` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)): de 8 scenario's TS-36 t/m TS-43 voor het optionele DoD-item 11, *een nieuwe versie van een Epistola-document*. Ze staan in testplan 1.3, dat de stakeholders niet hebben goedgekeurd, en tellen daarom niet mee in de 36 |
-| Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 scenario's zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
+| Ronde 3 (#9) | Op 30 september, op de branch `feat/epistola-new-document-version` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)): de 8 testcases TS-36 t/m TS-43 voor het optionele DoD-item 11, *een nieuwe versie van een Epistola-document*. Ze staan in testplan 1.3, dat de stakeholders niet hebben goedgekeurd, en tellen daarom niet mee in de 36 |
+| Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 testcases zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
 
 ## 2. Testresultaten per functionaliteit
 
 Het nummer in de eerste kolom is het nummer van het testscenario in [de testscenario's](testscenarios.md).
 
-| # | Functionaliteit | Testscenario ID | Uitkomst | Bugs gevonden | Conclusie |
+| # | Functionaliteit | Testcases | Uitkomst | Bugs gevonden | Conclusie |
 |---|---|---|---|---|---|
 | 1 | Configuratie: providerkeuze en instellingen (#2) | TS-01, TS-02 | ✅ Geslaagd | Nee | ZAC start met Epistola en weigert een onjuiste configuratie |
 | 2 | Configuratie: templategroepen en templates per zaaktype (#3) | TS-03, TS-04, TS-05, TS-07 | ✅ Geslaagd | Nee | De beheerder richt groepen in, en een ongeldige mapping wordt geweigerd. Epistola uitzetten haalt de actie weg en bewaart de mapping |
@@ -43,7 +43,7 @@ Het nummer in de eerste kolom is het nummer van het testscenario in [de testscen
 | 6 | Open Zaak-opslag (#6) | TS-23 t/m TS-26 | ✅ Geslaagd | Nee | Opgeslagen als PDF met alle verplichte velden. Vertrouwelijkheid uit het documenttype, en de kopie bij Epistola is weg |
 | 7 | Zaakkoppeling (#6) | TS-27, TS-28 | ✅ Geslaagd | Nee | Het document staat direct in het tabblad Documenten van de zaak |
 | 8 | Preview (#6) | TS-29, TS-30 | ✅ Geslaagd | Nee | De PDF opent in de browser, met alle metadata |
-| 9 | Foutafhandeling (#8) | TS-31 t/m TS-35 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ 2 van de 4 uitgevoerde scenario's) | Ja: B-02 en B-03 (opgelost, ronde 2), B-06 (opgelost), B-08 (open, laag) | Elke fout geeft een melding die zegt wat er mis is en of opnieuw proberen helpt. Er gaat niets verloren en er blijft niets half achter |
+| 9 | Foutafhandeling (#8) | TS-31 t/m TS-35 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ 2 van de 4 uitgevoerde testcases) | Ja: B-02 en B-03 (opgelost, ronde 2), B-06 (opgelost), B-08 (open, laag) | Elke fout geeft een melding die zegt wat er mis is en of opnieuw proberen helpt. Er gaat niets verloren en er blijft niets half achter |
 | 10 | Randvoorwaarden: SmartDocuments ongewijzigd, alleen CMMN (DoD 1 en 2) | TS-22, TS-06 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ TS-06) | Ja: B-01 (opgelost, ronde 2) | SmartDocuments werkt ongewijzigd. Bij een BPMN-zaak staat *Create document* uitgeschakeld, met een uitleg |
 | 11 | Nieuwe versie van een Epistola-document (DoD 11, optioneel, #9) | TS-36 t/m TS-43 | ✅ Geslaagd (ronde 3) | Nee | De actie verschijnt bij een document dat Epistola maakte, genereert de volgende versie met de zaakgegevens van dat moment, en laat de eerdere versies en de huidige versie ongemoeid bij een fout |
 
@@ -166,7 +166,7 @@ onder de melding van TS-40 staat dezelfde algemene regel *An error has occurred.
 
 ## 4. Gevonden bugs en status
 
-| Bug # | Scenario | Beschrijving | Ernst | Opgelost? | Toelichting |
+| Bug # | Testcase | Beschrijving | Ernst | Opgelost? | Toelichting |
 |---|---|---|---|---|---|
 | B-01 | TS-06 | Een BPMN-zaak toont nergens dat documenten maken met Epistola alleen voor CMMN-zaken kan. De actie ontbreekt zonder uitleg | Midden | Ja | Opgelost in #7 ([PR #33](https://github.com/infonl/zac-epistola-prototype/pull/33), `36ebb0251`): de actie staat uitgeschakeld met een uitleg, en het endpoint weigert met `msg.error.epistola.cmmn-only`. Nagegaan in TS-06, ronde 2 |
 | B-02 | TS-31 | Als Epistola onbereikbaar is, blijft de lijst met templategroepen leeg zonder melding. Het mapping-endpoint en het genereer-endpoint geven een algemene 500 | Hoog | Ja | Opgelost in #8 ([PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32), `2fd9595f1`) en #30 ([PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34), `c4dbdcca1`): een onbereikbaar Epistola geeft een melding die dat zegt, en het genereerscherm en de beheerkaart houden de templatenamen. Nagegaan in TS-31, ronde 2 |
@@ -182,7 +182,7 @@ scherm. TS-31 is als **geslaagd** beoordeeld, en dat is een oordeel dat hier uit
 begrijpelijke melding die zegt dat Epistola niet bereikbaar is, een genereerscherm dat open blijft, niets dat is opgeslagen, en de templates die bij naam
 zichtbaar blijven. De algemene regel *An error has occurred.* onder die melding komt uit ZAC's gedeelde foutvenster (`fout-afhandeling.service.ts`), dat
 hem toont bij elk antwoord zonder detailtekst. Hij is dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, open).
-Wie het plan strenger leest, telt TS-31 als mislukt. Dan zijn 35 van de 36 scenario's geslaagd, en blijft de rest van de uitkomsten gelijk.
+Wie het plan strenger leest, telt TS-31 als mislukt. Dan zijn 35 van de 36 testcases geslaagd, en blijft de rest van de uitkomsten gelijk.
 
 ### Bekende beperkingen
 
@@ -192,7 +192,7 @@ liggen:
 - **Document maken vanuit een taak:** de dialoog is alleen vanuit de zaak te openen. Het endpoint ondersteunt
   een taak wel (TS-28).
 - **De integratietests draaien met SmartDocuments.** Ze kunnen de Epistola-endpoints niet aanroepen. Die zijn
-  getest met unittests, de live-check en de handmatige scenario's.
+  getest met unittests, de live-check en de handmatige testcases.
 - **Epistola's testtenant wordt dagelijks gereset.** Een template dat verdwijnt, handelt ZAC netjes af (TS-34),
   maar vóór elke demo moeten de testtemplates opnieuw worden aangemaakt. Dat was op 30 september weer nodig.
 - **De templatenamen uit het geheugen (#30)** gaan verloren bij een herstart van ZAC. Is Epistola dan nog
@@ -206,18 +206,18 @@ liggen:
 
 Het prototype voldoet aan de acceptatiecriteria. Ronde 1 (25 september) liet de hoofdstroom slagen: van de
 configuratie door de beheerder, via de autorisatie, het genereren en de datamapping, tot de opslag in Open Zaak,
-de koppeling aan de zaak en de preview. Drie scenario's mislukten, omdat de meldingen voor de gebruiker (#8) en de
+de koppeling aan de zaak en de preview. Drie testcases mislukten, omdat de meldingen voor de gebruiker (#8) en de
 melding voor BPMN-zaken (#7) nog niet gebouwd waren.
 
-Die zijn daarna gebouwd en gemerged. Ronde 2 (30 september) heeft de scenario's die erop wachtten opnieuw
+Die zijn daarna gebouwd en gemerged. Ronde 2 (30 september) heeft de testcases die erop wachtten opnieuw
 uitgevoerd op de gemergede versie: TS-06, TS-31 en TS-32 slagen nu, en TS-35 slaagt bij de eerste uitvoering.
-Daarmee zijn alle 36 scenario's uitgevoerd en geslaagd. De geautomatiseerde tests zijn op die versie allemaal
+Daarmee zijn alle 36 testcases uitgevoerd en geslaagd. De geautomatiseerde tests zijn op die versie allemaal
 groen: 2729 backend-, 2980 frontend- en 386 integratietests, en de live-check (7 van 7 controles).
 SmartDocuments werkt ongewijzigd, dus de eerste randvoorwaarde uit de DoD is gehaald. Epistola is beperkt tot
 CMMN-zaken, met een uitleg in de UI, dus de tweede ook.
 
 Het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9), is in ronde 3 getest met acht
-scenario's (TS-36 t/m TS-43), die alle slagen. Dat blok staat in testplan 1.3, dat de stakeholders nog niet hebben
+testcases (TS-36 t/m TS-43), die alle slagen. Dat blok staat in testplan 1.3, dat de stakeholders nog niet hebben
 goedgekeurd, en telt daarom niet mee in de 36.
 
 Zeven van de acht gevonden bugs zijn opgelost en nagegaan. B-08 is een kleine, open opmerking over een algemene
@@ -225,7 +225,7 @@ regel in het foutvenster, zonder gevolgen voor de gegevens.
 
 De stakeholders hebben versie 1.1 van het testplan op 28 september goedgekeurd (B14). Het prototype is daarmee
 klaar voor oplevering aan de opdrachtgever. De gebruikerstest uit het plan is vervallen (testplan 1.4): Team Geneva
-heeft er naast het werk aan ZAC geen ruimte voor. Alle scenario's zijn dus uitgevoerd door de ontwikkelaar, en niet
+heeft er naast het werk aan ZAC geen ruimte voor. Alle testcases zijn dus uitgevoerd door de ontwikkelaar, en niet
 door een eindgebruiker. Op de einddemo van 12 oktober wordt het prototype gedemonstreerd, met hoe je het gebruikt,
 en moet de acceptatietest met de stakeholders de oplevering bevestigen.
 
@@ -239,7 +239,7 @@ en moet de acceptatietest met de stakeholders de oplevering bevestigen.
   niemand heeft het onder belasting gemeten.
 - **Geef het antwoord bij een onbereikbaar Epistola een detailregel mee** (B-08), zodat het foutvenster geen
   algemene regel toont.
-- **Test in meer browsers dan Chrome, en laat eindgebruikers het testen.** Alle scenario's zijn door de ontwikkelaar
+- **Test in meer browsers dan Chrome, en laat eindgebruikers het testen.** Alle testcases zijn door de ontwikkelaar
   uitgevoerd, in Chrome met Engelse schermtekst; de Nederlandse tekst is alleen in `nl.json` nagelezen. De
   gebruikerstest is vervallen (testplan 1.4). Een behandelaar en een beheerder die het prototype zelf gebruiken, zien
   wat een ontwikkelaar mist, zoals een onduidelijke tekst of een stap die ze niet vinden.
@@ -260,9 +260,9 @@ en moet de acceptatietest met de stakeholders de oplevering bevestigen.
 
 ---
 
-## Bijlage A — Testuitvoering per scenario
+## Bijlage A — Testuitvoering per testcase
 
-Dit is ronde 1, uitgevoerd in de ochtend van 25 september 2026. De scenario's die daarna opnieuw zijn uitgevoerd, staan in
+Dit is ronde 1, uitgevoerd in de ochtend van 25 september 2026. De testcases die daarna opnieuw zijn uitgevoerd, staan in
 [ronde 2](#ronde-2--30-september-2026). De stack is gestart met `./start-docker-compose.sh -l
 -E`, met de ZAC-image van de geteste versie, in Google Chrome 153.0.8010.53, bestuurd door Playwright. Beide
 testtemplates waren die ochtend opnieuw aangemaakt. Bij *Handmatig* staat het werkelijke resultaat en het
@@ -403,7 +403,7 @@ Alle runs op `main` van de fork, `c4dbdcca1`.
 | Integratietests (TestContainers, SmartDocuments als provider) | `./gradlew itest` | 386 tests, 0 mislukt, in 6 min 28 s (09:08–09:14). De taak bouwt zijn eigen image van dezelfde commit (`814c2e22a459`) |
 | Live-check tegen Epistola's testserver | harness en `check_live_run.py` in `~/Documents/Exam/epistola-live-check/` | 7 van de 7 controles geslaagd. De harness is bijgewerkt voor #8: de statusopslag en het vijfde argument van `generateDocument` |
 
-De testklassen die sinds ronde 1 zijn toegevoegd of uitgebreid, per scenario:
+De testklassen die sinds ronde 1 zijn toegevoegd of uitgebreid, per testcase:
 
 | Testklasse | Tests | Dekt |
 |---|---|---|

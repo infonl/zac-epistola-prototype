@@ -207,7 +207,7 @@ gebruikt.
 | 8.1<br>**TS-29** | In het tabblad Documenten op de titel van het document klikken | De PDF opent in de browser, met de gerenderde brief | Positief |
 | 8.2<br>**TS-30** | Het document openen via het oog-icoon | Alle metadata uit TS-23, en de preview | Positief |
 
-Dit scenario heeft geen negatieve stap. Het testplan vraagt een negatief scenario *waar dat kan* (§8), en voor de preview staat er geen in het testplan.
+Dit scenario heeft geen negatieve stap. Het testplan vraagt een negatieve testcase *waar dat kan* (§8), en voor de preview staat er geen in het testplan.
 
 ## Testscenario 9 – Foutafhandeling
 

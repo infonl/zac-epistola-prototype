@@ -8,7 +8,7 @@
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
 | Datum | 25 september 2026, bijgewerkt op 30 september en 1 oktober 2026 |
-| Versie | 1.4 — bijgewerkt op 1 oktober 2026: de gebruikerstest is vervallen. Versie 1.3 voegde op 30 september de scenario's voor #9 toe. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
+| Versie | 1.4 — bijgewerkt op 1 oktober 2026: de gebruikerstest is vervallen. Versie 1.3 voegde op 30 september de testcases voor #9 toe. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
 | Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30). **Ronde 3 (30 september):** branch `feat/epistola-new-document-version` op `ddad815ef` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)), voor TS-36 t/m TS-43 (#9) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
@@ -26,13 +26,13 @@ alleen voor CMMN-zaken (DoD 2).
 
 De opdrachtgever (Dimpact, met Team Geneva als eigenaar van ZAC) krijgt daarmee zekerheid op twee punten:
 
-- **wat werkt**, met bewijs per scenario: een testresultaat, een screenshot of een geautomatiseerde test;
+- **wat werkt**, met bewijs per testcase: een testresultaat, een screenshot of een geautomatiseerde test;
 - **wat niet werkt of nog niet gebouwd is**, vooraf benoemd als verwachte beperking, zodat het testrapport
   dat niet achteraf hoeft te ontdekken.
 
 DoD-item 8 vraagt om *overeengekomen* testcases. Het plan ging daarom ter akkoord naar het stakeholderoverleg
 (#21), en de stakeholders keurden versie 1.1 op 28 september goed zoals het was (B14). Het akkoord kwam na de
-eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die op #7 en #8 wachtten, zijn op
+eerste uitvoering op 25 september, en er hoefde niets opnieuw. De testcases die op #7 en #8 wachtten, zijn op
 30 september uitgevoerd, in de tweede ronde van het testrapport.
 
 ### Versie
@@ -40,10 +40,10 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 | Versie | Datum | Wijziging |
 |---|---|---|
 | 1.0 | 25 september 2026 | Eerste versie, voor akkoord |
-| 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de behandelaarscenario's draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de scenario's met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
-| 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18). De gewijzigde verwachte uitkomsten van TS-26, TS-31 en TS-35 volgen besluiten van Symon (B20, B21) en het gebouwde #30, en zijn na het akkoord op 1.1 niet opnieuw aan de stakeholders voorgelegd |
-| 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande scenario's zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
-| 1.4 | 1 oktober 2026 | De **gebruikerstest (UAT) is vervallen**: Team Geneva heeft er naast het werk aan ZAC geen ruimte voor. Dat het prototype voor gebruikers werkt, wordt getoond op de einddemo van 12 oktober, waar Symon het demonstreert en laat zien hoe je het gebruikt. De acceptatietest met de stakeholders blijft ([§9](#9-testplanning)). Bij **TS-31** staat nu dat een poging direct na het herstel nog kan mislukken, en dat het na ongeveer een halve minuut lukt, zoals bij TS-40 gezien. Geen scenario toegevoegd of geschrapt. Niet aan de stakeholders voorgelegd |
+| 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de testcases van de behandelaar draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de testcases met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
+| 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen testcase toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18). De gewijzigde verwachte uitkomsten van TS-26, TS-31 en TS-35 volgen besluiten van Symon (B20, B21) en het gebouwde #30, en zijn na het akkoord op 1.1 niet opnieuw aan de stakeholders voorgelegd |
+| 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande testcases zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
+| 1.4 | 1 oktober 2026 | De **gebruikerstest (UAT) is vervallen**: Team Geneva heeft er naast het werk aan ZAC geen ruimte voor. Dat het prototype voor gebruikers werkt, wordt getoond op de einddemo van 12 oktober, waar Symon het demonstreert en laat zien hoe je het gebruikt. De acceptatietest met de stakeholders blijft ([§9](#9-testplanning)). Bij **TS-31** staat nu dat een poging direct na het herstel nog kan mislukken, en dat het na ongeveer een halve minuut lukt, zoals bij TS-40 gezien. Geen testcase toegevoegd of geschrapt. Niet aan de stakeholders voorgelegd |
 
 ## 2. Testdoelstellingen
 
@@ -91,16 +91,16 @@ Geen wachtwoorden in dit document: de testgebruikers staan in de lokale Keycloak
 
 | Soort | Waarde | Waarvoor |
 |---|---|---|
-| Gebruiker | `beheerder1` — Test Beheerder 1 (groep beheerders-elk-domein) | Configuratie in Beheer, en de scenario's op *Test zaaktype 1* (TS-24, TS-32, TS-34) |
-| Gebruiker | `behandelaar1` — Test Behandelaar 1 (groep behandelaars-test-1) | Document maken (positief), op *Test zaaktype 2*. Mag *Test zaaktype 1* niet lezen, en dat is zelf een negatief scenario (TS-09a) |
+| Gebruiker | `beheerder1` — Test Beheerder 1 (groep beheerders-elk-domein) | Configuratie in Beheer, en de testcases op *Test zaaktype 1* (TS-24, TS-32, TS-34) |
+| Gebruiker | `behandelaar1` — Test Behandelaar 1 (groep behandelaars-test-1) | Document maken (positief), op *Test zaaktype 2*. Mag *Test zaaktype 1* niet lezen, en dat is zelf een negatieve testcase (TS-09a) |
 | Gebruiker | `raadpleger1` — Test Raadpleger 1 (groep raadplegers-test-1) | Mag de zaak lezen, geen document maken (negatief) |
 | Zaaktype | *Test zaaktype 1* (CMMN): Epistola aan, groep *Brieven* met *ZAC Standaardbrief* → documenttype *e-mail* (zaakvertrouwelijk) | Configuratie, vertrouwelijkheid, contractfout |
-| Zaaktype | *Test zaaktype 2* (CMMN): Epistola aan, groep *Brieven 2* met *ZAC Standaardbrief* → documenttype *brief* (openbaar) | Het hoofdscenario van de behandelaar; Epistola uit- en weer aanzetten |
+| Zaaktype | *Test zaaktype 2* (CMMN): Epistola aan, groep *Brieven 2* met *ZAC Standaardbrief* → documenttype *brief* (openbaar) | De hoofdstroom van de behandelaar; Epistola uit- en weer aanzetten |
 | Zaaktype | *BPMN test zaaktype 1* (BPMN) | Alleen CMMN |
 | Zaak | ZAAK-2026-0000000001 (*Test zaaktype 1*, open, status Intake, zonder initiator en zonder behandelaar) | Vertrouwelijkheid, contractfout, verdwenen template; niet leesbaar voor `behandelaar1` |
-| Zaak | ZAAK-2026-0000000032 (*Test zaaktype 2*, open, status Intake, initiator uit de BRP-mock, zonder behandelaar) | Het hoofdscenario van de behandelaar en de raadpleger; Epistola uit |
+| Zaak | ZAAK-2026-0000000032 (*Test zaaktype 2*, open, status Intake, initiator uit de BRP-mock, zonder behandelaar) | De hoofdstroom van de behandelaar en de raadpleger; Epistola uit |
 | Zaak | ZAAK-2026-0000000035 (*BPMN test zaaktype 1*) | Alleen CMMN |
-| Template | `zac-standaardbrief` — *ZAC Standaardbrief*. Draft-07-contract zoals Epistola's editor het maakt, met datums als `format: date` die de brief als `dd-MM-yyyy` toont | Het hoofdscenario |
+| Template | `zac-standaardbrief` — *ZAC Standaardbrief*. Draft-07-contract zoals Epistola's editor het maakt, met datums als `format: date` die de brief als `dd-MM-yyyy` toont | De hoofdstroom |
 | Template | `zac-verplichte-aanvrager` — *ZAC Verplichte aanvrager*. Het contract eist `aanvrager.naam` | Data die het contract breekt |
 
 **Let op:** de testtenant van Epistola wordt dagelijks gereset. Vóór elke testronde zet
@@ -124,18 +124,18 @@ Een test is mislukt als:
 - het verwachte resultaat niet of maar gedeeltelijk bereikt wordt;
 - er gegevens bij Epistola of in Open Zaak achterblijven die er volgens het verwachte resultaat niet horen te
   zijn;
-- een scenario wordt goedgekeurd dat alleen slaagt omdat het niet echt is uitgevoerd. Een scenario dat niet
+- een testcase wordt goedgekeurd die alleen slaagt omdat hij niet echt is uitgevoerd. Een testcase die niet
   uitgevoerd kon worden, krijgt de uitkomst *niet uitgevoerd*, met de reden.
 
-Een scenario dat een bekende, nog niet gebouwde functie test (bijvoorbeeld #7 of #8) is **mislukt**, niet
-"verwacht". Zo'n scenario levert een bug met status *open* op in de buglijst van het testrapport.
+Een testcase die een bekende, nog niet gebouwde functie test (bijvoorbeeld #7 of #8) is **mislukt**, niet
+"verwacht". Zo'n testcase levert een bug met status *open* op in de buglijst van het testrapport.
 
 ## 6. Testaanpak en tools
 
 ### Testmethoden
 
-- **Handmatig testen:** de scenario's met *Handmatig* in [§8](#8-testcases) worden stap voor stap in de
-  browser uitgevoerd, als de genoemde gebruiker. Per scenario wordt het resultaat genoteerd, en bij een
+- **Handmatig testen:** de testcases met *Handmatig* in [§8](#8-testcases) worden stap voor stap in de
+  browser uitgevoerd, als de genoemde gebruiker. Per testcase wordt het resultaat genoteerd, en bij een
   zichtbaar resultaat ook een screenshot.
 - **Geautomatiseerd testen:**
   - backend-unittests (Kotest en MockK), `./gradlew test`;
@@ -158,15 +158,15 @@ Library; TestContainers; Python-scripts die Epistola rechtstreeks bevragen en no
 
 | Naam | Rol | Verantwoordelijkheid |
 |---|---|---|
-| Symon Vleeshouwers | Tester en testcoördinator | Testplan opstellen, alle scenario's uitvoeren, resultaten en bugs vastleggen, testrapport |
+| Symon Vleeshouwers | Tester en testcoördinator | Testplan opstellen, alle testcases uitvoeren, resultaten en bugs vastleggen, testrapport |
 | Hanneke van de Horst, Team Geneva | Stakeholders | Akkoord op dit testplan (#21); acceptatietest bij de einddemo (#22). De gebruikerstest is vervallen ([§6](#6-testaanpak-en-tools)) |
 | Marcel Evers, Edgar (`edgarvonk`) | Reviewers | Codereview van de pull requests, inclusief de geautomatiseerde tests erin |
 
 ## 8. Testcases
 
-Elke functionaliteit uit [§3](#3-testscope) heeft minstens één positief en, waar dat kan, één negatief
-scenario. **+** is positief, **−** is negatief. Onder de tabel staan de stappen van de handmatige
-scenario's. [De testscenario's](testscenarios.md) werken dezelfde testcases uit per functionaliteit uit §3, met hun
+Elke functionaliteit uit [§3](#3-testscope) heeft minstens één positieve en, waar dat kan, één negatieve
+testcase. **+** is positief, **−** is negatief. Onder de tabel staan de stappen van de handmatige
+testcases. [De testscenario's](testscenarios.md) werken dezelfde testcases uit per functionaliteit uit §3, met hun
 randvoorwaarden, testdata en teststappen.
 
 | # | Functionaliteit | Testbeschrijving | Verwacht resultaat | Prioriteit | Testmethode |
@@ -225,7 +225,7 @@ randvoorwaarden, testdata en teststappen.
 | TS-42 | Open Zaak weigert de nieuwe versie (−) | Laat het opslaan van de nieuwe versie in de Documenten API falen | De behandelaar krijgt de melding dat het document is gemaakt maar niet is opgeslagen, de huidige versie blijft en Epistola's kopie wordt verwijderd | Midden | Automatisch (`EpistolaDocumentVersionServiceTest`) |
 | TS-43 | Geen zaakgegevens van een andere zaak (−) | Vraag een nieuwe versie van een document dat niet aan een zaak hangt | Geweigerd met `msg.error.epistola.document.no-new-version`. De zaak komt uit het document en niet uit het verzoek, en zonder zaak is er niets om te genereren | Midden | Automatisch (`EpistolaDocumentRestServiceTest`) |
 
-### Stappen van de handmatige scenario's
+### Stappen van de handmatige testcases
 
 Elke ronde begint met: stack draait (`./start-docker-compose.sh -l -E`), beide testtemplates zijn opnieuw
 aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
@@ -301,7 +301,7 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
 |---|---|---|---|
 | Unittests (backend en frontend) | Doorlopend per pull request; testruns voor het testrapport op 25 en 30 september | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
 | Integratietests | 25 september op de geteste versie van ronde 1, en 30 september op `main` en op de branch van #9 | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
-| Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de scenario's die op #7 en #8 wachtten (ronde 2) en voor TS-36 t/m TS-43 (ronde 3, #9) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
+| Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de testcases die op #7 en #8 wachtten (ronde 2) en voor TS-36 t/m TS-43 (ronde 3, #9) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
 | Akkoord op het testplan | Stakeholderoverleg van 28 september (#21), versie 1.1 zoals het was | Stakeholders | Goedgekeurd (B14) |
 | Gebruikerstest (UAT) | Gepland op de einddemo van maandag 12 oktober 2026 (#22, B19) | Stakeholders | Vervallen op 1 oktober (versie 1.4): geen ruimte bij Team Geneva naast het werk aan ZAC. Zie [§6](#6-testaanpak-en-tools) |
 | Acceptatietest | Op de einddemo van 12 oktober, na een demonstratie van het prototype en hoe je het gebruikt | Stakeholders met Symon Vleeshouwers | Nog te doen |

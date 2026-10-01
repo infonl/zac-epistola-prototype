@@ -227,8 +227,8 @@ improvement proposals (#20), as optional Backlog.*
   prototype to all stakeholders and assessors (#22).
 - **Weekly overleg** with Team Geneva and Hanneke van de Horst on progress, acceptance criteria and blockers (#21).
   Open questions accumulate on the issues and are taken there.
-  *1 October: in the weeks of 9 and 14 September there was no overleg. From 21 September it was weekly: 21 and 28
-  September, and 5 October as the last one. The final demo is on Monday 12 October.*
+  *1 October: in the weeks of 9 and 14 September there was no overleg. From 21 September it is weekly: 21 and 28
+  September, and Monday 5 October as the last one, still to come. The final demo is on Monday 12 October.*
 - **Retrospective** at the end, with the notulen as a deliverable (#23).
 - **Verification runs locally** — unit tests for every change, integration tests for anything touching startup or
   CDI. The fork's CI is deliberately disabled: without the upstream secrets its jobs fail for reasons unrelated to

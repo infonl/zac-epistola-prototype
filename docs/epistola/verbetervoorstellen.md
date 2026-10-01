@@ -18,9 +18,9 @@
 
 Het prototype laat ZAC documenten maken met Epistola, per zaaktype in te stellen, alleen als PDF, opgeslagen in
 Open Zaak en gekoppeld aan de zaak. De hoofdstroom is getest, in twee rondes: in ronde 1 (25 september) slaagden 32 van de
-35 uitgevoerde scenario's. De drie die mislukten (TS-06, TS-31, TS-32) betroffen meldingen voor de gebruiker. Die zijn
+35 uitgevoerde testcases. De drie die mislukten (TS-06, TS-31, TS-32) betroffen meldingen voor de gebruiker. Die zijn
 daarna gebouwd (#7, #8, #30), en ronde 2 (30 september) heeft ze op de gemergede versie opnieuw uitgevoerd: alle 36
-scenario's slagen nu. Een derde ronde testte het optionele #9, een nieuwe versie van een document, met acht scenario's
+testcases slagen nu. Een derde ronde testte het optionele #9, een nieuwe versie van een document, met acht testcases
 die ook slagen.
 
 **Wat productiegebruik nog vraagt** zijn drie dingen, de voorstellen onder *Voor productie: moet* in §4:
@@ -47,7 +47,7 @@ Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie 
 
 | Bron | Gebruikt voor |
 |---|---|
-| [Testrapport](testrapport.md) (#19), 25 en 30 september | 36 scenario's in twee rondes, 8 bugs, bekende beperkingen, aanbevelingen |
+| [Testrapport](testrapport.md) (#19), 25 en 30 september | 36 testcases in twee rondes, 8 bugs, bekende beperkingen, aanbevelingen |
 | Risicoregister R1 t/m R9 (#16, bijgehouden in #20) | [§3](#3-het-risicoregister-alle-negen) |
 | Stakeholderoverleggen van 21 en 28 september (#21) | Besluiten die risico's sloten of vernauwden, en nieuwe vragen |
 | Reviews op #24 (Marcel, Edgar, Copilot) | Vragen aan Epistola, contractversie, bewaartermijn |
