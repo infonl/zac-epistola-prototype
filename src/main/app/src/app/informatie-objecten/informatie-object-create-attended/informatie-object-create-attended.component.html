@@ -57,10 +57,14 @@
           <mat-label>{{ "epistola.kanaal" | translate }}</mat-label>
           <mat-hint>
             @if (kanalen()?.communicatiekanaal; as communicatiekanaal) {
-              {{
-                "epistola.kanaal.hint.communicatiekanaal"
-                  | translate: { communicatiekanaal }
-              }}
+              <span
+                [style.visibility]="isSuggestedKanaalChosen() ? null : 'hidden'"
+              >
+                {{
+                  "epistola.kanaal.hint.communicatiekanaal"
+                    | translate: { communicatiekanaal }
+                }}
+              </span>
             } @else {
               {{ "epistola.kanaal.hint" | translate }}
             }

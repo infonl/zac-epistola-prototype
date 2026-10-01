@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
+import { toSignal } from "@angular/core/rxjs-interop";
 import { HttpErrorResponse } from "@angular/common/http";
 import {
   Component,
@@ -41,6 +42,7 @@ import {
   switchMap,
   take,
   takeUntil,
+  tap,
   timer,
 } from "rxjs";
 import { EpistolaTemplatesService } from "src/app/admin/epistola-templates.service";
@@ -164,6 +166,15 @@ export class InformatieObjectCreateAttendedComponent
   });
   protected readonly kanaalLabel = (kanaal: string) =>
     KANAAL_LABELS[kanaal] ?? kanaal;
+  private readonly chosenKanaal = toSignal(
+    this.form.controls.kanaal.valueChanges,
+    { initialValue: null },
+  );
+  protected readonly isSuggestedKanaalChosen = computed(
+    () =>
+      !!this.chosenKanaal() &&
+      this.chosenKanaal() === this.kanalen()?.voorgesteldKanaal,
+  );
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
   private readonly utilService = inject(UtilService);
@@ -320,8 +331,9 @@ export class InformatieObjectCreateAttendedComponent
       this.form.controls.template.valueChanges
         .pipe(
           takeUntil(this.destroy$),
+          tap(() => this.awaitKanalen()),
           switchMap((template) =>
-            template
+            template?.id
               ? from(
                   this.queryClient.query(
                     this.informatieObjectenService.readEpistolaKanalenQuery(
@@ -329,11 +341,8 @@ export class InformatieObjectCreateAttendedComponent
                       template.id,
                     ),
                   ),
-                ).pipe(
-                  catchError(() => of(null)),
-                  startWith(null),
-                )
-              : of(null),
+                ).pipe(catchError(() => of(null)))
+              : EMPTY,
           ),
         )
         .subscribe((kanalen) => this.offerKanalen(kanalen));
@@ -357,17 +366,22 @@ export class InformatieObjectCreateAttendedComponent
       });
   }
 
+  /** Hiding the picker until another template is chosen and its kanalen arrive would make the form below it jump. */
+  private awaitKanalen() {
+    const { kanaal } = this.form.controls;
+    kanaal.setValue(null);
+    kanaal.disable();
+  }
+
   private offerKanalen(kanalen: GeneratedType<"RestEpistolaKanalen"> | null) {
     this.kanalen.set(kanalen);
     const { kanaal } = this.form.controls;
-    if (this.kanaalOptions().length) {
-      kanaal.setValue(kanalen?.voorgesteldKanaal ?? null);
-      kanaal.setValidators(Validators.required);
-    } else {
-      kanaal.setValue(null);
-      kanaal.clearValidators();
-    }
-    kanaal.updateValueAndValidity();
+    const isChoiceOffered = this.kanaalOptions().length > 0;
+    kanaal.setValidators(isChoiceOffered ? Validators.required : null);
+    kanaal.setValue(
+      isChoiceOffered ? (kanalen?.voorgesteldKanaal ?? null) : null,
+    );
+    kanaal.enable();
   }
 
   private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {

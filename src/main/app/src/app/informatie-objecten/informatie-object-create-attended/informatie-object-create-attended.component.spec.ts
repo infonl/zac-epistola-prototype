@@ -46,6 +46,8 @@ const EPISTOLA_STATUS_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/status";
 const EPISTOLA_KANALEN_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-1/kanalen";
+const EPISTOLA_OTHER_KANALEN_URL =
+  "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-2/kanalen";
 
 const zaak = fromPartial<GeneratedType<"RestZaak">>({
   uuid: "fakeZaakUuid",
@@ -645,6 +647,53 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
         expect(request.request.body).toMatchObject({ kanaal: "post" });
         request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      });
+
+      it("stops saying the kanaal was suggested once another one is chosen, and keeps the hint's line so nothing below it moves", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        const hint = screen.getByText(
+          "epistola.kanaal.hint.communicatiekanaal",
+        );
+
+        await choose("epistola.kanaal", "epistola.kanaal.post");
+        fixture.detectChanges();
+
+        expect(hint).toBeInTheDocument();
+        expect(hint).not.toBeVisible();
+
+        await choose("epistola.kanaal", "epistola.kanaal.digitaal");
+        fixture.detectChanges();
+
+        expect(hint).toBeVisible();
+      });
+
+      it("keeps the picker in place, without a kanaal, until another template is chosen and its kanalen arrive", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+
+        await user.clear(field("sjabloon"));
+        fixture.detectChanges();
+
+        expect(kanaalPicker()).toHaveAttribute("aria-disabled", "true");
+        expect(kanaalPicker()).not.toHaveTextContent(
+          "epistola.kanaal.digitaal",
+        );
+
+        await user.click(
+          screen.getByRole("option", { name: "Ontvangstbevestiging" }),
+        );
+        await sleep();
+        httpTestingController.expectOne(EPISTOLA_OTHER_KANALEN_URL).flush({
+          kanalen: ["post", "digitaal"],
+          voorgesteldKanaal: "post",
+          communicatiekanaal: "Post",
+        });
+        await sleep();
+        fixture.detectChanges();
+
+        expect(kanaalPicker()).toHaveAttribute("aria-disabled", "false");
+        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
       });
 
       it("shows a kanaal it has no label for as Epistola names it", async () => {
