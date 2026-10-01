@@ -11,10 +11,11 @@ import { EpistolaGenerationProgressComponent } from "./epistola-generation-progr
 describe(EpistolaGenerationProgressComponent.name, () => {
   async function setup(
     status?: GeneratedType<"EpistolaDocumentCreationStatus"> | null,
+    finished = false,
   ) {
     await render(EpistolaGenerationProgressComponent, {
       imports: [TranslateModule.forRoot()],
-      inputs: { status },
+      inputs: { status, finished },
     });
   }
 
@@ -153,6 +154,41 @@ describe(EpistolaGenerationProgressComponent.name, () => {
       await setup(status);
 
       expect(screen.getByRole("status")).toHaveTextContent(message);
+    });
+  });
+
+  describe("given the document is finished", () => {
+    it("marks every step as done, with none current", async () => {
+      await setup("STORING", true);
+
+      expect(screen.getAllByText("epistola.voortgang.klaar")).toHaveLength(4);
+      expect(currentStep()).toBeUndefined();
+    });
+
+    it("says the document is ready", async () => {
+      await setup("STORING", true);
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.klaar",
+      );
+    });
+
+    it("fills the bar", async () => {
+      await setup("STORING", true);
+
+      expect(screen.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuenow",
+        "100",
+      );
+    });
+
+    it("no longer says it takes longer than usual", async () => {
+      await setup("HELD_UP_IN_RENDERING", true);
+
+      expect(screen.queryByText("epistola.voortgang.vertraagd")).toBeNull();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.klaar",
+      );
     });
   });
 });

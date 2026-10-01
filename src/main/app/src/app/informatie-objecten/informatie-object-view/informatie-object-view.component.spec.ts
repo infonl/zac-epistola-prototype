@@ -37,6 +37,7 @@ import { StaticTextComponent } from "../../shared/static-text/static-text.compon
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { ZakenService } from "../../zaken/zaken.service";
 import { EpistolaGenerationDialogComponent } from "../epistola-generation-dialog/epistola-generation-dialog.component";
+import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat } from "../model/file-format";
@@ -340,6 +341,7 @@ describe(InformatieObjectViewComponent.name, () => {
         }),
       );
       await button.click();
+      await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS);
 
       expect(createEpistolaDocumentVersion).toHaveBeenCalledWith(
         enkelvoudigInformatieobject.uuid,
@@ -362,10 +364,14 @@ describe(InformatieObjectViewComponent.name, () => {
 
       function givenAProgressDialog() {
         const close = jest.fn();
-        const open = jest
-          .spyOn(component["dialog"], "open")
-          .mockReturnValue(fromPartial<MatDialogRef<unknown>>({ close }));
-        return { open, close };
+        const markFinished = jest.fn();
+        const open = jest.spyOn(component["dialog"], "open").mockReturnValue(
+          fromPartial<MatDialogRef<unknown>>({
+            close,
+            componentInstance: { markFinished },
+          }),
+        );
+        return { open, close, markFinished };
       }
 
       async function clickGenerateNewVersion() {
@@ -402,13 +408,35 @@ describe(InformatieObjectViewComponent.name, () => {
 
         versionCreated.next();
         versionCreated.complete();
+        await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS);
+
+        expect(close).toHaveBeenCalled();
+      });
+
+      it("shows that the version is there for a moment before it closes the progress", async () => {
+        givenADocument();
+        const { close, markFinished } = givenAProgressDialog();
+        const versionCreated = new Subject<void>();
+        jest
+          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .mockReturnValue(versionCreated);
+        jest.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
+
+        await clickGenerateNewVersion();
+        versionCreated.next();
+        versionCreated.complete();
+
+        expect(markFinished).toHaveBeenCalled();
+        expect(close).not.toHaveBeenCalled();
+
+        await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS);
 
         expect(close).toHaveBeenCalled();
       });
 
       it("closes the progress when generating the version fails", async () => {
         givenADocument();
-        const { close } = givenAProgressDialog();
+        const { close, markFinished } = givenAProgressDialog();
         const error = new Error("fakeError");
         jest
           .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
@@ -419,6 +447,7 @@ describe(InformatieObjectViewComponent.name, () => {
         await clickGenerateNewVersion();
         await sleep();
 
+        expect(markFinished).not.toHaveBeenCalled();
         expect(close).toHaveBeenCalled();
         expect(onUnhandledError).toHaveBeenCalledWith(error);
       });

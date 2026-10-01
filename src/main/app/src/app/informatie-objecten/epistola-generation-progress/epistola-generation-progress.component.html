@@ -3,7 +3,11 @@
   ~ SPDX-License-Identifier: EUPL-1.2+
   -->
 
-<ol class="steps" [attr.aria-label]="'epistola.voortgang' | translate">
+<ol
+  class="steps"
+  [class.finished]="finished()"
+  [attr.aria-label]="'epistola.voortgang' | translate"
+>
   @for (step of steps; track step; let index = $index) {
     <li
       class="step"
@@ -11,6 +15,7 @@
       [class.active]="index === currentStep()"
       [class.held-up]="index === currentStep() && isHeldUp()"
       [attr.aria-current]="index === currentStep() ? 'step' : null"
+      [style.--step-index]="index"
     >
       <span class="indicator" aria-hidden="true">
         @if (index < currentStep()) {
@@ -18,7 +23,7 @@
         } @else if (index === currentStep() && isHeldUp()) {
           <mat-icon>hourglass_top</mat-icon>
         } @else {
-          {{ index + 1 }}
+          <span class="number">{{ index + 1 }}</span>
         }
       </span>
       <span class="label">{{ step | translate }}</span>
@@ -41,8 +46,17 @@
   mode="determinate"
   [value]="percentage()"
   [class.held-up]="isHeldUp()"
+  [class.finished]="finished()"
   [attr.aria-label]="'epistola.voortgang' | translate"
 ></mat-progress-bar>
-<p role="status" class="message" [class.held-up]="isHeldUp()">
-  {{ message() | translate }}
+<p
+  role="status"
+  class="message"
+  [class.held-up]="isHeldUp()"
+  [class.finished]="finished()"
+>
+  @if (finished()) {
+    <mat-icon class="message-icon" aria-hidden="true">check_circle</mat-icon>
+  }
+  <span>{{ message() | translate }}</span>
 </p>

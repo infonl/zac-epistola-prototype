@@ -12,6 +12,9 @@ import { GeneratedType } from "../../shared/utils/generated-types";
 type EpistolaDocumentCreationStatus =
   GeneratedType<"EpistolaDocumentCreationStatus">;
 
+/** Long enough to see the finished state, and its animation where motion is allowed, before the view closes. */
+export const EPISTOLA_GENERATION_FINISHED_DISPLAY_MS = 1000;
+
 const STEPS = [
   "epistola.voortgang.voorbereiden",
   "epistola.voortgang.in-wachtrij",
@@ -45,26 +48,30 @@ const MESSAGE_OF_STATUS: Record<EpistolaDocumentCreationStatus, string> = {
 export class EpistolaGenerationProgressComponent {
   /** Absent while ZAC is still preparing the request, and when Epistola's status cannot be read. */
   readonly status = input<EpistolaDocumentCreationStatus | null>();
+  readonly finished = input(false);
 
   protected readonly steps = STEPS;
 
   protected readonly currentStep = computed(() => {
+    if (this.finished()) return STEPS.length;
     const status = this.status();
     return status ? STEP_OF_STATUS[status] : 0;
   });
 
   protected readonly isHeldUp = computed(() => {
+    if (this.finished()) return false;
     const status = this.status();
     return status === "HELD_UP_IN_QUEUE" || status === "HELD_UP_IN_RENDERING";
   });
 
   protected readonly message = computed(() => {
+    if (this.finished()) return "msg.document.genereren.klaar";
     const status = this.status();
     return status ? MESSAGE_OF_STATUS[status] : "msg.document.genereren.bezig";
   });
 
   /** Halfway into the current step: ZAC knows which step a job is in, not how far along it is. */
-  protected readonly percentage = computed(
-    () => ((this.currentStep() + 0.5) / STEPS.length) * 100,
+  protected readonly percentage = computed(() =>
+    this.finished() ? 100 : ((this.currentStep() + 0.5) / STEPS.length) * 100,
   );
 }

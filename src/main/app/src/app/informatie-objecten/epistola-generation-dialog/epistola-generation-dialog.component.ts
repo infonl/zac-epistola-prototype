@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
-import { Component, computed, inject } from "@angular/core";
-import { MAT_DIALOG_DATA, MatDialogModule } from "@angular/material/dialog";
-import { TranslateModule } from "@ngx-translate/core";
+import { Component, computed, inject, signal } from "@angular/core";
+import { MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { injectQuery } from "@tanstack/angular-query-experimental";
+import { GenericDialogComponent } from "../../shared/dialog/generic-dialog/generic-dialog.component";
 import { EpistolaGenerationProgressComponent } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
@@ -19,11 +19,7 @@ export type EpistolaGenerationDialogData = {
   selector: "zac-epistola-generation-dialog",
   templateUrl: "./epistola-generation-dialog.component.html",
   standalone: true,
-  imports: [
-    MatDialogModule,
-    TranslateModule,
-    EpistolaGenerationProgressComponent,
-  ],
+  imports: [GenericDialogComponent, EpistolaGenerationProgressComponent],
 })
 export class EpistolaGenerationDialogComponent {
   protected readonly data =
@@ -32,13 +28,20 @@ export class EpistolaGenerationDialogComponent {
     InformatieObjectenService,
   );
 
-  private readonly statusQuery = injectQuery(() =>
-    this.informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
+  protected readonly finished = signal(false);
+
+  private readonly statusQuery = injectQuery(() => ({
+    ...this.informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
       this.data.zaakUuid,
     ),
-  );
+    enabled: !this.finished(),
+  }));
 
   protected readonly status = computed(() =>
     this.statusQuery.isError() ? undefined : this.statusQuery.data()?.status,
   );
+
+  markFinished() {
+    this.finished.set(true);
+  }
 }

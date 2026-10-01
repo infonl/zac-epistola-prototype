@@ -81,10 +81,14 @@
     </section>
   </fieldset>
   <fieldset>
-    @if (usesEpistola && createEpistolaDocumentMutation.isPending()) {
+    @if (
+      usesEpistola &&
+      (createEpistolaDocumentMutation.isPending() || generationFinished())
+    ) {
       <zac-epistola-generation-progress
         class="mx-3"
         [status]="generationStatus()"
+        [finished]="generationFinished()"
       />
     }
     <mat-action-row>
@@ -94,6 +98,7 @@
           usesEpistola ? createEpistolaDocumentMutation : createDocumentMutation
         "
         [submitLabel]="usesEpistola ? 'actie.genereren' : 'actie.toevoegen'"
+        [disableAfterSuccess]="usesEpistola"
       />
     </mat-action-row>
   </fieldset>

@@ -41,6 +41,7 @@ import {
   switchMap,
   take,
   takeUntil,
+  timer,
 } from "rxjs";
 import { EpistolaTemplatesService } from "src/app/admin/epistola-templates.service";
 import { SmartDocumentsService } from "src/app/admin/smart-documents.service";
@@ -57,7 +58,10 @@ import {
   NotificationDialogData,
 } from "../../shared/notification-dialog/notification-dialog.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
-import { EpistolaGenerationProgressComponent } from "../epistola-generation-progress/epistola-generation-progress.component";
+import {
+  EPISTOLA_GENERATION_FINISHED_DISPLAY_MS,
+  EpistolaGenerationProgressComponent,
+} from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
 /** SmartDocuments groups carry an id; Epistola's belong to ZAC and are known by name only. */
@@ -172,6 +176,8 @@ export class InformatieObjectCreateAttendedComponent
       enabled: Boolean(uuid),
     };
   });
+
+  protected readonly generationFinished = signal(false);
 
   protected readonly generationStatus = computed(() =>
     this.epistolaStatusQuery.isError()
@@ -399,10 +405,16 @@ export class InformatieObjectCreateAttendedComponent
                 this.zaak.uuid,
               ),
           });
-          this.utilService.openSnackbar("msg.document.toegevoegd.aan.zaak", {
-            document: title,
-          });
-          this.document.emit();
+          this.generationFinished.set(true);
+          timer(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+              this.utilService.openSnackbar(
+                "msg.document.toegevoegd.aan.zaak",
+                { document: title },
+              );
+              this.document.emit();
+            });
         },
         onSettled: () => this.generatingForZaakUuid.set(undefined),
       },

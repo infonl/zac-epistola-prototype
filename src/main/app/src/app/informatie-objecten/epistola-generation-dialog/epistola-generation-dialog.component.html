@@ -3,12 +3,16 @@
   ~ SPDX-License-Identifier: EUPL-1.2+
   -->
 
-<h2 mat-dialog-title>
-  {{ "actie.epistola.nieuwe-versie.genereren" | translate }}
-</h2>
-<mat-dialog-content>
+<zac-generic-dialog
+  titleKey="actie.epistola.nieuwe-versie.genereren"
+  icon="note_add"
+  [loading]="true"
+>
   @if (data.documentTitle; as documentTitle) {
     <p>{{ documentTitle }}</p>
   }
-  <zac-epistola-generation-progress [status]="status()" />
-</mat-dialog-content>
+  <zac-epistola-generation-progress
+    [status]="status()"
+    [finished]="finished()"
+  />
+</zac-generic-dialog>

@@ -786,6 +786,7 @@
   "msg.document.genereren.wordt-gemaakt": "Epistola maakt het document.",
   "msg.document.genereren.duurt-lang": "Epistola doet er langer dan gebruikelijk over om het document te maken. ZAC wacht nog even.",
   "msg.document.genereren.opslaan": "Het document wordt opgeslagen in de zaak.",
+  "msg.document.genereren.klaar": "Het document is klaar.",
   "msg.document.templates.niet-geladen": "De templates kunnen nu niet worden geladen.",
   "msg.document.vergrendeld": "Door {{gebruiker}}",
   "msg.document.koppelen.uitgevoerd": "Ddocument \"{{document}}\" is gekoppeld aan zaak \"{{case}}\"",

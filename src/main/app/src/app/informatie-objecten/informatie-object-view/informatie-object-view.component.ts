@@ -31,7 +31,14 @@ import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { QueryClient } from "@tanstack/angular-query-experimental";
 import { defer, Observable, of, throwError } from "rxjs";
-import { catchError, finalize, map, switchMap, tap } from "rxjs/operators";
+import {
+  catchError,
+  delay,
+  finalize,
+  map,
+  switchMap,
+  tap,
+} from "rxjs/operators";
 import { AsyncButtonMenuItem } from "src/app/shared/side-nav/menu-item/subscription-button-menu-item";
 import { UtilService } from "../../core/service/util.service";
 import { ObjectType } from "../../core/websocket/model/object-type";
@@ -67,6 +74,7 @@ import {
   EpistolaGenerationDialogComponent,
   EpistolaGenerationDialogData,
 } from "../epistola-generation-dialog/epistola-generation-dialog.component";
+import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat, FileFormatUtil } from "../model/file-format";
@@ -417,6 +425,8 @@ export class InformatieObjectViewComponent
       return this.informatieObjectenService
         .createEpistolaDocumentVersion(this.infoObject.uuid!)
         .pipe(
+          tap(() => progressDialog.componentInstance.markFinished()),
+          delay(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS),
           finalize(() => progressDialog.close()),
           switchMap(() =>
             this.informatieObjectenService.readEnkelvoudigInformatieobject(

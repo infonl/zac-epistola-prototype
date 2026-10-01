@@ -8,6 +8,8 @@
 @pending-color: #757575;
 // @warning-color is too light for text on white; this keeps the same hue at a readable contrast.
 @held-up-text-color: #8a5a00;
+@ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+@ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 :host {
   display: block;
@@ -32,7 +34,9 @@
   font-size: 13px;
   line-height: 1.3;
   color: @pending-color;
+  transition: color 200ms ease;
 
+  // The line from the previous step, filled from the left as a step is reached.
   &:not(:first-child)::before {
     content: "";
     position: absolute;
@@ -40,7 +44,11 @@
     left: -50%;
     width: 100%;
     height: 2px;
-    background: @border-color;
+    background:
+      linear-gradient(@primary-background-color, @primary-background-color)
+        left / 0% 100% no-repeat,
+      @border-color;
+    transition: background-size 400ms @ease-out;
   }
 
   &.done,
@@ -48,7 +56,7 @@
     color: @title-color;
 
     &::before {
-      background: @primary-background-color;
+      background-size: 100% 100%;
     }
   }
 
@@ -58,6 +66,13 @@
 
   &.held-up {
     color: @held-up-text-color;
+  }
+
+  .finished &:not(:first-child)::before {
+    background-image: linear-gradient(
+      @success-background-color,
+      @success-background-color
+    );
   }
 }
 
@@ -74,6 +89,27 @@
   border-radius: 50%;
   background: #ffffff;
   font-weight: 500;
+  transition:
+    border-color 200ms ease,
+    color 200ms ease;
+
+  // The fill that grows from the centre once a step is done.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: @primary-background-color;
+    transform: scale(0);
+    transition:
+      transform 320ms @ease-out,
+      background-color 300ms ease;
+  }
+
+  .number,
+  mat-icon {
+    position: relative;
+  }
 
   mat-icon {
     width: 18px;
@@ -81,15 +117,10 @@
     font-size: 18px;
   }
 
-  .done & {
-    border-color: @primary-background-color;
-    background: @primary-background-color;
-    color: @primary-text-color;
-  }
-
   .active & {
     border-color: @primary-background-color;
     color: @primary-background-color;
+    animation: arrive 300ms @ease-out;
 
     &::after {
       content: "";
@@ -102,12 +133,37 @@
     }
   }
 
+  .done & {
+    border-color: @primary-background-color;
+    color: @primary-text-color;
+    animation: bounce 450ms @ease-back 150ms both;
+
+    &::before {
+      transform: scale(1);
+    }
+
+    mat-icon {
+      animation: check-in 300ms @ease-back 200ms both;
+    }
+  }
+
   .held-up & {
     border-color: @warning-color;
     color: @held-up-text-color;
 
     &::after {
       border-top-color: @warning-color;
+    }
+  }
+
+  // Every step done: the whole row turns to the success colour, and bounces once more.
+  .finished .done & {
+    border-color: @success-background-color;
+    animation: bounce-finished 450ms @ease-back both;
+    animation-delay: calc(var(--step-index, 0) * 70ms);
+
+    &::before {
+      background-color: @success-background-color;
     }
   }
 }
@@ -119,15 +175,34 @@ mat-progress-bar {
   &.held-up {
     --mat-progress-bar-active-indicator-color: @warning-color;
   }
+
+  &.finished {
+    --mat-progress-bar-active-indicator-color: @success-background-color;
+  }
 }
 
 .message {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 8px 0 0;
   font-size: 14px;
 
   &.held-up {
     color: @held-up-text-color;
   }
+
+  &.finished {
+    color: @success-background-color;
+    font-weight: 500;
+  }
+}
+
+.message-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  animation: check-in 300ms @ease-back both;
 }
 
 .visually-hidden {
@@ -145,10 +220,75 @@ mat-progress-bar {
   }
 }
 
+@keyframes arrive {
+  from {
+    transform: scale(0.8);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// The same movement under another name, so the browser plays it again when the row finishes.
+@keyframes bounce-finished {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes check-in {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-45deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .step,
+  .step::before,
+  .indicator,
+  .indicator::before,
+  .indicator mat-icon,
+  .message-icon {
+    animation: none !important;
+    transition: none !important;
+  }
+
   .active .indicator::after {
     animation: none;
     border-color: currentColor;
     opacity: 0.35;
+  }
+
+  mat-progress-bar ::ng-deep .mdc-linear-progress__bar {
+    transition: none;
   }
 }

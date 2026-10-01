@@ -70,7 +70,7 @@ describe(EpistolaGenerationDialogComponent.name, () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "actie.epistola.nieuwe-versie.genereren",
+        name: /actie\.epistola\.nieuwe-versie\.genereren/,
       }),
     ).toBeVisible();
     expect(screen.getByText("fakeDocumentTitle")).toBeVisible();
@@ -84,6 +84,26 @@ describe(EpistolaGenerationDialogComponent.name, () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "msg.document.genereren.wordt-gemaakt",
     );
+  });
+
+  it("offers no way to close it while the document is generated", async () => {
+    await setup();
+
+    expect(screen.getByRole("button")).toBeDisabled();
+  });
+
+  it("shows the document as ready, and stops asking Epistola, once marked finished", async () => {
+    const { fixture } = await setup();
+    await answerStatus(fixture, "STORING");
+
+    fixture.componentInstance.markFinished();
+    fixture.detectChanges();
+    await sleep(1_100);
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "msg.document.genereren.klaar",
+    );
+    httpTestingController.expectNone(STATUS_URL);
   });
 
   it("keeps the general message when Epistola's status cannot be read", async () => {
