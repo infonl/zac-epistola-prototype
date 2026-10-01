@@ -107,7 +107,7 @@ class EpistolaClientService @Inject constructor(
             if (!isJobFinished) cancelGenerationJob(tenant, requestId)
         }
         if (finishedItem.status == FAILED) throw finishedItem.toGenerationFailure(generationRequest)
-        return downloadDocument(tenant, finishedItem, fileName, generationRequest)
+        return downloadDocument(tenant, finishedItem, fileName, generationRequest).copy(kanaal = kanaal)
     }
 
     /** Epistola returns at most [TEMPLATE_PAGE_SIZE] templates per request, so a larger catalog is read page by page. */

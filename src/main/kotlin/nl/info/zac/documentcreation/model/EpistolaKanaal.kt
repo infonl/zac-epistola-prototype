@@ -23,11 +23,17 @@ private val KANAAL_OF_COMMUNICATIEKANAAL = mapOf(
     "telefoon" to KANAAL_POST
 )
 
-fun EpistolaKanalen.suggestFor(communicatiekanaal: String?): String? =
+fun EpistolaKanalen.kanaalSuggestedBy(communicatiekanaal: String?): String? =
     communicatiekanaal?.trim()?.lowercase()
         ?.let(KANAAL_OF_COMMUNICATIEKANAAL::get)
         ?.takeIf { it in kanalen }
-        ?: defaultKanaal
 
+fun EpistolaKanalen.suggestFor(communicatiekanaal: String?): String? =
+    kanaalSuggestedBy(communicatiekanaal) ?: defaultKanaal
+
+/**
+ * Without a kanaal to ask for, Epistola renders the template's default variant. Asking for the default variant's kanaal
+ * instead could get another variant of that kanaal, so it is not asked for.
+ */
 fun EpistolaKanalen.choose(requestedKanaal: String?, communicatiekanaal: String?): String? =
-    requestedKanaal?.takeIf { it in kanalen } ?: suggestFor(communicatiekanaal)
+    requestedKanaal?.takeIf { it in kanalen } ?: kanaalSuggestedBy(communicatiekanaal)

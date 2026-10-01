@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
-import { toSignal } from "@angular/core/rxjs-interop";
 import { HttpErrorResponse } from "@angular/common/http";
 import {
   Component,
@@ -17,6 +16,7 @@ import {
   Output,
   signal,
 } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";

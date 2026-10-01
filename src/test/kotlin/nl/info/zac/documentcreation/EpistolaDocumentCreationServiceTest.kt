@@ -196,7 +196,8 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             val generatedDocument = EpistolaGeneratedDocument(
                 documentId = UUID.randomUUID(),
                 fileName = "$FAKE_TITLE.pdf",
-                content = "fakePdfContent".toByteArray()
+                content = "fakePdfContent".toByteArray(),
+                kanaal = "digitaal"
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
@@ -275,11 +276,12 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                     }
                 }
 
-                and("the template is remembered for the stored document, so a new version can be generated from it") {
+                and("the template and the kanaal it was generated in are remembered, for a new version to use") {
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
-                            templateId = FAKE_TEMPLATE_ID
+                            templateId = FAKE_TEMPLATE_ID,
+                            kanaal = "digitaal"
                         )
                     }
                 }
@@ -299,7 +301,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             } returns zaakInformatieObject
             every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
             every {
-                epistolaDocumentRepository.createEpistolaDocument(any(), any())
+                epistolaDocumentRepository.createEpistolaDocument(any(), any(), any())
             } throws PersistenceException("fakeDatabaseFailure")
 
             `when`("the document is created and stored") {

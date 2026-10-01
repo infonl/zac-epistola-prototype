@@ -13,6 +13,7 @@ import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaJobStatus
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
 import nl.info.client.zgw.util.extractUuid
@@ -106,7 +107,13 @@ class EpistolaDocumentCreationService @Inject constructor(
                     author = loggedInUser.getFullName()
                 ),
                 taskId = taskId
-            ).also { rememberTemplate(informatieObjectUUID = it.informatieobject.extractUuid(), templateId = templateId) }
+            ).also {
+                rememberGeneration(
+                    informatieObjectUUID = it.informatieobject.extractUuid(),
+                    templateId = templateId,
+                    kanaal = generatedDocument.kanaal
+                )
+            }
         } finally {
             epistolaDocumentCreationStatusStore.remove(userId = loggedInUser.id, zaakUuid = zaak.uuid)
         }
@@ -153,7 +160,10 @@ class EpistolaDocumentCreationService @Inject constructor(
             )
         }
 
-    fun readKanalen(templateId: String) = epistolaClientService.readGenerationTemplate(templateId).kanalen
+    fun readKanalen(zaak: Zaak, templateId: String): EpistolaKanalen {
+        epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
+        return epistolaClientService.readGenerationTemplate(templateId).kanalen
+    }
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
@@ -188,11 +198,12 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Not remembering the template only costs the document its "new version" action, so it does not fail a
      * document that is already in the zaak.
      */
-    private fun rememberTemplate(informatieObjectUUID: UUID, templateId: String) {
+    private fun rememberGeneration(informatieObjectUUID: UUID, templateId: String, kanaal: String?) {
         try {
             epistolaDocumentRepository.createEpistolaDocument(
                 informatieObjectUUID = informatieObjectUUID,
-                templateId = templateId
+                templateId = templateId,
+                kanaal = kanaal
             )
         } catch (persistenceException: PersistenceException) {
             LOG.warning { notRememberedMessage(informatieObjectUUID, persistenceException) }

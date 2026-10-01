@@ -54,7 +54,7 @@ Open Zaak's Documenten API, linked through a `ZaakInformatieObject`; versioning 
 than ZAC state. ZAC stores the configuration, the registry stores the record.
 
 *1 October: for a new version of a document (#9), ZAC now also remembers which template made each Epistola document,
-in the table `epistola_document` (migration `V101`). It holds the informatieobject and the template, and no content,
+in the table `epistola_document` (migration `V101`). It holds the informatieobject, the template and, since #47, the kanaal of its variant (`V102`), and no content,
 title, status or zaak, so the versions themselves are still Open Zaak's `versie` field. Whether ZAC may keep that
 table is for the stakeholders to decide if they take the prototype into ZAC.*
 

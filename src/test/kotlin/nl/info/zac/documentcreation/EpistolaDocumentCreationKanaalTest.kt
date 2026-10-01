@@ -5,70 +5,35 @@
 package nl.info.zac.documentcreation
 
 import io.kotest.assertions.throwables.shouldThrow
+import io.mockk.just
+import io.mockk.runs
+import io.mockk.verify
+import nl.info.client.zgw.util.extractUuid
+import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
-import io.mockk.runs
-import io.mockk.slot
-import io.mockk.verify
-import io.mockk.verifyOrder
 import jakarta.enterprise.inject.Instance
-import jakarta.persistence.PersistenceException
-import jakarta.ws.rs.ProcessingException
-import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.epistola.EpistolaClientService
-import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
-import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.zgw.drc.exception.DrcRuntimeException
-import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
-import nl.info.client.zgw.drc.model.generated.VertrouwelijkheidaanduidingEnum as DrcVertrouwelijkheidaanduidingEnum
-import nl.info.client.zgw.drc.model.generated.StatusEnum
-import nl.info.client.zgw.shared.exception.ZgwErrorException
-import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
-import nl.info.client.zgw.shared.model.ZgwError
-import nl.info.client.zgw.shared.model.createFieldValidationError
-import nl.info.client.zgw.shared.model.createValidationZgwError
-import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.model.createZaak
-import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.client.zgw.ztc.ZtcClientService
-import nl.info.client.zgw.ztc.model.createInformatieObjectType
-import nl.info.client.zgw.ztc.model.generated.VertrouwelijkheidaanduidingEnum
 import nl.info.zac.app.informatieobjecten.EnkelvoudigInformatieObjectUpdateService
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.createLoggedInUser
 import nl.info.zac.configuration.ConfigurationService
-import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
-import nl.info.zac.documentcreation.exception.EpistolaDocumentNotStoredException
-import nl.info.zac.documentcreation.exception.EpistolaTemplateSchemaMissingException
-import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
-import nl.info.zac.epistola.documents.model.createEpistolaDocument
-import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
-import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
-import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
-import nl.info.zac.util.toBase64String
-import java.net.ConnectException
-import java.net.URI
-import java.time.LocalDate
 import java.util.UUID
 
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
-private const val FAKE_TITLE = "fakeTitle"
-private const val FAKE_DESCRIPTION = "fakeDescription"
-private const val FAKE_BRONORGANISATIE = "123443210"
 
 private val TEMPLATE_SCHEMA = mapOf(
     "properties" to mapOf(
@@ -185,8 +150,42 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
 
-                then("the kanaal of the template's default variant is asked for") {
-                    askedKanalen.single() shouldBe "post"
+                then("no kanaal is asked for, so Epistola renders the template's default variant itself") {
+                    askedKanalen.single() shouldBe null
+                }
+            }
+        }
+
+        given("a template the zaak's zaaktype offers, with a post and a digital variant") {
+            val zaak = createZaak()
+            every {
+                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
+            } just runs
+            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+                EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal)
+
+            `when`("its kanalen are read") {
+                val kanalen = epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+
+                then("both are returned, with that of the default variant") {
+                    kanalen shouldBe postAndDigitaal
+                }
+            }
+        }
+
+        given("a template the zaak's zaaktype does not offer") {
+            val zaak = createZaak()
+            every {
+                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
+            } throws EpistolaTemplateNotConfiguredException("fakeMessage")
+
+            `when`("its kanalen are read") {
+                shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+                }
+
+                then("Epistola is not asked about it") {
+                    verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any()) }
                 }
             }
         }

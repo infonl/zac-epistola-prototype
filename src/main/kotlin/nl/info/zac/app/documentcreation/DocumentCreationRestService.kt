@@ -126,7 +126,8 @@ class DocumentCreationRestService @Inject constructor(
         zrcClientService.readZaak(zaakUuid).also { zaak ->
             assertDocumentCreationAllowed(zaak = zaak, taskId = null)
         }.let { zaak ->
-            epistolaDocumentCreationService.readKanalen(templateId).toRestEpistolaKanalen(zaak.communicatiekanaalNaam)
+            epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = templateId)
+                .toRestEpistolaKanalen(zaak.communicatiekanaalNaam)
         }
 
     /**

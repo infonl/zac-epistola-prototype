@@ -93,7 +93,8 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     JSONObject(epistolaServer.requestBodies.single()).getString("catalogId") shouldBe FAKE_CATALOG_ID
                 }
 
-                and("it asks for no variant, so Epistola renders the default one") {
+                and("it asks for no variant, so Epistola renders the default one, and names no kanaal") {
+                    generatedDocument.kanaal shouldBe null
                     JSONObject(epistolaServer.requestBodies.single()).has("attributes") shouldBe false
                 }
 
@@ -104,7 +105,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 
             `when`("a document is generated for a kanaal") {
                 epistolaServer.clearRecordedRequests()
-                createService().generateDocument(
+                val generatedDocument = createService().generateDocument(
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -112,7 +113,11 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     kanaal = "digitaal"
                 )
 
-                then("the variant for that kanaal is required, and the Dutch one preferred") {
+                then("the document names the kanaal it was asked for") {
+                    generatedDocument.kanaal shouldBe "digitaal"
+                }
+
+                and("the variant for that kanaal is required, and the Dutch one preferred") {
                     val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
                     attributes.length() shouldBe 2
                     with(attributes.getJSONObject(0)) {

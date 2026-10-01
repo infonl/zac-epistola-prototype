@@ -66,6 +66,24 @@ class EpistolaKanaalTest : BehaviorSpec({
         }
     }
 
+    context("telling whether the communicatiekanaal itself suggests a kanaal") {
+        given("a template with only a variant by post") {
+            val kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
+
+            `when`("the communicatiekanaal is e-mail, which suggests a digital variant the template does not have") {
+                then("it suggests none") {
+                    kanalen.kanaalSuggestedBy("E-mail") shouldBe null
+                }
+            }
+
+            `when`("the communicatiekanaal is post") {
+                then("it suggests post") {
+                    kanalen.kanaalSuggestedBy("Post") shouldBe "post"
+                }
+            }
+        }
+    }
+
     context("choosing the kanaal to ask Epistola for") {
         given("a template with a post and a digital variant, and a zaak whose communicatiekanaal is e-mail") {
             val kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
@@ -73,6 +91,12 @@ class EpistolaKanaalTest : BehaviorSpec({
             `when`("the behandelaar chose post") {
                 then("post is asked for") {
                     kanalen.choose(requestedKanaal = "post", communicatiekanaal = "E-mail") shouldBe "post"
+                }
+            }
+
+            `when`("the behandelaar chose nothing, and the communicatiekanaal suggests no kanaal") {
+                then("no kanaal is asked for, so Epistola renders the template's default variant itself") {
+                    kanalen.choose(requestedKanaal = null, communicatiekanaal = "Intern") shouldBe null
                 }
             }
 

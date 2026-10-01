@@ -59,9 +59,10 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) != null
 
     /**
-     * Generates the document again from the template that produced it, with the zaak's data as it is now, and stores
-     * it as the next version of the same informatieobject. The versions before it stay in Open Zaak, and when the
-     * new version cannot be stored the current one is left as it was.
+     * Generates the document again from the template that produced it, in the kanaal it was generated in while the
+     * template still offers that one, with the zaak's data as it is now, and stores it as the next version of the same
+     * informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored the current
+     * one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
      * Epistola's copy is deleted.
@@ -75,10 +76,11 @@ class EpistolaDocumentVersionService @Inject constructor(
     ): EnkelvoudigInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
-        val templateId = epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID)?.templateId
+        val epistolaDocument = epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID)
             ?: throw EpistolaNewVersionNotPossibleException(
                 "Document '$informatieObjectUUID' was not generated with Epistola, so it has no template to use."
             )
+        val templateId = epistolaDocument.templateId
         epistolaTemplatesService.assertTemplateIsOffered(
             zaaktypeUuid = zaak.zaaktype.extractUuid(),
             templateId = templateId
@@ -87,7 +89,8 @@ class EpistolaDocumentVersionService @Inject constructor(
             val generatedDocument = epistolaDocumentCreationService.createDocument(
                 zaak = zaak,
                 templateId = templateId,
-                fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION
+                fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
+                kanaal = epistolaDocument.kanaal
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(

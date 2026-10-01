@@ -410,7 +410,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
                 creerenDocument = true
             )
-            every { epistolaDocumentCreationService.readKanalen("fake-template") } returns
+            every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
                 EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
 
             val restEpistolaKanalen = documentCreationRestService.readEpistolaKanalen(zaak.uuid, "fake-template")
@@ -432,7 +432,29 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before Epistola is asked") {
-                verify(exactly = 0) { epistolaDocumentCreationService.readKanalen(any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.readKanalen(any(), any()) }
+            }
+        }
+    }
+
+    given("a template with only a variant by post, and a zaak whose communicatiekanaal is e-mail") {
+        val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+        val loggedInUser = createLoggedInUser()
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { loggedInUserInstance.get() } returns loggedInUser
+        every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
+        every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
+            EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
+
+        `when`("its kanalen are read") {
+            val restEpistolaKanalen = documentCreationRestService.readEpistolaKanalen(zaak.uuid, "fake-template")
+
+            then("post is suggested as the default, without naming the communicatiekanaal that did not suggest it") {
+                restEpistolaKanalen shouldBe RestEpistolaKanalen(
+                    kanalen = listOf("post"),
+                    voorgesteldKanaal = "post",
+                    communicatiekanaal = null
+                )
             }
         }
     }
