@@ -1,0 +1,48 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<ol class="steps" [attr.aria-label]="'epistola.voortgang' | translate">
+  @for (step of steps; track step; let index = $index) {
+    <li
+      class="step"
+      [class.done]="index < currentStep()"
+      [class.active]="index === currentStep()"
+      [class.held-up]="index === currentStep() && isHeldUp()"
+      [attr.aria-current]="index === currentStep() ? 'step' : null"
+    >
+      <span class="indicator" aria-hidden="true">
+        @if (index < currentStep()) {
+          <mat-icon>check</mat-icon>
+        } @else if (index === currentStep() && isHeldUp()) {
+          <mat-icon>hourglass_top</mat-icon>
+        } @else {
+          {{ index + 1 }}
+        }
+      </span>
+      <span class="label">{{ step | translate }}</span>
+      @if (index < currentStep()) {
+        <span class="visually-hidden">{{
+          "epistola.voortgang.klaar" | translate
+        }}</span>
+      } @else if (index === currentStep()) {
+        <span class="visually-hidden">{{
+          (isHeldUp()
+            ? "epistola.voortgang.vertraagd"
+            : "epistola.voortgang.bezig"
+          ) | translate
+        }}</span>
+      }
+    </li>
+  }
+</ol>
+<mat-progress-bar
+  mode="determinate"
+  [value]="percentage()"
+  [class.held-up]="isHeldUp()"
+  [attr.aria-label]="'epistola.voortgang' | translate"
+></mat-progress-bar>
+<p role="status" class="message" [class.held-up]="isHeldUp()">
+  {{ message() | translate }}
+</p>

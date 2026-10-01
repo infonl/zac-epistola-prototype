@@ -144,12 +144,18 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await setup({ enabledForZaaktype: false });
 
       expect(
-        screen.getByRole("switch", { name: "title.epistola.form" }),
+        screen.getByRole("switch", { name: "epistola.form.schakelaar" }),
       ).not.toBeChecked();
       expect(screen.getByText("msg.epistola.form.disabled")).toBeVisible();
       expect(
         screen.queryByRole("button", { name: "actie.templategroep.toevoegen" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("labels the switch visibly with what it switches", async () => {
+      await setup({ enabledForZaaktype: false });
+
+      expect(screen.getByText("epistola.form.schakelaar")).toBeVisible();
     });
 
     it("is valid, because nothing it holds would be saved", async () => {

@@ -82,9 +82,10 @@
   </fieldset>
   <fieldset>
     @if (usesEpistola && createEpistolaDocumentMutation.isPending()) {
-      <p role="status" class="mx-3">
-        {{ generatingMessage() | translate }}
-      </p>
+      <zac-epistola-generation-progress
+        class="mx-3"
+        [status]="generationStatus()"
+      />
     }
     <mat-action-row>
       <zac-form-actions

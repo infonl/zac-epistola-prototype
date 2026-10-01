@@ -18,9 +18,9 @@ import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { ActivatedRoute, provideRouter, Router } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
 import { provideQueryClient } from "@tanstack/angular-query-experimental";
-import { of, ReplaySubject } from "rxjs";
+import { config, of, ReplaySubject, Subject, throwError } from "rxjs";
 import { fromPartial } from "src/test-helpers";
-import { testQueryClient } from "../../../../setupJest";
+import { sleep, testQueryClient } from "../../../../setupJest";
 import { ConfiguratieService } from "../../configuratie/configuratie.service";
 import { UtilService } from "../../core/service/util.service";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
@@ -36,6 +36,7 @@ import { SideNavComponent } from "../../shared/side-nav/side-nav.component";
 import { StaticTextComponent } from "../../shared/static-text/static-text.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { ZakenService } from "../../zaken/zaken.service";
+import { EpistolaGenerationDialogComponent } from "../epistola-generation-dialog/epistola-generation-dialog.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat } from "../model/file-format";
@@ -352,6 +353,75 @@ describe(InformatieObjectViewComponent.name, () => {
         enkelvoudigInformatieobject.uuid,
         2,
       ]);
+    });
+
+    describe("while the version is generated", () => {
+      afterEach(() => {
+        config.onUnhandledError = null;
+      });
+
+      function givenAProgressDialog() {
+        const close = jest.fn();
+        const open = jest
+          .spyOn(component["dialog"], "open")
+          .mockReturnValue(fromPartial<MatDialogRef<unknown>>({ close }));
+        return { open, close };
+      }
+
+      async function clickGenerateNewVersion() {
+        const button = await loader.getHarness(
+          MatNavListItemHarness.with({
+            title: "actie.epistola.nieuwe-versie.genereren",
+          }),
+        );
+        await button.click();
+      }
+
+      it("shows the generation's progress for the document's zaak until the version is there", async () => {
+        givenADocument();
+        const { open, close } = givenAProgressDialog();
+        const versionCreated = new Subject<void>();
+        jest
+          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .mockReturnValue(versionCreated);
+        jest.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
+
+        await clickGenerateNewVersion();
+
+        expect(open).toHaveBeenCalledWith(
+          EpistolaGenerationDialogComponent,
+          expect.objectContaining({
+            data: {
+              zaakUuid: zaak.uuid,
+              documentTitle: enkelvoudigInformatieobject.titel,
+            },
+            disableClose: true,
+          }),
+        );
+        expect(close).not.toHaveBeenCalled();
+
+        versionCreated.next();
+        versionCreated.complete();
+
+        expect(close).toHaveBeenCalled();
+      });
+
+      it("closes the progress when generating the version fails", async () => {
+        givenADocument();
+        const { close } = givenAProgressDialog();
+        const error = new Error("fakeError");
+        jest
+          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .mockReturnValue(throwError(() => error));
+        const onUnhandledError = jest.fn();
+        config.onUnhandledError = onUnhandledError;
+
+        await clickGenerateNewVersion();
+        await sleep();
+
+        expect(close).toHaveBeenCalled();
+        expect(onUnhandledError).toHaveBeenCalledWith(error);
+      });
     });
   });
 

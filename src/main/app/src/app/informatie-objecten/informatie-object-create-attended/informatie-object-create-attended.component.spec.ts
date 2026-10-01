@@ -22,7 +22,7 @@ import {
   provideQueryClient,
   provideTanStackQuery,
 } from "@tanstack/angular-query-experimental";
-import { render, screen } from "@testing-library/angular";
+import { render, screen, within } from "@testing-library/angular";
 import userEvent from "@testing-library/user-event";
 import { EMPTY } from "rxjs";
 import { fromPartial } from "src/test-helpers";
@@ -600,6 +600,29 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       expect(screen.getByRole("status")).toHaveTextContent(
         "msg.document.genereren.lang-in-wachtrij",
       );
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("shows the generation as steps, with the one Epistola is at marked as current", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      fixture.detectChanges();
+      await sleep();
+      answerStatusPolls("RENDERING");
+      await sleep(50);
+      fixture.detectChanges();
+
+      const steps = within(
+        screen.getByRole("list", { name: "epistola.voortgang" }),
+      ).getAllByRole("listitem");
+      expect(
+        steps.find((step) => step.getAttribute("aria-current") === "step"),
+      ).toHaveTextContent("epistola.voortgang.maken");
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
       httpTestingController
         .expectOne(EPISTOLA_CREATE_URL)
         .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });

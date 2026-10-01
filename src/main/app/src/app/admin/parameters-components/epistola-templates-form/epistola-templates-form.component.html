@@ -14,8 +14,10 @@
         <mat-slide-toggle
           formControlName="enabledForZaaktype"
           color="primary"
-          [aria-label]="'title.epistola.form' | translate"
-        ></mat-slide-toggle>
+          labelPosition="before"
+        >
+          {{ "epistola.form.schakelaar" | translate }}
+        </mat-slide-toggle>
       </div>
       <mat-divider class="my-3"></mat-divider>
       @if (form.controls.enabledForZaaktype.value) {
