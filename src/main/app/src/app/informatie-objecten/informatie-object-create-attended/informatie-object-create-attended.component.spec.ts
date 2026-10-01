@@ -22,7 +22,7 @@ import {
   provideQueryClient,
   provideTanStackQuery,
 } from "@tanstack/angular-query-experimental";
-import { render, screen } from "@testing-library/angular";
+import { render, screen, within } from "@testing-library/angular";
 import userEvent from "@testing-library/user-event";
 import { EMPTY } from "rxjs";
 import { fromPartial } from "src/test-helpers";
@@ -31,6 +31,7 @@ import { UtilService } from "../../core/service/util.service";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "../../shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
 import { GeneratedType } from "../../shared/utils/generated-types";
+import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectCreateAttendedComponent } from "./informatie-object-create-attended.component";
 
 const CREATE_URL = "/rest/document-creation/create-document-attended";
@@ -539,7 +540,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         description: null,
       });
       request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
-      await sleep();
+      await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS + 50);
 
       expect(openSnackbar).toHaveBeenCalledWith(
         "msg.document.toegevoegd.aan.zaak",
@@ -553,6 +554,35 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       });
       expect(documentCreated).toHaveBeenCalled();
       expect(windowOpen).not.toHaveBeenCalled();
+    });
+
+    it("shows that the document is ready for a moment, offering no second generation, before it reports it was added", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      await sleep();
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      await sleep();
+      fixture.detectChanges();
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "msg.document.genereren.klaar",
+      );
+      expect(screen.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuenow",
+        "100",
+      );
+      expect(generateButton()).toBeDisabled();
+      expect(openSnackbar).not.toHaveBeenCalled();
+      expect(documentCreated).not.toHaveBeenCalled();
+
+      await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS);
+
+      expect(openSnackbar).toHaveBeenCalled();
+      expect(documentCreated).toHaveBeenCalled();
     });
 
     it("links the document to the task it was created from", async () => {
@@ -600,6 +630,29 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       expect(screen.getByRole("status")).toHaveTextContent(
         "msg.document.genereren.lang-in-wachtrij",
       );
+      httpTestingController
+        .expectOne(EPISTOLA_CREATE_URL)
+        .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("shows the generation as steps, with the one Epistola is at marked as current", async () => {
+      await setupEpistola();
+      await fillInValidEpistolaForm();
+
+      await user.click(generateButton());
+      fixture.detectChanges();
+      await sleep();
+      answerStatusPolls("RENDERING");
+      await sleep(50);
+      fixture.detectChanges();
+
+      const steps = within(
+        screen.getByRole("list", { name: "epistola.voortgang" }),
+      ).getAllByRole("listitem");
+      expect(
+        steps.find((step) => step.getAttribute("aria-current") === "step"),
+      ).toHaveTextContent("epistola.voortgang.maken");
+      expect(screen.getByRole("progressbar")).toBeInTheDocument();
       httpTestingController
         .expectOne(EPISTOLA_CREATE_URL)
         .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });

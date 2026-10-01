@@ -1,0 +1,18 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<zac-generic-dialog
+  titleKey="actie.epistola.nieuwe-versie.genereren"
+  icon="note_add"
+  [loading]="true"
+>
+  @if (data.documentTitle; as documentTitle) {
+    <p>{{ documentTitle }}</p>
+  }
+  <zac-epistola-generation-progress
+    [status]="status()"
+    [finished]="finished()"
+  />
+</zac-generic-dialog>

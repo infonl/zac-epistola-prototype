@@ -30,8 +30,15 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { QueryClient } from "@tanstack/angular-query-experimental";
-import { Observable, of, throwError } from "rxjs";
-import { catchError, map, switchMap, tap } from "rxjs/operators";
+import { defer, Observable, of, throwError } from "rxjs";
+import {
+  catchError,
+  delay,
+  finalize,
+  map,
+  switchMap,
+  tap,
+} from "rxjs/operators";
 import { AsyncButtonMenuItem } from "src/app/shared/side-nav/menu-item/subscription-button-menu-item";
 import { UtilService } from "../../core/service/util.service";
 import { ObjectType } from "../../core/websocket/model/object-type";
@@ -63,6 +70,11 @@ import { StaticTextComponent } from "../../shared/static-text/static-text.compon
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { ZakenService } from "../../zaken/zaken.service";
 import { DocumentDialogService } from "../document-dialog.service";
+import {
+  EpistolaGenerationDialogComponent,
+  EpistolaGenerationDialogData,
+} from "../epistola-generation-dialog/epistola-generation-dialog.component";
+import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat, FileFormatUtil } from "../model/file-format";
@@ -398,23 +410,39 @@ export class InformatieObjectViewComponent
   }
 
   private createEpistolaDocumentVersion$(): Observable<void> {
-    return this.informatieObjectenService
-      .createEpistolaDocumentVersion(this.infoObject.uuid!)
-      .pipe(
-        switchMap(() =>
-          this.informatieObjectenService.readEnkelvoudigInformatieobject(
-            this.infoObject.uuid!,
+    return defer(() => {
+      const progressDialog = this.dialog.open<
+        EpistolaGenerationDialogComponent,
+        EpistolaGenerationDialogData
+      >(EpistolaGenerationDialogComponent, {
+        data: {
+          zaakUuid: this.zaak!.uuid,
+          documentTitle: this.infoObject.titel,
+        },
+        disableClose: true,
+        width: "560px",
+      });
+      return this.informatieObjectenService
+        .createEpistolaDocumentVersion(this.infoObject.uuid!)
+        .pipe(
+          tap(() => progressDialog.componentInstance.markFinished()),
+          delay(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS),
+          finalize(() => progressDialog.close()),
+          switchMap(() =>
+            this.informatieObjectenService.readEnkelvoudigInformatieobject(
+              this.infoObject.uuid!,
+            ),
           ),
-        ),
-        tap((infoObject) => {
-          this.utilService.openSnackbar(
-            "msg.document.epistola.nieuwe-versie.gegenereerd",
-            { document: infoObject.titel },
-          );
-          this.versieToegevoegd(infoObject);
-        }),
-        map(() => void 0),
-      );
+          tap((infoObject) => {
+            this.utilService.openSnackbar(
+              "msg.document.epistola.nieuwe-versie.gegenereerd",
+              { document: infoObject.titel },
+            );
+            this.versieToegevoegd(infoObject);
+          }),
+          map(() => void 0),
+        );
+    });
   }
 
   private loadHistorie() {

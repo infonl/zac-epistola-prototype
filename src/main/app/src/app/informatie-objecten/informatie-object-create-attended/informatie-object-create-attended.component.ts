@@ -41,6 +41,7 @@ import {
   switchMap,
   take,
   takeUntil,
+  timer,
 } from "rxjs";
 import { EpistolaTemplatesService } from "src/app/admin/epistola-templates.service";
 import { SmartDocumentsService } from "src/app/admin/smart-documents.service";
@@ -57,6 +58,10 @@ import {
   NotificationDialogData,
 } from "../../shared/notification-dialog/notification-dialog.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
+import {
+  EPISTOLA_GENERATION_FINISHED_DISPLAY_MS,
+  EpistolaGenerationProgressComponent,
+} from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
 /** SmartDocuments groups carry an id; Epistola's belong to ZAC and are known by name only. */
@@ -69,17 +74,6 @@ type TemplateGroupOption = {
   id?: string;
   name: string;
   templates: TemplateOption[];
-};
-
-const EPISTOLA_STATUS_MESSAGES: Record<
-  GeneratedType<"EpistolaDocumentCreationStatus">,
-  string
-> = {
-  WAITING_IN_QUEUE: "msg.document.genereren.in-wachtrij",
-  HELD_UP_IN_QUEUE: "msg.document.genereren.lang-in-wachtrij",
-  RENDERING: "msg.document.genereren.wordt-gemaakt",
-  HELD_UP_IN_RENDERING: "msg.document.genereren.duurt-lang",
-  STORING: "msg.document.genereren.opslaan",
 };
 
 @Component({
@@ -100,6 +94,7 @@ const EPISTOLA_STATUS_MESSAGES: Record<
     ZacDate,
     ZacInput,
     ZacFormActions,
+    EpistolaGenerationProgressComponent,
   ],
 })
 export class InformatieObjectCreateAttendedComponent
@@ -182,14 +177,13 @@ export class InformatieObjectCreateAttendedComponent
     };
   });
 
-  protected readonly generatingMessage = computed(() => {
-    const status = this.epistolaStatusQuery.isError()
+  protected readonly generationFinished = signal(false);
+
+  protected readonly generationStatus = computed(() =>
+    this.epistolaStatusQuery.isError()
       ? undefined
-      : this.epistolaStatusQuery.data()?.status;
-    return status
-      ? EPISTOLA_STATUS_MESSAGES[status]
-      : "msg.document.genereren.bezig";
-  });
+      : this.epistolaStatusQuery.data()?.status,
+  );
 
   constructor(
     private readonly smartDocumentsService: SmartDocumentsService,
@@ -411,10 +405,16 @@ export class InformatieObjectCreateAttendedComponent
                 this.zaak.uuid,
               ),
           });
-          this.utilService.openSnackbar("msg.document.toegevoegd.aan.zaak", {
-            document: title,
-          });
-          this.document.emit();
+          this.generationFinished.set(true);
+          timer(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => {
+              this.utilService.openSnackbar(
+                "msg.document.toegevoegd.aan.zaak",
+                { document: title },
+              );
+              this.document.emit();
+            });
         },
         onSettled: () => this.generatingForZaakUuid.set(undefined),
       },
