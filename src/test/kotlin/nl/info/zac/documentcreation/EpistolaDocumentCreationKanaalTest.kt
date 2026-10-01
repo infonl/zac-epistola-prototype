@@ -148,10 +148,18 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             `when`("a document is created without choosing a kanaal") {
                 val askedKanalen = givenATemplate(zaak, postAndDigitaal)
 
-                epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
+                val document = epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME
+                )
 
                 then("no kanaal is asked for, so Epistola renders the template's default variant itself") {
                     askedKanalen.single() shouldBe null
+                }
+
+                and("the document names the default variant's kanaal, so a new version stays in that variant") {
+                    document.kanaal shouldBe "post"
                 }
             }
         }
@@ -196,7 +204,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             `when`("a document is created by post") {
                 val askedKanalen = givenATemplate(zaak, EpistolaKanalen())
 
-                epistolaDocumentCreationService.createDocument(
+                val document = epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
@@ -205,6 +213,10 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 then("no kanaal is asked for, so Epistola renders the template as before") {
                     askedKanalen.single() shouldBe null
+                }
+
+                and("the document names no kanaal") {
+                    document.kanaal shouldBe null
                 }
             }
         }
