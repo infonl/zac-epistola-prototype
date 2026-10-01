@@ -20,7 +20,10 @@ import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutExcept
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.exception.toEpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
+import nl.info.client.epistola.model.selectVariantFor
+import nl.info.client.epistola.model.toEpistolaKanalen
 import nl.info.zac.configuration.EpistolaSettings
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -65,13 +68,16 @@ class EpistolaClientService @Inject constructor(
 
     /**
      * Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak.
+     * Without a [kanaal], Epistola renders the template's default variant.
      * [onJobStatus] hears the job's status at every poll until it finishes.
      */
+    @Suppress("LongParameterList")
     fun generateDocument(
         templateId: String,
         data: Map<String, Any>,
         fileName: String,
         correlationId: String,
+        kanaal: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument {
         val tenant = epistolaSettings.tenantId
@@ -84,13 +90,14 @@ class EpistolaClientService @Inject constructor(
                 GenerateDocumentRequest()
                     .catalogId(epistolaSettings.catalogId)
                     .templateId(templateId)
+                    .attributes(kanaal?.let { selectVariantFor(kanaal = it, catalogId = epistolaSettings.catalogId) })
                     .data(data)
                     .filename(fileName)
                     .correlationId(correlationId)
             )
         }.requestId
         val generationRequest = "generation request '$requestId' for template '$templateId' " +
-            "(correlation id '$correlationId')"
+            "(correlation id '$correlationId'${kanaal?.let { ", kanaal '$it'" }.orEmpty()})"
         LOG.fine { "Epistola accepted $generationRequest" }
 
         var isJobFinished = false
@@ -141,8 +148,13 @@ class EpistolaClientService @Inject constructor(
         }
     }
 
-    fun readTemplateSchema(templateId: String): Any? =
-        readTemplate(templateId).let { it.dataModel ?: it.schema }
+    fun readGenerationTemplate(templateId: String) =
+        readTemplate(templateId).let {
+            EpistolaGenerationTemplate(
+                dataContract = it.dataModel ?: it.schema,
+                kanalen = it.toEpistolaKanalen(epistolaSettings.catalogId)
+            )
+        }
 
     /** ZAC uses exactly one catalog, so it comes from configuration rather than from the caller. */
     fun readTemplate(templateId: String) =

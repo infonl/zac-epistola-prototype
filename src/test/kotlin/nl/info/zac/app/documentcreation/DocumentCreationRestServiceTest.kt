@@ -5,8 +5,10 @@
 
 package nl.info.zac.app.documentcreation
 
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
+import nl.info.zac.app.documentcreation.model.RestEpistolaKanalen
 import nl.info.zac.documentcreation.EpistolaDocumentCreationService
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import io.kotest.assertions.throwables.shouldThrow
@@ -260,7 +262,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
             }
         }
 
@@ -276,7 +278,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
             }
         }
 
@@ -295,7 +297,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             then("it is refused, naming the task and the zaak, before any zaak data reaches Epistola") {
                 taskNotFoundException.message shouldBe
                     "No open task found with task id: 'fakeTaskId' for zaak '${zaak.uuid}'"
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
             }
         }
 
@@ -352,6 +354,85 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
                 verify(exactly = 0) { flowableTaskService.findOpenTask(any()) }
                 verify(exactly = 0) { policyService.readTaakRechten(any<TaskInfo>()) }
+            }
+        }
+    }
+
+    given("an Epistola document requested for a zaak by post") {
+        val zaak = createZaak()
+        val loggedInUser = createLoggedInUser()
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { loggedInUserInstance.get() } returns loggedInUser
+        every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
+        every {
+            epistolaDocumentCreationService.createAndStoreDocument(
+                zaak = zaak,
+                templateId = "fake-template",
+                title = "fakeTitle",
+                description = null,
+                taskId = null,
+                kanaal = "post"
+            )
+        } returns createZaakInformatieobjectForReads()
+
+        `when`("it is requested") {
+            documentCreationRestService.createEpistolaDocument(
+                RestEpistolaDocumentCreationData(
+                    zaakUuid = zaak.uuid,
+                    templateId = "fake-template",
+                    title = "fakeTitle",
+                    kanaal = "post"
+                )
+            )
+
+            then("the document is generated for that kanaal") {
+                verify(exactly = 1) {
+                    epistolaDocumentCreationService.createAndStoreDocument(
+                        zaak = zaak,
+                        templateId = "fake-template",
+                        title = "fakeTitle",
+                        description = null,
+                        taskId = null,
+                        kanaal = "post"
+                    )
+                }
+            }
+        }
+    }
+
+    given("a template with a post and a digital variant, and a zaak whose communicatiekanaal is e-mail") {
+        val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+        val loggedInUser = createLoggedInUser()
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { loggedInUserInstance.get() } returns loggedInUser
+
+        `when`("its kanalen are read by a user who may create documents for the zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
+                creerenDocument = true
+            )
+            every { epistolaDocumentCreationService.readKanalen("fake-template") } returns
+                EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+
+            val restEpistolaKanalen = documentCreationRestService.readEpistolaKanalen(zaak.uuid, "fake-template")
+
+            then("both kanalen are offered, with the digital one suggested by the communicatiekanaal it names") {
+                restEpistolaKanalen shouldBe RestEpistolaKanalen(
+                    kanalen = listOf("post", "digitaal"),
+                    voorgesteldKanaal = "digitaal",
+                    communicatiekanaal = "E-mail"
+                )
+            }
+        }
+
+        `when`("its kanalen are read by a user who may not create documents for the zaak") {
+            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
+
+            shouldThrow<PolicyException> {
+                documentCreationRestService.readEpistolaKanalen(zaak.uuid, "fake-template")
+            }
+
+            then("it is refused before Epistola is asked") {
+                verify(exactly = 0) { epistolaDocumentCreationService.readKanalen(any()) }
             }
         }
     }

@@ -33,7 +33,9 @@ import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.createTemplate
+import nl.info.client.epistola.model.createVariantSummary
 import nl.info.client.epistola.model.createTemplateListResponse
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.createEpistolaSettings
@@ -113,6 +115,10 @@ class EpistolaClientServiceTest : BehaviorSpec({
                         correlationId shouldBe FAKE_CORRELATION_ID
                         data shouldBe mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie"))
                     }
+                }
+
+                and("it asks for no variant, so Epistola renders the template's default one") {
+                    generateRequestSlot.captured.attributes shouldBe null
                 }
 
                 and("the temporary file the client wrote is removed") {
@@ -477,7 +483,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
         }
     }
 
-    context("reading a template schema") {
+    context("reading a template to generate from") {
         val dataModel = mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
         val schema = mapOf("properties" to mapOf("aanvrager" to emptyMap<String, Any>()))
 
@@ -486,11 +492,11 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(dataModel = dataModel)
 
-            `when`("the schema is read") {
-                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
 
-                then("the data model is returned as the contract defines it") {
-                    templateSchema shouldBe dataModel
+                then("the data model is its data contract, as the contract defines it") {
+                    generationTemplate.dataContract shouldBe dataModel
                 }
             }
         }
@@ -500,11 +506,11 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(schema = schema)
 
-            `when`("the schema is read") {
-                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
 
-                then("that schema is returned rather than the template counting as having none") {
-                    templateSchema shouldBe schema
+                then("that schema is its data contract rather than the template counting as having none") {
+                    generationTemplate.dataContract shouldBe schema
                 }
             }
         }
@@ -514,25 +520,77 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(schema = schema, dataModel = dataModel)
 
-            `when`("the schema is read") {
-                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
 
                 then("the data model wins, because that is the one Epistola validates against") {
-                    templateSchema shouldBe dataModel
+                    generationTemplate.dataContract shouldBe dataModel
                 }
             }
         }
 
-        given("a template that declares no schema at all") {
+        given("a template that declares no schema and has no variants") {
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate()
 
-            `when`("the schema is read") {
-                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
 
-                then("nothing is returned, so the caller decides what an unrestricted template means") {
-                    templateSchema shouldBe null
+                then("it has no data contract, so the caller decides what an unrestricted template means") {
+                    generationTemplate.dataContract shouldBe null
+                }
+
+                and("it has no kanalen") {
+                    generationTemplate.kanalen shouldBe EpistolaKanalen()
+                }
+            }
+        }
+
+        given("a template whose variants are made for kanalen, some in another catalog") {
+            every {
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
+            } returns createTemplate(
+                variants = listOf(
+                    createVariantSummary(id = "fake-dutch-post", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post")),
+                    createVariantSummary(
+                        id = "fake-english-post",
+                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post", "system.locale" to "en-GB")
+                    ),
+                    createVariantSummary(
+                        id = "fake-digitaal",
+                        isDefault = true,
+                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal")
+                    ),
+                    createVariantSummary(id = "fake-other-catalog", attributes = mapOf("fake-other-catalog.kanaal" to "sms")),
+                    createVariantSummary(id = "fake-no-attributes", attributes = null)
+                )
+            )
+
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+
+                then("each kanaal of ZAC's catalog is listed once, with that of the default variant") {
+                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "digitaal")
+                }
+            }
+        }
+
+        given("a template whose default variant is made for no kanaal") {
+            every {
+                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
+            } returns createTemplate(
+                variants = listOf(
+                    createVariantSummary(id = "fake-default", isDefault = true),
+                    createVariantSummary(id = "fake-digitaal", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal"))
+                )
+            )
+
+            `when`("the template is read") {
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+
+                then("it has a kanaal, but no default kanaal") {
+                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = null)
                 }
             }
         }
@@ -542,9 +600,9 @@ class EpistolaClientServiceTest : BehaviorSpec({
         given("an API key that Epistola rejects") {
             every { templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } throws createApiException(401)
 
-            `when`("the schema is read") {
+            `when`("the template is read") {
                 val exception = shouldThrow<EpistolaRequestFailedException> {
-                    createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+                    createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
                 }
 
                 then("the behandelaar learns that ZAC has no access to Epistola") {

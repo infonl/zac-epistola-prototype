@@ -19,6 +19,8 @@ import io.mockk.verifyOrder
 import jakarta.enterprise.inject.Instance
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectWithLockRequest
@@ -85,7 +87,11 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
     afterEach { checkUnnecessaryStub() }
 
     context("generating a new version of a document") {
-        fun givenANewVersionGenerated(zaak: Zaak, fileName: String): EpistolaGeneratedDocument {
+        fun givenANewVersionGenerated(
+            zaak: Zaak,
+            fileName: String,
+            kanalen: EpistolaKanalen = EpistolaKanalen()
+        ): EpistolaGeneratedDocument {
             val loggedInUser = createLoggedInUser(displayName = "fakeDisplayName")
             val generatedDocument = EpistolaGeneratedDocument(
                 documentId = UUID.randomUUID(),
@@ -97,18 +103,23 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                 epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
             } just runs
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
-            every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
+            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+                EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = kanalen)
             every {
-                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), fileName, zaak.uuid.toString(), any())
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), fileName, zaak.uuid.toString(), any(), any())
             } returns generatedDocument
             return generatedDocument
         }
 
-        given("a document Epistola generated from a template that the zaaktype still offers") {
-            val zaak = createZaak()
+        given("a document Epistola generated from a template that the zaaktype still offers, for a zaak by post") {
+            val zaak = createZaak().apply { communicatiekanaalNaam = "Post" }
             val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
             val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
-            val generatedDocument = givenANewVersionGenerated(zaak, FAKE_FILE_NAME)
+            val generatedDocument = givenANewVersionGenerated(
+                zaak = zaak,
+                fileName = FAKE_FILE_NAME,
+                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "digitaal")
+            )
             val newVersion = createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
             val requestSlot = slot<EnkelvoudigInformatieObjectWithLockRequest>()
             every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns
@@ -127,6 +138,12 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
 
                 then("the next version of the same informatieobject is returned") {
                     createdVersion shouldBe newVersion
+                }
+
+                and("it is generated in the template's variant for the zaak's communicatiekanaal") {
+                    verify(exactly = 1) {
+                        epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), FAKE_FILE_NAME, zaak.uuid.toString(), "post", any())
+                    }
                 }
 
                 and("the new file replaces the content as a PDF, with the behandelaar as its author") {
@@ -196,7 +213,7 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                 }
 
                 and("nothing is sent to Epistola") {
-                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any()) }
                 }
             }
         }
@@ -218,7 +235,7 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                 }
 
                 then("no zaak data is sent to Epistola") {
-                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any()) }
                 }
             }
         }

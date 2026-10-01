@@ -45,6 +45,29 @@
         <mat-label>{{ "sjabloon" | translate }}</mat-label>
       </zac-auto-complete>
     </section>
+    @if (kanaalOptions().length) {
+      <section class="row">
+        <zac-select
+          [form]="form"
+          key="kanaal"
+          class="col-12"
+          [options]="kanaalOptions()"
+          [optionDisplayValue]="kanaalLabel"
+        >
+          <mat-label>{{ "epistola.kanaal" | translate }}</mat-label>
+          <mat-hint>
+            @if (kanalen()?.communicatiekanaal; as communicatiekanaal) {
+              {{
+                "epistola.kanaal.hint.communicatiekanaal"
+                  | translate: { communicatiekanaal }
+              }}
+            } @else {
+              {{ "epistola.kanaal.hint" | translate }}
+            }
+          </mat-hint>
+        </zac-select>
+      </section>
+    }
     <section class="row">
       <zac-input key="title" class="col-12" [form]="form">
         <mat-label>{{ "titel" | translate }}</mat-label>

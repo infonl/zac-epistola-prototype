@@ -52,6 +52,7 @@ import { ZacAutoComplete } from "../../shared/form/auto-complete/auto-complete";
 import { ZacDate } from "../../shared/form/date/date";
 import { ZacFormActions } from "../../shared/form/form-actions/form-actions.component";
 import { ZacInput } from "../../shared/form/input/input";
+import { ZacSelect } from "../../shared/form/select/select";
 import { injectMutation } from "../../shared/http/inject-mutation";
 import {
   NotificationDialogComponent,
@@ -76,6 +77,11 @@ type TemplateGroupOption = {
   templates: TemplateOption[];
 };
 
+const KANAAL_LABELS: Record<string, string> = {
+  post: "epistola.kanaal.post",
+  digitaal: "epistola.kanaal.digitaal",
+};
+
 @Component({
   selector: "zac-informatie-object-create-attended",
   templateUrl: "./informatie-object-create-attended.component.html",
@@ -93,6 +99,7 @@ type TemplateGroupOption = {
     ZacAutoComplete,
     ZacDate,
     ZacInput,
+    ZacSelect,
     ZacFormActions,
     EpistolaGenerationProgressComponent,
   ],
@@ -142,11 +149,21 @@ export class InformatieObjectCreateAttendedComponent
       Validators.maxLength(50),
     ]),
     taskId: this.formBuilder.control<string | null>(null),
+    kanaal: this.formBuilder.control<string | null>(null),
   });
 
   protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
   protected templates: TemplateOption[] = [];
   protected readonly templateGroupsError = signal<string | null>(null);
+
+  protected readonly kanalen =
+    signal<GeneratedType<"RestEpistolaKanalen"> | null>(null);
+  protected readonly kanaalOptions = computed(() => {
+    const kanalen = this.kanalen()?.kanalen ?? [];
+    return kanalen.length > 1 ? kanalen : [];
+  });
+  protected readonly kanaalLabel = (kanaal: string) =>
+    KANAAL_LABELS[kanaal] ?? kanaal;
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
   private readonly utilService = inject(UtilService);
@@ -299,6 +316,29 @@ export class InformatieObjectCreateAttendedComponent
         );
       });
 
+    if (this.usesEpistola) {
+      this.form.controls.template.valueChanges
+        .pipe(
+          takeUntil(this.destroy$),
+          switchMap((template) =>
+            template
+              ? from(
+                  this.queryClient.query(
+                    this.informatieObjectenService.readEpistolaKanalenQuery(
+                      this.zaak.uuid,
+                      template.id,
+                    ),
+                  ),
+                ).pipe(
+                  catchError(() => of(null)),
+                  startWith(null),
+                )
+              : of(null),
+          ),
+        )
+        .subscribe((kanalen) => this.offerKanalen(kanalen));
+    }
+
     templateGroupsFetcher
       .pipe(takeUntil(this.destroy$))
       .subscribe((templateGroups) => {
@@ -315,6 +355,19 @@ export class InformatieObjectCreateAttendedComponent
           }
         }
       });
+  }
+
+  private offerKanalen(kanalen: GeneratedType<"RestEpistolaKanalen"> | null) {
+    this.kanalen.set(kanalen);
+    const { kanaal } = this.form.controls;
+    if (this.kanaalOptions().length) {
+      kanaal.setValue(kanalen?.voorgesteldKanaal ?? null);
+      kanaal.setValidators(Validators.required);
+    } else {
+      kanaal.setValue(null);
+      kanaal.clearValidators();
+    }
+    kanaal.updateValueAndValidity();
   }
 
   private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
@@ -353,6 +406,7 @@ export class InformatieObjectCreateAttendedComponent
         values.template!.id,
         values.title!,
         values.description,
+        values.kanaal,
       );
       return;
     }
@@ -387,6 +441,7 @@ export class InformatieObjectCreateAttendedComponent
     templateId: string,
     title: string,
     description?: string | null,
+    kanaal?: string | null,
   ) {
     this.generatingForZaakUuid.set(this.zaak.uuid);
     this.createEpistolaDocumentMutation.mutate(
@@ -396,6 +451,7 @@ export class InformatieObjectCreateAttendedComponent
         templateId,
         title,
         description,
+        kanaal,
       },
       {
         onSuccess: () => {

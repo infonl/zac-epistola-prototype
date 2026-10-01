@@ -32,6 +32,8 @@ import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedRespon
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationStatus
+import nl.info.zac.app.documentcreation.model.RestEpistolaKanalen
+import nl.info.zac.app.documentcreation.model.toRestEpistolaKanalen
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.runAsLoggedInUser
 import nl.info.zac.authentication.runAsSystemUser
@@ -109,9 +111,23 @@ class DocumentCreationRestService @Inject constructor(
                 templateId = restEpistolaDocumentCreationData.templateId,
                 title = restEpistolaDocumentCreationData.title,
                 description = restEpistolaDocumentCreationData.description,
-                taskId = restEpistolaDocumentCreationData.taskId
+                taskId = restEpistolaDocumentCreationData.taskId,
+                kanaal = restEpistolaDocumentCreationData.kanaal
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
+
+    /** The kanalen a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
+    @GET
+    @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/kanalen")
+    fun readEpistolaKanalen(
+        @PathParam("zaakUuid") zaakUuid: UUID,
+        @PathParam("templateId") templateId: String
+    ): RestEpistolaKanalen =
+        zrcClientService.readZaak(zaakUuid).also { zaak ->
+            assertDocumentCreationAllowed(zaak = zaak, taskId = null)
+        }.let { zaak ->
+            epistolaDocumentCreationService.readKanalen(templateId).toRestEpistolaKanalen(zaak.communicatiekanaalNaam)
+        }
 
     /**
      * What Epistola reports on the document the logged-in user is generating for the zaak, while the request above

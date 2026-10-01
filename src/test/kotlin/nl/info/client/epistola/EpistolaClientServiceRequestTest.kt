@@ -12,6 +12,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.checkUnnecessaryStub
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.zac.configuration.createEpistolaSettings
 import org.json.JSONObject
 import java.net.InetSocketAddress
@@ -51,11 +52,11 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
     afterEach { checkUnnecessaryStub() }
     afterSpec { epistolaServer.stop() }
 
-    context("reading a template schema") {
+    context("reading a template to generate from") {
         given("a configured tenant and catalog") {
-            `when`("the schema is read") {
+            `when`("the template is read") {
                 epistolaServer.clearRecordedRequests()
-                val templateSchema = createService().readTemplateSchema(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
 
                 then("Epistola is asked for the template inside that tenant's catalog") {
                     epistolaServer.requestPaths.single() shouldBe
@@ -63,7 +64,11 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                 }
 
                 and("the data model the template declares is returned") {
-                    templateSchema shouldBe mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
+                    generationTemplate.dataContract shouldBe mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
+                }
+
+                and("the kanalen are read from the variants' attributes in that catalog, with that of the default variant") {
+                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
                 }
 
                 and("the request names ZAC and its version as the client that sent it") {
@@ -88,8 +93,40 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     JSONObject(epistolaServer.requestBodies.single()).getString("catalogId") shouldBe FAKE_CATALOG_ID
                 }
 
+                and("it asks for no variant, so Epistola renders the default one") {
+                    JSONObject(epistolaServer.requestBodies.single()).has("attributes") shouldBe false
+                }
+
                 and("the rendered document is returned") {
                     generatedDocument.content.toString(StandardCharsets.UTF_8) shouldBe FAKE_PDF_CONTENT
+                }
+            }
+
+            `when`("a document is generated for a kanaal") {
+                epistolaServer.clearRecordedRequests()
+                createService().generateDocument(
+                    templateId = FAKE_TEMPLATE_ID,
+                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
+                    fileName = FAKE_FILE_NAME,
+                    correlationId = FAKE_CORRELATION_ID,
+                    kanaal = "digitaal"
+                )
+
+                then("the variant for that kanaal is required, and the Dutch one preferred") {
+                    val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
+                    attributes.length() shouldBe 2
+                    with(attributes.getJSONObject(0)) {
+                        getString("catalog") shouldBe FAKE_CATALOG_ID
+                        getString("key") shouldBe "kanaal"
+                        getString("value") shouldBe "digitaal"
+                        getBoolean("required") shouldBe true
+                    }
+                    with(attributes.getJSONObject(1)) {
+                        getString("catalog") shouldBe "system"
+                        getString("key") shouldBe "locale"
+                        getString("value") shouldBe "nl-NL"
+                        getBoolean("required") shouldBe false
+                    }
                 }
             }
         }
@@ -163,7 +200,17 @@ private class FakeEpistolaServer {
               "id": "$FAKE_TEMPLATE_ID",
               "tenantId": "$FAKE_TENANT_ID",
               "name": "fakeTemplateName",
-              "dataModel": { "properties": { "zaak": {} } }
+              "dataModel": { "properties": { "zaak": {} } },
+              "variants": [
+                { "id": "initial", "title": "Per post", "isDefault": true,
+                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "post", "system.locale": "nl-NL" } },
+                { "id": "english", "title": "English", "isDefault": false,
+                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "post", "system.locale": "en-GB" } },
+                { "id": "digitaal", "title": "Digitaal", "isDefault": false,
+                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "digitaal" } },
+                { "id": "other-catalog", "title": "Other catalog", "isDefault": false,
+                  "attributes": { "other-catalog.kanaal": "sms" } }
+              ]
             }
         """.trimIndent()
 

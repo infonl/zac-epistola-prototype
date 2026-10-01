@@ -22,5 +22,8 @@ data class RestEpistolaDocumentCreationData(
     @field:NotBlank
     var title: String,
 
-    var description: String? = null
+    var description: String? = null,
+
+    /** Without one, the zaak's communicatiekanaal decides which of the template's variants is used. */
+    var kanaal: String? = null
 )

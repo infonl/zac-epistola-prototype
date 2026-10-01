@@ -24,6 +24,8 @@ import net.atos.zac.flowable.task.exception.TaskNotFoundException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
@@ -118,7 +120,8 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
         every {
             documentCreationDataService.createEpistolaData(loggedInUser, zaak, null)
         } returns createData()
-        every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
+        every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
         every {
             epistolaClientService.generateDocument(
                 templateId = FAKE_TEMPLATE_ID,
@@ -163,7 +166,8 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
         every {
             documentCreationDataService.createEpistolaData(loggedInUser, zaak, null)
         } returns createData()
-        every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns null
+        every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            EpistolaGenerationTemplate(dataContract = null, kanalen = EpistolaKanalen())
 
         `when`("a document is created") {
             val exception = shouldThrow<EpistolaTemplateSchemaMissingException> {
@@ -176,7 +180,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
 
             then("no zaak data is sent to Epistola") {
                 exception.message shouldContain FAKE_TEMPLATE_ID
-                verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any()) }
             }
         }
     }
@@ -203,9 +207,10 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 vertrouwelijkheidaanduiding = vertrouwelijkheidaanduiding
             )
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
-            every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
+            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
             every {
-                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any(), any())
             } returns generatedDocument
             every { configurationService.readBronOrganisatie() } returns FAKE_BRONORGANISATIE
             return generatedDocument to informatieObjectTypeUri
@@ -352,7 +357,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             var statusWhileGenerating: EpistolaDocumentCreationStatus? = null
             var statusWhileStoring: EpistolaDocumentCreationStatus? = null
             every {
-                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any(), any())
             } answers {
                 lastArg<(EpistolaJobStatus) -> Unit>()(EpistolaJobStatus.HELD_UP_IN_RENDERING)
                 statusWhileGenerating = epistolaDocumentCreationService.readStatus(zaak.uuid)
@@ -600,13 +605,14 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                 ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid)
             } returns createInformatieObjectType()
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
-            every { epistolaClientService.readTemplateSchema(FAKE_TEMPLATE_ID) } returns TEMPLATE_SCHEMA
+            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
             val epistolaTemplateDataRejectedException = EpistolaTemplateDataRejectedException(
                 message = "fakeRejectedMessage",
                 detail = "/aanvrager: is required"
             )
             every {
-                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any())
+                epistolaClientService.generateDocument(FAKE_TEMPLATE_ID, any(), "$FAKE_TITLE.pdf", zaak.uuid.toString(), any(), any())
             } throws epistolaTemplateDataRejectedException
 
             `when`("the document is created and stored") {
@@ -668,7 +674,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
 
                 then("it is refused before any zaak data reaches Epistola") {
                     epistolaTemplateNotConfiguredException.message shouldBe "fakeNotConfigured"
-                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any()) }
                 }
             }
         }

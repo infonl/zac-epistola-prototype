@@ -28,6 +28,7 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
+import nl.info.zac.documentcreation.model.choose
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
 import nl.info.zac.epistola.EpistolaTemplatesService
@@ -69,12 +70,14 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Epistola's copy is deleted whether or not storing succeeds. A document that could not be stored is not kept:
      * the behandelaar is told, and can generate it again from the zaak.
      */
+    @Suppress("LongParameterList")
     fun createAndStoreDocument(
         zaak: Zaak,
         templateId: String,
         title: String,
         description: String?,
-        taskId: String? = null
+        taskId: String? = null,
+        kanaal: String? = null
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
@@ -88,7 +91,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 zaak = zaak,
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
-                taskId = taskId
+                taskId = taskId,
+                kanaal = kanaal
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeDocument(
@@ -108,21 +112,25 @@ class EpistolaDocumentCreationService @Inject constructor(
         }
     }
 
+    /** Without a [kanaal], or with one the template has no variant for, the zaak's communicatiekanaal decides. */
+    @Suppress("LongParameterList")
     fun createDocument(
         zaak: Zaak,
         templateId: String,
         fileName: String,
         taskId: String? = null,
+        kanaal: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument =
         try {
+            val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
             val templateData = documentCreationDataService.createEpistolaData(
                 loggedInUser = loggedInUserInstance.get(),
                 zaak = zaak,
                 taskId = taskId
             ).toEpistolaTemplateData(
                 templateId = templateId,
-                templateSchema = epistolaClientService.readTemplateSchema(templateId)
+                templateSchema = generationTemplate.dataContract
             )
             LOG.fine { "Generating Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
 
@@ -131,6 +139,10 @@ class EpistolaDocumentCreationService @Inject constructor(
                 data = templateData,
                 fileName = fileName,
                 correlationId = zaak.uuid.toString(),
+                kanaal = generationTemplate.kanalen.choose(
+                    requestedKanaal = kanaal,
+                    communicatiekanaal = zaak.communicatiekanaalNaam
+                ),
                 onJobStatus = onJobStatus
             )
         } catch (epistolaException: EpistolaException) {
@@ -140,6 +152,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 epistolaException = epistolaException
             )
         }
+
+    fun readKanalen(templateId: String) = epistolaClientService.readGenerationTemplate(templateId).kanalen
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)

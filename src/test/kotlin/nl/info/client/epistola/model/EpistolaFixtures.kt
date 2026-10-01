@@ -11,6 +11,7 @@ import app.epistola.client.jakarta.model.PageMeta
 import app.epistola.client.jakarta.model.TemplateDto
 import app.epistola.client.jakarta.model.TemplateListResponse
 import app.epistola.client.jakarta.model.TemplateSummaryDto
+import app.epistola.client.jakarta.model.VariantSummaryDto
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -46,12 +47,25 @@ fun createTemplate(
     id: String = "fakeTemplateId",
     name: String = "fakeTemplateName",
     schema: Any? = null,
-    dataModel: Any? = null
+    dataModel: Any? = null,
+    variants: List<VariantSummaryDto>? = null
 ): TemplateDto = TemplateDto()
     .id(id)
     .name(name)
     .schema(schema)
     .dataModel(dataModel)
+    .variants(variants)
+
+fun createVariantSummary(
+    id: String = "fake-variant-id",
+    isDefault: Boolean = false,
+    attributes: Map<String, String>? = emptyMap()
+): VariantSummaryDto = VariantSummaryDto()
+    .id(id)
+    .slug(id)
+    .title("fakeVariantTitle")
+    .isDefault(isDefault)
+    .attributes(attributes)
 
 fun createTemplateSummary(
     id: String = "fake-template-id",
