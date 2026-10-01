@@ -24,7 +24,7 @@ Nummers als #8 verwijzen naar issues en pull requests in de repository
 
 ## Overzicht
 
-| Testscenario | Functionaliteit (testplan §3) | Testcases | Positief | Negatief |
+| Testscenario | Functionaliteit (testplan §3) | Testcases | Positieve stappen | Negatieve stappen |
 |---|---|---|---|---|
 | 1 | Configuratie: providerkeuze en instellingen (#2) | TS-01, TS-02 | 1 | 1 |
 | 2 | Configuratie: templategroepen en templates per zaaktype (#3) | TS-03, TS-04, TS-05, TS-07 | 2 | 2 |

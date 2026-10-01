@@ -8,8 +8,8 @@
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
 
-Hoe Epistola achter ZAC's documentcreatie past: de flow, de interface die de twee providers delen, de
-data die oversteekt, en wie op de knop mag drukken.
+Hoe Epistola achter ZAC's documentcreatie past: de flow, hoe ZAC tussen de twee providers kiest, de data
+die oversteekt, en wie op de knop mag drukken.
 
 ## Dekking van de acceptatiecriteria
 
