@@ -7,16 +7,14 @@ package nl.info.zac.documentcreation
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
-import jakarta.ws.rs.ProcessingException
+import jakarta.persistence.PersistenceException
+import jakarta.transaction.TransactionalException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
-import nl.info.client.zgw.shared.exception.ZgwErrorException
-import nl.info.client.zgw.shared.exception.ZgwRuntimeException
-import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.zrc.model.generated.ZaakInformatieObject
@@ -28,12 +26,12 @@ import nl.info.zac.app.shared.toRestVertrouwelijkheidaanduiding
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
-import nl.info.zac.documentcreation.exception.EpistolaDocumentNotStoredException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
 import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.identity.model.getFullName
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -50,6 +48,7 @@ class EpistolaDocumentCreationService @Inject constructor(
     private val epistolaClientService: EpistolaClientService,
     private val documentCreationDataService: DocumentCreationDataService,
     private val epistolaTemplatesService: EpistolaTemplatesService,
+    private val epistolaDocumentRepository: EpistolaDocumentRepository,
     private val ztcClientService: ZtcClientService,
     private val enkelvoudigInformatieObjectUpdateService: EnkelvoudigInformatieObjectUpdateService,
     private val configurationService: ConfigurationService,
@@ -103,7 +102,7 @@ class EpistolaDocumentCreationService @Inject constructor(
                     author = loggedInUser.getFullName()
                 ),
                 taskId = taskId
-            )
+            ).also { rememberTemplate(informatieObjectUUID = it.informatieobject.extractUuid(), templateId = templateId) }
         } finally {
             epistolaDocumentCreationStatusStore.remove(userId = loggedInUser.id, zaakUuid = zaak.uuid)
         }
@@ -149,66 +148,47 @@ class EpistolaDocumentCreationService @Inject constructor(
         epistolaDocumentCreationStatusStore.update(userId = loggedInUser.id, zaakUuid = zaak.uuid, status = status)
 
     /** A failure after the document is in the zaak, such as linking it to a task, is not a failure to store it. */
-    @Suppress("ThrowsCount")
     private fun storeDocument(
         zaak: Zaak,
         templateId: String,
         generatedDocument: EpistolaGeneratedDocument,
         createLockRequest: EnkelvoudigInformatieObjectCreateLockRequest,
         taskId: String?
-    ): ZaakInformatieObject {
-        val notStoredMessage = "Epistola document '${generatedDocument.documentId}' from template '$templateId' " +
-            "could not be stored in zaak '${zaak.identificatie}'"
+    ): ZaakInformatieObject =
         try {
-            return enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
-                zaak = zaak,
-                enkelvoudigInformatieObjectCreateLockRequest = createLockRequest,
-                taskId = taskId
-            ).also { LOG.fine { "Stored Epistola document '${generatedDocument.documentId}' in zaak '${zaak.uuid}'" } }
-        } catch (zgwValidationErrorException: ZgwValidationErrorException) {
-            throw notStored(
-                notStoredMessage = notStoredMessage,
-                failure = zgwValidationErrorException,
-                diagnosis = zgwValidationErrorException.validatieFout.let { validatieFout ->
-                    "HTTP ${validatieFout.status} ${validatieFout.code}, invalid: " +
-                        validatieFout.invalidParams.joinToString { "${it.name} [${it.code}]" }
-                },
-                detail = zgwValidationErrorException.validatieFout.let { validatieFout ->
-                    validatieFout.invalidParams.joinToString(separator = ", ") { it.reason }
-                        .ifEmpty { validatieFout.detail }
-                }
-            )
-        } catch (zgwRuntimeException: ZgwRuntimeException) {
-            throw notStored(
-                notStoredMessage = notStoredMessage,
-                failure = zgwRuntimeException,
-                diagnosis = zgwRuntimeException.message,
-                detail = zgwRuntimeException.message
-            )
-        } catch (zgwErrorException: ZgwErrorException) {
-            throw notStored(
-                notStoredMessage = notStoredMessage,
-                failure = zgwErrorException,
-                diagnosis = "HTTP ${zgwErrorException.zgwError.status} ${zgwErrorException.zgwError.code}",
-                detail = zgwErrorException.zgwError.toString()
-            )
-        } catch (processingException: ProcessingException) {
-            throw notStored(
-                notStoredMessage = notStoredMessage,
-                failure = processingException,
-                diagnosis = processingException.cause?.javaClass?.simpleName,
-                detail = processingException.message
-            )
+            storingInOpenZaak(
+                notStoredMessage = "Epistola document '${generatedDocument.documentId}' from template '$templateId' " +
+                    "could not be stored in zaak '${zaak.identificatie}'"
+            ) {
+                enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
+                    zaak = zaak,
+                    enkelvoudigInformatieObjectCreateLockRequest = createLockRequest,
+                    taskId = taskId
+                ).also { LOG.fine { "Stored Epistola document '${generatedDocument.documentId}' in zaak '${zaak.uuid}'" } }
+            }
         } finally {
             epistolaClientService.deleteDocument(generatedDocument.documentId)
         }
+
+    /**
+     * Not remembering the template only costs the document its "new version" action, so it does not fail a
+     * document that is already in the zaak.
+     */
+    private fun rememberTemplate(informatieObjectUUID: UUID, templateId: String) {
+        try {
+            epistolaDocumentRepository.createEpistolaDocument(
+                informatieObjectUUID = informatieObjectUUID,
+                templateId = templateId
+            )
+        } catch (persistenceException: PersistenceException) {
+            LOG.warning { notRememberedMessage(informatieObjectUUID, persistenceException) }
+        } catch (transactionalException: TransactionalException) {
+            LOG.warning { notRememberedMessage(informatieObjectUUID, transactionalException) }
+        }
     }
 
-    private fun notStored(notStoredMessage: String, failure: Exception, diagnosis: String?, detail: String?) =
-        EpistolaDocumentNotStoredException(
-            message = "$notStoredMessage: ${failure.javaClass.simpleName}" + diagnosis?.let { " ($it)" }.orEmpty(),
-            detail = detail
-        )
+    private fun notRememberedMessage(informatieObjectUUID: UUID, failure: RuntimeException) =
+        "Could not remember the template of Epistola document '$informatieObjectUUID': ${failure.message}"
 
     /**
      * Stored as work in progress, as a SmartDocuments document is, so a behandelaar can still add a new
@@ -236,4 +216,5 @@ class EpistolaDocumentCreationService @Inject constructor(
         inhoud = this@toCreateLockRequest.content.toBase64String()
         bestandsomvang = this@toCreateLockRequest.content.size
     }
+
 }

@@ -160,6 +160,14 @@ class EpistolaTemplatesService @Inject constructor(
             )
     }
 
+    /**
+     * Refuses, as [readInformatieobjecttypeUuid] does, when the zaaktype no longer offers the template, so a new
+     * version of a document is not generated from a template the beheerder has taken away.
+     */
+    fun assertTemplateIsOffered(zaaktypeUuid: UUID, templateId: String) {
+        readInformatieobjecttypeUuid(zaaktypeUuid = zaaktypeUuid, templateId = templateId)
+    }
+
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 
     /**

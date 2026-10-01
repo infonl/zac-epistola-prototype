@@ -15,13 +15,14 @@ import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { MatDialog, MatDialogRef } from "@angular/material/dialog";
 import { MatNavListItemHarness } from "@angular/material/list/testing";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
-import { ActivatedRoute, provideRouter } from "@angular/router";
+import { ActivatedRoute, provideRouter, Router } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
 import { provideQueryClient } from "@tanstack/angular-query-experimental";
 import { of, ReplaySubject } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { testQueryClient } from "../../../../setupJest";
 import { ConfiguratieService } from "../../configuratie/configuratie.service";
+import { UtilService } from "../../core/service/util.service";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { IdentityService } from "../../identity/identity.service";
 import { RedenDialogData } from "../../shared/dialog/reden-dialog-form/reden-dialog-form.component";
@@ -214,6 +215,143 @@ describe(InformatieObjectViewComponent.name, () => {
 
       const sidebar = component.actionsSidenav;
       expect(sidebar.opened).toBe(true);
+    });
+  });
+
+  describe("actie.epistola.nieuwe-versie.genereren", () => {
+    const epistolaZaak = fromPartial<GeneratedType<"RestZaak">>({
+      ...zaak,
+      rechten: fromPartial<GeneratedType<"RestZaakRechten">>({
+        creerenDocument: true,
+      }),
+    });
+
+    function givenADocument({
+      canAddVersion = true,
+      canCreateDocument = true,
+      isNewVersionAvailable = true,
+    } = {}) {
+      jest
+        .spyOn(informatieObjectenService, "readEnkelvoudigInformatieobject")
+        .mockReturnValue(
+          of({
+            ...enkelvoudigInformatieobject,
+            rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
+              toevoegenNieuweVersie: canAddVersion,
+            }),
+          }),
+        );
+      jest.spyOn(zakenService, "readZaakByID").mockReturnValue(
+        of(
+          canCreateDocument
+            ? epistolaZaak
+            : fromPartial<GeneratedType<"RestZaak">>({
+                ...zaak,
+                rechten: fromPartial<GeneratedType<"RestZaakRechten">>({
+                  creerenDocument: false,
+                }),
+              }),
+        ),
+      );
+      const readEpistolaDocument = jest
+        .spyOn(informatieObjectenService, "readEpistolaDocument")
+        .mockReturnValue(
+          of(
+            fromPartial<GeneratedType<"RestEpistolaDocument">>({
+              isNewVersionAvailable,
+            }),
+          ),
+        );
+      mockActivatedRoute.data.next({
+        informatieObject: enkelvoudigInformatieobject,
+      });
+      return readEpistolaDocument;
+    }
+
+    it("should have a button for a document Epistola generated when the user may add a version and create documents", async () => {
+      givenADocument();
+
+      const button = await loader.getHarnessOrNull(
+        MatNavListItemHarness.with({
+          title: "actie.epistola.nieuwe-versie.genereren",
+        }),
+      );
+
+      expect(button).toBeTruthy();
+    });
+
+    it("should not have a button for a document that Epistola did not generate", async () => {
+      givenADocument({ isNewVersionAvailable: false });
+
+      const button = await loader.getHarnessOrNull(
+        MatNavListItemHarness.with({
+          title: "actie.epistola.nieuwe-versie.genereren",
+        }),
+      );
+
+      expect(button).toBeNull();
+    });
+
+    it("should not have a button when the user may not create documents for the zaak", async () => {
+      givenADocument({ canCreateDocument: false });
+
+      const button = await loader.getHarnessOrNull(
+        MatNavListItemHarness.with({
+          title: "actie.epistola.nieuwe-versie.genereren",
+        }),
+      );
+
+      expect(button).toBeNull();
+    });
+
+    it("should not have a button, and not ask whether Epistola generated the document, when the user may not add a version", async () => {
+      const readEpistolaDocument = givenADocument({ canAddVersion: false });
+
+      const button = await loader.getHarnessOrNull(
+        MatNavListItemHarness.with({
+          title: "actie.epistola.nieuwe-versie.genereren",
+        }),
+      );
+
+      expect(button).toBeNull();
+      expect(readEpistolaDocument).not.toHaveBeenCalled();
+    });
+
+    it("should generate the version and show it when clicked", async () => {
+      givenADocument();
+      const createEpistolaDocumentVersion = jest
+        .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+        .mockReturnValue(of(undefined));
+      const navigate = jest
+        .spyOn(TestBed.inject(Router), "navigate")
+        .mockResolvedValue(true);
+      const openSnackbar = jest.spyOn(
+        TestBed.inject(UtilService),
+        "openSnackbar",
+      );
+      jest
+        .spyOn(informatieObjectenService, "readEnkelvoudigInformatieobject")
+        .mockReturnValue(of({ ...enkelvoudigInformatieobject, versie: 2 }));
+
+      const button = await loader.getHarness(
+        MatNavListItemHarness.with({
+          title: "actie.epistola.nieuwe-versie.genereren",
+        }),
+      );
+      await button.click();
+
+      expect(createEpistolaDocumentVersion).toHaveBeenCalledWith(
+        enkelvoudigInformatieobject.uuid,
+      );
+      expect(openSnackbar).toHaveBeenCalledWith(
+        "msg.document.epistola.nieuwe-versie.gegenereerd",
+        { document: enkelvoudigInformatieobject.titel },
+      );
+      expect(navigate).toHaveBeenCalledWith([
+        "/informatie-objecten",
+        enkelvoudigInformatieobject.uuid,
+        2,
+      ]);
     });
   });
 
