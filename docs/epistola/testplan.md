@@ -7,8 +7,8 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Datum | 25 september 2026, bijgewerkt op 30 september 2026 |
-| Versie | 1.3 — bijgewerkt op 30 september 2026 met de scenario's voor #9. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
+| Datum | 25 september 2026, bijgewerkt op 30 september en 1 oktober 2026 |
+| Versie | 1.4 — bijgewerkt op 1 oktober 2026: de gebruikerstest is vervallen. Versie 1.3 voegde op 30 september de scenario's voor #9 toe. De stakeholders keurden versie 1.1 goed op 28 september 2026 (B14) |
 | Geteste versie | **Ronde 1 (25 september):** branch `feat/epistola-document-dialog` op `6a91d8da2` ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)), met daaronder #27, #25 en #24. **Ronde 2 (30 september):** `main` van de fork op `c4dbdcca1`, waarin alle pull requests (#24 t/m #34) zijn gemerged, dus ook de foutafhandeling (#8), de CMMN-melding (#7) en de templatenamen uit het geheugen (#30). **Ronde 3 (30 september):** branch `feat/epistola-new-document-version` op `ddad815ef` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)), voor TS-36 t/m TS-43 (#9) |
 
 > **Beoordelingscriterium – T1 Testplan (cruciaal):** testcases sluiten aan op alle functionaliteiten en
@@ -43,6 +43,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 | 1.1 | 25 september 2026 | Bijgesteld tijdens de eerste uitvoering: `behandelaar1` is niet geautoriseerd voor *Test zaaktype 1*, dus de behandelaarscenario's draaien op ZAAK-2026-0000000032 (*Test zaaktype 2*) en de scenario's met *ZAC Verplichte aanvrager* als `beheerder1` op ZAAK-2026-0000000001. TS-09 is gesplitst in TS-09a en TS-09b. Het pad naar de beheerkaart is rechtgezet |
 | 1.2 | 30 september 2026 | Goedkeuring van 28 september vastgelegd (B14). Geen scenario toegevoegd of geschrapt. De verwachte uitkomst van **TS-26** volgt besluit B20: mislukt de opslag in Open Zaak, dan wordt de kopie bij Epistola verwijderd, in plaats van te blijven staan. Die van **TS-31** noemt nu ook dat de templates bij naam zichtbaar blijven (#30). Die van **TS-35** is nu het gebouwde gedrag (opruimen, een melding, de kopie bij Epistola weg), waar het plan "opgeruimd of zichtbaar gemaakt" zei. **TS-31 en TS-35** hebben nu de stappen waarmee ze zijn uitgevoerd, nu #8 gebouwd is. Overal *template* in plaats van *sjabloon* (B18). De gewijzigde verwachte uitkomsten van TS-26, TS-31 en TS-35 volgen besluiten van Symon (B20, B21) en het gebouwde #30, en zijn na het akkoord op 1.1 niet opnieuw aan de stakeholders voorgelegd |
 | 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande scenario's zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
+| 1.4 | 1 oktober 2026 | De **gebruikerstest (UAT) is vervallen**: Team Geneva heeft er naast het werk aan ZAC geen ruimte voor. Dat het prototype voor gebruikers werkt, wordt getoond op de einddemo van 12 oktober, waar Symon het demonstreert en laat zien hoe je het gebruikt. De acceptatietest met de stakeholders blijft ([§9](#9-testplanning)). Bij **TS-31** staat nu dat een poging direct na het herstel nog kan mislukken, en dat het na ongeveer een halve minuut lukt, zoals bij TS-40 gezien. Geen scenario toegevoegd of geschrapt. Niet aan de stakeholders voorgelegd |
 
 ## 2. Testdoelstellingen
 
@@ -143,8 +144,9 @@ Een scenario dat een bekende, nog niet gebouwde functie test (bijvoorbeeld #7 of
     daarmee zijn ze de regressietest voor DoD 1;
   - de live-check: ZAC's eigen klassen tegen de echte Epistola, met een controle achteraf die rechtstreeks
     bij Epistola nagaat wat er aankwam.
-- **Gebruikerstest (UAT):** bij de einddemo (#22) met de stakeholders. Die wordt in het testrapport
-  aangevuld zodra hij heeft plaatsgevonden.
+- **Gebruikerstest (UAT):** vervallen in versie 1.4. Gepland was een gebruikerstest met de stakeholders bij de
+  einddemo (#22), maar Team Geneva heeft daar naast het werk aan ZAC geen ruimte voor. Op de einddemo laat Symon zien
+  dat het prototype werkt en hoe je het gebruikt, en de acceptatietest met de stakeholders blijft ([§9](#9-testplanning)).
 
 ### Testtools
 
@@ -157,7 +159,7 @@ Library; TestContainers; Python-scripts die Epistola rechtstreeks bevragen en no
 | Naam | Rol | Verantwoordelijkheid |
 |---|---|---|
 | Symon Vleeshouwers | Tester en testcoördinator | Testplan opstellen, alle scenario's uitvoeren, resultaten en bugs vastleggen, testrapport |
-| Hanneke van de Horst, Team Geneva | Stakeholders | Akkoord op dit testplan (#21); gebruikerstest bij de einddemo (#22) |
+| Hanneke van de Horst, Team Geneva | Stakeholders | Akkoord op dit testplan (#21); acceptatietest bij de einddemo (#22). De gebruikerstest is vervallen ([§6](#6-testaanpak-en-tools)) |
 | Marcel Evers, Edgar (`edgarvonk`) | Reviewers | Codereview van de pull requests, inclusief de geautomatiseerde tests erin |
 
 ## 8. Testcases
@@ -263,7 +265,8 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
   minstens 30 seconden wachten (Java's DNS-cache) → als `beheerder1` de beheerkaart van *Test zaaktype 1* openen en
   nagaan dat de templates bij naam staan (#30) → als `behandelaar1` de dialoog op ZAAK-2026-0000000032 openen en
   genereren → melding, het open blijven van de dialoog, documenten en het ZAC-log nakijken (*listing the templates by the
-  names read at …*) → `/tmp/h` terugzetten als `/etc/hosts` → nagaan dat ZAC direct weer genereert.
+  names read at …*) → `/tmp/h` terugzetten als `/etc/hosts` → nagaan dat ZAC weer genereert. Een poging direct na het
+  herstel kan nog mislukken, omdat Java het adres bewaart; na ongeveer een halve minuut lukt het (zo gezien bij TS-40).
 - **TS-24** — Als `beheerder1` op ZAAK-2026-0000000001: *Document maken* → *Brieven* → *ZAC Standaardbrief* →
   titel *Testrapport TS-24* → *Genereren* → vertrouwelijkheid in de documentenlijst en via de REST API.
 - **TS-32** — Als `beheerder1` op ZAAK-2026-0000000001: als TS-24, maar met *ZAC Verplichte aanvrager* →
@@ -300,8 +303,8 @@ aangemaakt, en de browser is ingelogd als de genoemde gebruiker.
 | Integratietests | 25 september op de geteste versie van ronde 1, en 30 september op `main` en op de branch van #9 | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
 | Handmatige systeemtest (dit plan, §8) | 25 september (ronde 1), en 30 september voor de scenario's die op #7 en #8 wachtten (ronde 2) en voor TS-36 t/m TS-43 (ronde 3, #9) | Symon Vleeshouwers | Uitgevoerd, zie testrapport |
 | Akkoord op het testplan | Stakeholderoverleg van 28 september (#21), versie 1.1 zoals het was | Stakeholders | Goedgekeurd (B14) |
-| Gebruikerstest (UAT) | Einddemo op maandag 12 oktober 2026 (#22, B19) | Stakeholders | Nog te doen |
-| Acceptatietest | Na akkoord en UAT, op de einddemo van 12 oktober | Stakeholders met Symon Vleeshouwers | Nog te doen |
+| Gebruikerstest (UAT) | Gepland op de einddemo van maandag 12 oktober 2026 (#22, B19) | Stakeholders | Vervallen op 1 oktober (versie 1.4): geen ruimte bij Team Geneva naast het werk aan ZAC. Zie [§6](#6-testaanpak-en-tools) |
+| Acceptatietest | Op de einddemo van 12 oktober, na een demonstratie van het prototype en hoe je het gebruikt | Stakeholders met Symon Vleeshouwers | Nog te doen |
 
 > Een goed testplan is concreet en volledig: elke functionaliteit uit [§3](#3-testscope) komt terug als
 > testcase in [§8](#8-testcases).

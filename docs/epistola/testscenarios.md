@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Opdracht | Opdracht 3 – B1-K1-W4 Test software |
-| Issue | [#18](https://github.com/infonl/zac-epistola-prototype/issues/18) · werkt de testcases uit [het testplan](testplan.md) v1.3 uit; uitvoering en resultaten in [het testrapport](testrapport.md) (#19) |
+| Issue | [#18](https://github.com/infonl/zac-epistola-prototype/issues/18) · werkt de testcases uit [het testplan](testplan.md) v1.4 uit; uitvoering en resultaten in [het testrapport](testrapport.md) (#19) |
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Datum | 30 september 2026 |
+| Datum | 30 september 2026, bijgewerkt op 1 oktober 2026 |
 
 > **Beoordelingscriterium – T1 Testscenario (cruciaal):** voor alle geplande functionaliteiten zijn testscenario's of
 > testcases gemaakt. Elke functionaliteit uit §3 van het testplan heeft hieronder een eigen testscenario.
@@ -224,7 +224,7 @@ Dit scenario heeft geen negatieve stap. Het testplan vraagt een negatief scenari
 | Stap # | Actie (wat doe je?) | Verwacht resultaat | Type |
 |---|---|---|---|
 | 9.1<br>**TS-31** | 1. Als `beheerder1` de dialoog openen, zodat ZAC de namen van de live lijst onthoudt. Daarna minstens drie minuten geen Epistola aanroepen.<br>2. `docker exec -u root zac-zac-1 sh -c 'cp /etc/hosts /tmp/h && echo "127.0.0.1 demo.epistola.app" >> /etc/hosts'`, en minstens 30 seconden wachten (Java's DNS-cache).<br>3. Als `beheerder1` de beheerkaart van *Test zaaktype 1* openen, en nagaan dat de templates bij naam staan (#30).<br>4. Als `behandelaar1` de dialoog op ZAAK-2026-0000000032 openen en genereren → de melding, het open blijven van de dialoog, de documenten en het ZAC-log nakijken (*listing the templates by the names read at …*) | Een begrijpelijke melding die zegt dat Epistola niet bereikbaar is, en de dialoog blijft open. De beheerkaart en de dialoog tonen de templates nog bij naam (#30). Er wordt niets opgeslagen (#8) | Negatief |
-| 9.2<br>**TS-31** | `/tmp/h` terugzetten als `/etc/hosts`, en opnieuw genereren | ZAC genereert direct weer | Positief |
+| 9.2<br>**TS-31** | `/tmp/h` terugzetten als `/etc/hosts`, en opnieuw genereren | ZAC genereert weer. Een poging direct na het herstel kan nog mislukken, omdat Java het adres bewaart; na ongeveer een halve minuut lukt het | Positief |
 | 9.3<br>**TS-32** | Als `beheerder1` op ZAAK-2026-0000000001: *Document maken* → *Brieven* → *ZAC Verplichte aanvrager* → titel → *Genereren* → de melding nakijken → documenten van de zaak tellen → nagaan dat Epistola's reden niet in het ZAC-log staat.<br>Automatisch: `EpistolaClientServiceTest` | Epistola weigert de data, ZAC toont een melding die uitlegt dat het template gegevens mist, en er wordt niets opgeslagen (#8) | Negatief |
 | 9.4<br>**TS-33** | Automatisch: laat een job langer duren dan de timeout (`EpistolaClientServiceTest`) | ZAC stopt met wachten, annuleert de job bij Epistola en meldt dat het te lang duurde | Negatief |
 | 9.5<br>**TS-34** | `author_required_field_template.py --delete` → als `beheerder1` de dialoog op ZAAK-2026-0000000001 openen → groep *Brieven* nakijken. In de ZAC-database nagaan dat de mapping-rij er nog is | De dialoog biedt het template niet meer aan en loopt niet vast. De mapping blijft bewaard | Negatief |

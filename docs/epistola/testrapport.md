@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Opdracht | Opdracht 3 – B1-K1-W4 Test software |
-| Issue | [#19](https://github.com/infonl/zac-epistola-prototype/issues/19) · uitgevoerd volgens [het testplan](testplan.md) v1.2, en v1.3 voor ronde 3 (#18), met de stappen uit [de testscenario's](testscenarios.md) |
+| Issue | [#19](https://github.com/infonl/zac-epistola-prototype/issues/19) · uitgevoerd volgens [het testplan](testplan.md) v1.2, en v1.3 voor ronde 3 (#18); in v1.4 is de gebruikerstest vervallen, met de stappen uit [de testscenario's](testscenarios.md) |
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Datum | 25 september 2026 (ronde 1) en 30 september 2026 (ronde 2 en 3) |
+| Datum | 25 september 2026 (ronde 1) en 30 september 2026 (ronde 2 en 3), bijgewerkt op 1 oktober 2026 |
 
 > **Beoordelingscriterium – T3 Testrapport:** testresultaten van alle functionaliteiten, met juiste
 > conclusies. Elke functionaliteit uit §3 van het testplan staat in [§2](#2-testresultaten-per-functionaliteit),
@@ -38,8 +38,8 @@ Het nummer in de eerste kolom is het nummer van het testscenario in [de testscen
 | 1 | Configuratie: providerkeuze en instellingen (#2) | TS-01, TS-02 | ✅ Geslaagd | Nee | ZAC start met Epistola en weigert een onjuiste configuratie |
 | 2 | Configuratie: templategroepen en templates per zaaktype (#3) | TS-03, TS-04, TS-05, TS-07 | ✅ Geslaagd | Nee | De beheerder richt groepen in, en een ongeldige mapping wordt geweigerd. Epistola uitzetten haalt de actie weg en bewaart de mapping |
 | 3 | Autorisatie (#11) | TS-08, TS-09a, TS-09b, TS-10 | ✅ Geslaagd | Nee | Alleen wie `creeren_document` heeft en de zaak mag lezen, kan een document maken. Het endpoint dwingt dat af met 403 |
-| 4 | Documentcreatie (#5) | TS-11 t/m TS-16 | ✅ Geslaagd | Ja, B-04 (opgelost) | Genereren werkt vanuit de zaak, alleen als PDF, met voortgang, in 5 tot 10 seconden |
-| 5 | Datamapping (#4) | TS-17 t/m TS-22 | ✅ Geslaagd | Ja, B-05 (opgelost) | Het document toont de zaakgegevens, en alleen gedeclareerde velden verlaten ZAC. Datums gaan als ISO en worden als `dd-MM-yyyy` getoond |
+| 4 | Documentcreatie (#5) | TS-11 t/m TS-16 | ✅ Geslaagd | Ja, B-04 (opgelost) | Genereren werkt vanuit de zaak, alleen als PDF, met voortgang, in 3 tot 10 seconden |
+| 5 | Datamapping (#4) | TS-17 t/m TS-21 | ✅ Geslaagd | Ja, B-05 (opgelost) | Het document toont de zaakgegevens, en alleen gedeclareerde velden verlaten ZAC. Datums gaan als ISO en worden als `dd-MM-yyyy` getoond |
 | 6 | Open Zaak-opslag (#6) | TS-23 t/m TS-26 | ✅ Geslaagd | Nee | Opgeslagen als PDF met alle verplichte velden. Vertrouwelijkheid uit het documenttype, en de kopie bij Epistola is weg |
 | 7 | Zaakkoppeling (#6) | TS-27, TS-28 | ✅ Geslaagd | Nee | Het document staat direct in het tabblad Documenten van de zaak |
 | 8 | Preview (#6) | TS-29, TS-30 | ✅ Geslaagd | Nee | De PDF opent in de browser, met alle metadata |
@@ -121,7 +121,8 @@ halve koppeling, en het genereerscherm blijft open. In ronde 1 zei de melding ne
 - **Epistola onbereikbaar (TS-31):** genereren geeft binnen een seconde *Epistola cannot be reached right now.
   Try again later.* (HTTP 500, `msg.error.epistola.unavailable`). Het genereerscherm en de beheerkaart blijven de
   templates bij naam tonen, uit de lijst die ZAC het laatst van Epistola kreeg (#30). Zodra Epistola weer
-  bereikbaar is, genereert ZAC direct weer.
+  bereikbaar is, genereert ZAC weer: in ronde 2 meteen, bij TS-40 in ronde 3 pas na ongeveer een halve minuut, omdat
+  Java het adres zolang bewaart.
 - **Data die het contract van het template breekt (TS-32):** de melding zegt dat het template gegevens vraagt die
   de zaak niet heeft, dat opnieuw proberen niet helpt, en toont Epistola's reden (`required property 'aanvrager'
   not found`). De reden staat niet in het log.
@@ -223,8 +224,10 @@ Zeven van de acht gevonden bugs zijn opgelost en nagegaan. B-08 is een kleine, o
 regel in het foutvenster, zonder gevolgen voor de gegevens.
 
 De stakeholders hebben versie 1.1 van het testplan op 28 september goedgekeurd (B14). Het prototype is daarmee
-klaar voor oplevering aan de opdrachtgever. De gebruikerstest (UAT) en de acceptatietest met de stakeholders moeten
-dat nog bevestigen, op de einddemo van 12 oktober.
+klaar voor oplevering aan de opdrachtgever. De gebruikerstest uit het plan is vervallen (testplan 1.4): Team Geneva
+heeft er naast het werk aan ZAC geen ruimte voor. Alle scenario's zijn dus uitgevoerd door de ontwikkelaar, en niet
+door een eindgebruiker. Op de einddemo van 12 oktober wordt het prototype gedemonstreerd, met hoe je het gebruikt,
+en moet de acceptatietest met de stakeholders de oplevering bevestigen.
 
 ## 6. Aanbevelingen
 
@@ -236,8 +239,10 @@ dat nog bevestigen, op de einddemo van 12 oktober.
   niemand heeft het onder belasting gemeten.
 - **Geef het antwoord bij een onbereikbaar Epistola een detailregel mee** (B-08), zodat het foutvenster geen
   algemene regel toont.
-- **Test in meer browsers dan Chrome**, en voer de gebruikerstest (UAT) uit met de stakeholders bij de einddemo
-  (#22).
+- **Test in meer browsers dan Chrome, en laat eindgebruikers het testen.** Alle scenario's zijn door de ontwikkelaar
+  uitgevoerd, in Chrome met Engelse schermtekst; de Nederlandse tekst is alleen in `nl.json` nagelezen. De
+  gebruikerstest is vervallen (testplan 1.4). Een behandelaar en een beheerder die het prototype zelf gebruiken, zien
+  wat een ontwikkelaar mist, zoals een onduidelijke tekst of een stap die ze niet vinden.
 
 ## 7. Zelfbeoordeling rubric
 
