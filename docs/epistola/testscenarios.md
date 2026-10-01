@@ -12,7 +12,7 @@
 > **Beoordelingscriterium – T1 Testscenario (cruciaal):** voor alle geplande functionaliteiten zijn testscenario's of
 > testcases gemaakt. Elke functionaliteit uit §3 van het testplan heeft hieronder een eigen testscenario.
 
-Dit document werkt de testcases uit §8 van [het testplan](testplan.md) (versie 1.3) uit tot testscenario's. Er is één testscenario per
+Dit document werkt de testcases uit §8 van [het testplan](testplan.md) (versie 1.4) uit tot testscenario's. Er is één testscenario per
 functionaliteit uit §3 van het testplan, elf in totaal. De teststappen van een scenario zijn de testcases van die
 functionaliteit. Elke stap noemt zijn nummer uit het testplan (TS-01 t/m TS-43), met het verwachte resultaat uit het
 testplan en of de stap positief of negatief is. Een regel die met *Automatisch* begint, noemt de geautomatiseerde test
