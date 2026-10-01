@@ -22,10 +22,12 @@ bijbehorende projectbord.
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testscenario's, positief en negatief, over de acht afgesproken gebieden, plus 8 voor het optionele #9. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testscenario's](testscenarios.md) | De testcases uit het testplan uitgewerkt tot elf testscenario's, één per functionaliteit, met randvoorwaarden, testdata en teststappen, positief en negatief. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testrapport](testrapport.md) | De uitvoering in drie rondes, op 25 en 30 september (de derde voor #9): resultaat en bewijs per scenario, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
+| [Uitgangspunten, eisen en wensen](uitgangspunten-eisen-wensen.md) | Projectdoel en afbakening, de Definition of Done met de stand per item, de eisen buiten de user stories, de techniek, de MoSCoW-prioritering en de werkwijze. Afgestemd met de stakeholders op 21 september; in het Engels, met de correcties sindsdien erbij | #13 |
+| [Ontwerpverantwoording](ontwerpverantwoording.md) | Common Ground, AVG en dataminimalisatie, de token-afhandeling, logging en het risicoregister R1 t/m R9 met de stand van 1 oktober. Versie 3 van 21 september; in het Engels, met de correcties sindsdien erbij | #16 |
 | [Verbetervoorstellen](verbetervoorstellen.md) | De uitkomst van het prototype als besluiten: de negen risico's uit de ontwerpverantwoording met hun uitkomst, vijftien voorstellen voor productie en daarna, wat al is opgelost, en wat bewust niet wordt voorgesteld. Procesverbeteringen staan in de reflectie (#23) | #20 |
 
-De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) staan hier nog niet. Die bestaan
-voorlopig alleen als artifact, gelinkt vanuit hun issue.
+De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) zijn op 1 oktober uit hun artifact
+overgezet, zodat ook wie geen toegang tot claude.ai heeft ze kan lezen.
 
 ## Kernbesluiten in één oogopslag
 
