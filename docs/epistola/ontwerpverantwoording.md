@@ -101,7 +101,7 @@ Epistola's template variables. The table below is that payload, field by field.
 
 | Veld | Bron | Persoonsgegeven | Naar provider | Opmerking |
 |---|---|---|---|---|
-| burgerservicenummer | Rol op de zaak (ZRC) | Bijzonder | **Nee** | Used only as the BRP lookup key. It is never placed in `AanvragerData`, so it does not leave ZAC toward the document engine. |
+| burgerservicenummer | Rol op de zaak (ZRC) | ~~Bijzonder~~ Wettelijk identificatienummer *(1 Oct: the BSN is a national identification number under article 87 AVG and article 46 UAVG, not a special category under article 9)* | **Nee** | Used only as the BRP lookup key. It is never placed in `AanvragerData`, so it does not leave ZAC toward the document engine. |
 | naam, straat, huisnummer, postcode, woonplaats | BRP (Haal Centraal) | Ja | Ja | The resolved NAW of the initiator. This is the whole of what the provider receives about a natural person. |
 | geslacht, geboorte, indicatieCurateleRegister | BRP response | Ja | Nee | Retrieved by the shared BRP client's fixed field set, then discarded. Received but never mapped — see finding P2. |
 | bedrijfsgegevens vestiging / rechtspersoon | KvK | Soms | Ja | Company data is not persoonsgegevens, except for an eenmanszaak, where it identifies a person. |

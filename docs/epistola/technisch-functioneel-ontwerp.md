@@ -16,7 +16,7 @@ data die oversteekt, en wie op de knop mag drukken.
 | § | Onderwerp | Dekking |
 |---|---|---|
 | [§1](#1--functioneel-ontwerp) | Functioneel ontwerp | Zeven stappen van zaaktypeconfiguratie tot een nieuwe versie, elk met wat er waar wordt vastgelegd |
-| [§2](#2--provider-abstractie) | Provider-abstractie | Eén interface, twee interactievormen, en een sealed outcome in plaats van een geforceerd uniform retourtype |
+| [§2](#2--provider-abstractie) | Provider-abstractie | Gebouwd: twee endpoints achter één dialoog, zonder gedeelde interface (#5, R7). Beschreven voor een derde provider: één interface, twee interactievormen en een sealed outcome in plaats van een geforceerd uniform retourtype |
 | [§3](#3--datamapping) | Datamapping | De ZAC-kant is exact; Epistola krijgt templatevariabelen plus een correlatie-id |
 | [§4](#4--autorisatiemodel) | Autorisatiemodel | Hergebruik van `creeren_document`, dat al samenvalt met zaaktype- en zaakautorisatie |
 | [§5](#5--api-integratie) | API-integratie | Endpoints, contracten en foutsemantiek, uit Epistola's gepubliceerde OpenAPI-contract |
@@ -523,10 +523,12 @@ Er zijn drie, elk voor iets anders:
   maakt de groepen zelf en hangt platte Epistola-templates eronder. Dat kost één kolom op de bestaande
   per-zaaktypetabel, en het beslist de vorm van het beheerscherm en de `parent_id` in het datamodel
   (#3, [datamodel](datamodel.md)).
-- **Geen echte Epistola-tenant.** Het prototype en de einddemo draaien tegen de testserver en een lokale
-  Epistola, dus er is geen externe tenant en geen goedgekeurde consumer nodig, en er hoeft geen
-  toegangsverzoek verstuurd te worden. De mockserver uit de contractrepository dekt de geautomatiseerde
-  tests (#10, #18).
+- **Geen echte Epistola-tenant.** Het prototype en de einddemo draaien tegen ~~de testserver en een lokale
+  Epistola~~ Epistola's gehoste testserver (`demo.epistola.app`), dus er is geen echte tenant en geen goedgekeurde
+  consumer nodig, en er hoeft geen toegangsverzoek verstuurd te worden. Er gaan alleen testgegevens heen. ~~De
+  mockserver uit de contractrepository dekt de geautomatiseerde tests (#10, #18).~~ *Rechtgezet op 1 oktober: de
+  integratietests draaien met SmartDocuments en dekken Epistola niet; de Epistola-paden zijn gedekt door unittests,
+  de live-check en de handmatige scenario's. Een stand-in in de integratietests is voorstel VV-06 (#38).*
 
 ### Beslist in het stakeholderoverleg van 28 september
 

@@ -80,7 +80,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De scenario's die
 |---|---|
 | Besturingssysteem | macOS 27.0 |
 | Browser | Chrome (Chromium, via Playwright), versie vastgelegd in het testrapport |
-| Server | De lokale ZAC-stack via Docker Compose, gestart met `./start-docker-compose.sh -l -E`: een lokaal gebouwde ZAC-image (`ghcr.io/infonl/zaakafhandelcomponent:dev`, van de geteste versie hierboven) op WildFly 41.0.1, Open Zaak 1.29.3, Keycloak 26.7.3, Solr. Epistola is de testserver van Epistola (`demo.epistola.app`, contract 1.3.1), bereikt met ZAC's Jakarta-client 1.3.1 |
+| Server | De lokale ZAC-stack via Docker Compose, gestart met `./start-docker-compose.sh -l -E`: een lokaal gebouwde ZAC-image (`ghcr.io/infonl/zaakafhandelcomponent:dev`, van de geteste versie hierboven) op WildFly 41.0.1, Open Zaak 1.29.3, Keycloak 26.7.3, Solr. Epistola is de testserver van Epistola (`demo.epistola.app`, contract 1.3.1), bereikt met ZAC's Jakarta-client 1.3.1, in alle drie de rondes. Alleen de herhaling van de geautomatiseerde tests na ronde 2 draaide met client 1.4.0, op de branch van [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) (testrapport, *Na ronde 2*) |
 | Database | PostgreSQL 17.11 voor ZAC, met migratie `V100` (Epistola-mapping), en voor TS-36 t/m TS-43 ook `V101` (het template per document, #9) |
 | Documentcreatie | `DOCUMENT_CREATION_PROVIDER=EPISTOLA`, catalogus `default` |
 
