@@ -137,7 +137,7 @@ new one is missing.
 - Zaakdata is read from Open Zaak at generation time; no copy is kept in ZAC.
 - The generated PDF lives in the registry, not in ZAC's database.
   *1 October: for a new version of a document (#9), ZAC remembers which template made each Epistola document, in the
-  table `epistola_document` (migration `V101`). It holds no content, title, status or zaak; see the
+  table `epistola_document` (migration `V101`), and since #47 the kanaal of its variant (`V102`). It holds no content, title, status or zaak; see the
   [datamodel](datamodel.md).*
 - The integration is API-first and the provider is replaceable by configuration.
 

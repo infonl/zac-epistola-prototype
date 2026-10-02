@@ -13,7 +13,10 @@ import nl.info.zac.util.AllOpen
 import java.time.ZonedDateTime
 import java.util.UUID
 
-/** The Epistola template that produced a document in Open Zaak. The document itself is only stored there. */
+/**
+ * The Epistola template, and the kanaal of its variant, that produced a document in Open Zaak. The document itself is
+ * only stored there.
+ */
 @Entity
 @Table(schema = FlywayIntegrator.SCHEMA, name = "epistola_document")
 @AllOpen
@@ -27,4 +30,8 @@ class EpistolaDocument {
 
     @Column(name = "aanmaakdatum", nullable = false)
     lateinit var creationDate: ZonedDateTime
+
+    /** Null for a template whose variants are made for no kanaal. */
+    @Column(name = "kanaal")
+    var kanaal: String? = null
 }

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31), en met de tabel `epistola_document` in `V101` voor een nieuwe versie van een document (#9) |
+| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31), en met de tabel `epistola_document` in `V101` voor een nieuwe versie van een document (#9). Op 1 oktober uitgebreid met de kolom `kanaal` in `V102` (#47) |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
 | Raakt | #2, #3, #6, #9 |
 
@@ -68,6 +68,7 @@ erDiagram
     epistola_document {
         uuid informatieobject_uuid PK "NIEUW, geen FK"
         varchar template_id
+        varchar kanaal
     }
 ```
 
@@ -119,6 +120,7 @@ en spaties te letten, zodat een behandelaar nooit twee groepen ziet die hij niet
 | `informatieobject_uuid` | uuid | nee | PK. Het informatieobject in Open Zaak dat met Epistola is gegenereerd. Geen FK: dat object staat in een ander systeem |
 | `template_id` | varchar | nee | Identificatie van het template waarmee het document is gegenereerd |
 | `aanmaakdatum` | timestamptz | nee | Wanneer het document is gegenereerd |
+| `kanaal` | varchar | ja | Het kanaal van de variant waarin het document is gegenereerd, zoals `post` of `digitaal` (`V102`, #47). Leeg voor een template zonder varianten per kanaal, en voor een document van vóór `V102`. Een nieuwe versie gebruikt het zolang het template dat kanaal nog heeft |
 
 Er staat één rij per gegenereerd document, geschreven nadat het in Open Zaak staat. Een document zonder rij, omdat het
 ouder is of omdat het schrijven van de rij mislukte, heeft geen actie *Nieuwe versie genereren*. Een rij van een document
@@ -160,7 +162,7 @@ Gegenereerde PDF's worden in Open Zaak geregistreerd als `EnkelvoudigInformatieO
 Tot #9 bewaarde ZAC ook geen verwijzing. Een nieuwe versie genereren heeft die wel nodig: ZAC moet weten *dat* Epistola
 het document maakte, en met welk template. Open Zaak kent geen veld voor die herkomst, en `beschrijving` of `titel`
 ervoor gebruiken zou een tekstveld dat een gebruiker kan wijzigen tot bron van waarheid maken. Daarom onthoudt
-`epistola_document` alleen het template, per informatieobject. Het is geen documentregistratie: er staat geen inhoud,
+`epistola_document` alleen het template en het kanaal van de variant, per informatieobject. Het is geen documentregistratie: er staat geen inhoud,
 titel, status of zaak in, want die leest ZAC bij elke aanroep uit Open Zaak.
 
 Het documentcreatietoken in `DocumentCreationUserStore` staat in het geheugen met een vervaltijd en wordt
@@ -220,4 +222,4 @@ Datamodel voor het Epistola-prototype, afgeleid van de JPA-entiteiten in `nl.inf
 `nl.info.zac.smartdocuments.templates.model` op de examenfork. Bestaande structuren zijn tegen de code
 geverifieerd. De nieuwe structuren staan in `V100__epistola_document_template_mapping.sql` met de entiteiten
 in `nl.info.zac.epistola.templates.model` (#3), en in `V101__epistola_document.sql` met de entiteit in
-`nl.info.zac.epistola.documents.model` (#9, PR #43).
+`nl.info.zac.epistola.documents.model` (#9, PR #43), uitgebreid in `V102__epistola_document_kanaal.sql` (#47, PR #49).

@@ -16,6 +16,7 @@ import {
   Output,
   signal,
 } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
@@ -41,6 +42,7 @@ import {
   switchMap,
   take,
   takeUntil,
+  tap,
   timer,
 } from "rxjs";
 import { EpistolaTemplatesService } from "src/app/admin/epistola-templates.service";
@@ -52,6 +54,7 @@ import { ZacAutoComplete } from "../../shared/form/auto-complete/auto-complete";
 import { ZacDate } from "../../shared/form/date/date";
 import { ZacFormActions } from "../../shared/form/form-actions/form-actions.component";
 import { ZacInput } from "../../shared/form/input/input";
+import { ZacSelect } from "../../shared/form/select/select";
 import { injectMutation } from "../../shared/http/inject-mutation";
 import {
   NotificationDialogComponent,
@@ -76,6 +79,11 @@ type TemplateGroupOption = {
   templates: TemplateOption[];
 };
 
+const KANAAL_LABELS: Record<string, string> = {
+  post: "epistola.kanaal.post",
+  digitaal: "epistola.kanaal.digitaal",
+};
+
 @Component({
   selector: "zac-informatie-object-create-attended",
   templateUrl: "./informatie-object-create-attended.component.html",
@@ -93,6 +101,7 @@ type TemplateGroupOption = {
     ZacAutoComplete,
     ZacDate,
     ZacInput,
+    ZacSelect,
     ZacFormActions,
     EpistolaGenerationProgressComponent,
   ],
@@ -142,11 +151,30 @@ export class InformatieObjectCreateAttendedComponent
       Validators.maxLength(50),
     ]),
     taskId: this.formBuilder.control<string | null>(null),
+    kanaal: this.formBuilder.control<string | null>(null),
   });
 
   protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
   protected templates: TemplateOption[] = [];
   protected readonly templateGroupsError = signal<string | null>(null);
+
+  protected readonly kanalen =
+    signal<GeneratedType<"RestEpistolaKanalen"> | null>(null);
+  protected readonly kanaalOptions = computed(() => {
+    const kanalen = this.kanalen()?.kanalen ?? [];
+    return kanalen.length > 1 ? kanalen : [];
+  });
+  protected readonly kanaalLabel = (kanaal: string) =>
+    KANAAL_LABELS[kanaal] ?? kanaal;
+  private readonly chosenKanaal = toSignal(
+    this.form.controls.kanaal.valueChanges,
+    { initialValue: null },
+  );
+  protected readonly isSuggestedKanaalChosen = computed(
+    () =>
+      !!this.chosenKanaal() &&
+      this.chosenKanaal() === this.kanalen()?.voorgesteldKanaal,
+  );
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
   private readonly utilService = inject(UtilService);
@@ -299,6 +327,27 @@ export class InformatieObjectCreateAttendedComponent
         );
       });
 
+    if (this.usesEpistola) {
+      this.form.controls.template.valueChanges
+        .pipe(
+          takeUntil(this.destroy$),
+          tap(() => this.awaitKanalen()),
+          switchMap((template) =>
+            template?.id
+              ? from(
+                  this.queryClient.query(
+                    this.informatieObjectenService.readEpistolaKanalenQuery(
+                      this.zaak.uuid,
+                      template.id,
+                    ),
+                  ),
+                ).pipe(catchError(() => of(null)))
+              : EMPTY,
+          ),
+        )
+        .subscribe((kanalen) => this.offerKanalen(kanalen));
+    }
+
     templateGroupsFetcher
       .pipe(takeUntil(this.destroy$))
       .subscribe((templateGroups) => {
@@ -315,6 +364,24 @@ export class InformatieObjectCreateAttendedComponent
           }
         }
       });
+  }
+
+  /** Hiding the picker until another template is chosen and its kanalen arrive would make the form below it jump. */
+  private awaitKanalen() {
+    const { kanaal } = this.form.controls;
+    kanaal.setValue(null);
+    kanaal.disable();
+  }
+
+  private offerKanalen(kanalen: GeneratedType<"RestEpistolaKanalen"> | null) {
+    this.kanalen.set(kanalen);
+    const { kanaal } = this.form.controls;
+    const isChoiceOffered = this.kanaalOptions().length > 0;
+    kanaal.setValidators(isChoiceOffered ? Validators.required : null);
+    kanaal.setValue(
+      isChoiceOffered ? (kanalen?.voorgesteldKanaal ?? null) : null,
+    );
+    kanaal.enable();
   }
 
   private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
@@ -353,6 +420,7 @@ export class InformatieObjectCreateAttendedComponent
         values.template!.id,
         values.title!,
         values.description,
+        values.kanaal,
       );
       return;
     }
@@ -387,6 +455,7 @@ export class InformatieObjectCreateAttendedComponent
     templateId: string,
     title: string,
     description?: string | null,
+    kanaal?: string | null,
   ) {
     this.generatingForZaakUuid.set(this.zaak.uuid);
     this.createEpistolaDocumentMutation.mutate(
@@ -396,6 +465,7 @@ export class InformatieObjectCreateAttendedComponent
         templateId,
         title,
         description,
+        kanaal,
       },
       {
         onSuccess: () => {

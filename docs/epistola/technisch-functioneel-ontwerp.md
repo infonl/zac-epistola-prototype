@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6). Op 1 oktober bijgewerkt naar de variantkeuze per kanaal (#47, §5 en §6) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -447,8 +447,12 @@ markering in een contract zegt wat er verandert, niet waarom, en dat laatste moe
 ### Verzoek
 
 Een generatieverzoek benoemt het template en ofwel een expliciete `variantId` ofwel `attributes` voor
-automatische variantkeuze — nooit allebei. ZAC stuurt geen van beide en laat Epistola de standaardvariant
-kiezen. Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
+automatische variantkeuze — nooit allebei. Voor een template waarvan de varianten het attribuut `kanaal` in ZAC's
+catalogus dragen (`post` of `digitaal`), stuurt ZAC `attributes`: het kanaal als vereiste en `system.locale` `nl-NL`
+als voorkeur, zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen (#47). Het
+kanaal kiest de behandelaar in *Document maken*, voorgesteld door het communicatiekanaal van de zaak; een nieuwe
+versie krijgt het kanaal van het document. Zonder kanaal, en voor elk ander template, stuurt ZAC geen van beide en
+kiest Epistola de standaardvariant. Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
 een `correlationId`, die ZAC op de **UUID** van de zaak zet. Epistola echoot die terug en bewaart hem, dus
 de waarde belandt in het audittrail van een derde partij en in elke supportuitwisseling. Beide
 identificeren de zaak vanuit ZAC even goed en terugzoeken kost in geen van beide gevallen extra, maar de
@@ -557,6 +561,8 @@ Er zijn drie, elk voor iets anders:
   gebruiker kan wijzigen. Dit wijkt af van de formulering van 21 september dat ZAC geen documentregistratie bijhoudt.
   Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
   Een document van vóór `V101` heeft geen rij en dus geen actie. Of de tabel mag blijven, staat onder *Nog open*.
+  Sinds #47 staat er ook het kanaal van de variant in (`V102`), zodat een nieuwe versie in hetzelfde kanaal komt, ook
+  als de behandelaar dat kanaal tegen het communicatiekanaal in koos.
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
   hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
 
