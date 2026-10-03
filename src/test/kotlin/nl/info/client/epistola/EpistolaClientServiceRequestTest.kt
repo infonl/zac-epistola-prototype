@@ -178,8 +178,10 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     epistolaTemplateDataRejectedException.detail shouldBe "/aanvrager: is required"
                 }
 
-                and("it is not part of the message that is logged") {
-                    epistolaTemplateDataRejectedException.message shouldNotContain "aanvrager"
+                and("it is nowhere in what is logged, neither in the message nor in a cause of the client's own") {
+                    generateSequence<Throwable>(epistolaTemplateDataRejectedException) { it.cause }
+                        .mapNotNull { it.message }
+                        .none { it.contains("aanvrager") } shouldBe true
                 }
             }
         }
