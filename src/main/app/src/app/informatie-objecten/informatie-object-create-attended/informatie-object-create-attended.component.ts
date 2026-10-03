@@ -24,6 +24,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDrawer } from "@angular/material/sidenav";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
@@ -65,6 +66,10 @@ import {
   EPISTOLA_GENERATION_FINISHED_DISPLAY_MS,
   EpistolaGenerationProgressComponent,
 } from "../epistola-generation-progress/epistola-generation-progress.component";
+import {
+  EpistolaPreviewDialogComponent,
+  EpistolaPreviewDialogData,
+} from "../epistola-preview-dialog/epistola-preview-dialog.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
 /** SmartDocuments groups carry an id; Epistola's belong to ZAC and are known by name only. */
@@ -96,6 +101,7 @@ const KANAAL_LABELS: Record<string, string> = {
     MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
+    MatProgressSpinnerModule,
     MatToolbarModule,
     TranslateModule,
     ZacAutoComplete,
@@ -191,6 +197,10 @@ export class InformatieObjectCreateAttendedComponent
     this.informatieObjectenService.createEpistolaDocumentMutation(),
   );
 
+  protected readonly previewEpistolaDocumentMutation = injectMutation(() =>
+    this.informatieObjectenService.previewEpistolaDocumentMutation(),
+  );
+
   private readonly generatingForZaakUuid = signal<string | undefined>(
     undefined,
   );
@@ -237,6 +247,21 @@ export class InformatieObjectCreateAttendedComponent
   protected get usesEpistola() {
     return !!this.zaak.zaaktype.zaakafhandelparameters?.epistola
       ?.isEnabledGlobally;
+  }
+
+  /**
+   * A preview in another variant than the one that is generated would mislead, so it waits for the kanalen of the
+   * chosen template, and for a kanaal where the template asks for one.
+   */
+  protected get canPreviewEpistolaDocument() {
+    const { template, kanaal } = this.form.controls;
+    return (
+      !!template.value &&
+      kanaal.enabled &&
+      kanaal.valid &&
+      !this.createEpistolaDocumentMutation.isPending() &&
+      !this.previewEpistolaDocumentMutation.isPending()
+    );
   }
 
   async ngOnInit() {
@@ -449,6 +474,31 @@ export class InformatieObjectCreateAttendedComponent
         window.open(redirectURL);
       },
     });
+  }
+
+  protected previewEpistolaDocument() {
+    const { template, kanaal } = this.form.getRawValue();
+    if (!template) return;
+
+    this.previewEpistolaDocumentMutation.mutate(
+      {
+        zaakUuid: this.zaak.uuid,
+        taskId: this.taak?.id,
+        templateId: template.id,
+        kanaal,
+      },
+      {
+        onSuccess: (pdf) =>
+          this.dialog.open<
+            EpistolaPreviewDialogComponent,
+            EpistolaPreviewDialogData
+          >(EpistolaPreviewDialogComponent, {
+            data: { pdf, templateName: template.name },
+            width: "900px",
+            maxWidth: "95vw",
+          }),
+      },
+    );
   }
 
   private createEpistolaDocument(

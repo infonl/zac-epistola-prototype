@@ -119,6 +119,24 @@
       />
     }
     <mat-action-row>
+      @if (usesEpistola) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="flex-row gap-8"
+          [disabled]="!canPreviewEpistolaDocument"
+          (click)="previewEpistolaDocument()"
+        >
+          @if (previewEpistolaDocumentMutation.isPending()) {
+            <mat-icon>
+              <mat-spinner diameter="18"></mat-spinner>
+            </mat-icon>
+          } @else {
+            <mat-icon>visibility</mat-icon>
+          }
+          {{ "actie.epistola.voorbeeld" | translate }}
+        </button>
+      }
       <zac-form-actions
         [form]="form"
         [mutation]="
