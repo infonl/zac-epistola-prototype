@@ -22,7 +22,7 @@ import {
   provideQueryClient,
   provideTanStackQuery,
 } from "@tanstack/angular-query-experimental";
-import { render, screen, within } from "@testing-library/angular";
+import { render, screen, waitFor, within } from "@testing-library/angular";
 import userEvent from "@testing-library/user-event";
 import { EMPTY } from "rxjs";
 import { fromPartial } from "src/test-helpers";
@@ -46,6 +46,8 @@ const EPISTOLA_STATUS_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/status";
 const EPISTOLA_KANALEN_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-1/kanalen";
+const EPISTOLA_PREVIEW_URL =
+  "/rest/document-creation/epistola/preview-document";
 const EPISTOLA_OTHER_KANALEN_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-2/kanalen";
 
@@ -324,6 +326,14 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     await setup();
 
     expect(field("auteur")).toHaveValue("fakeUserName1");
+  });
+
+  it("offers no preview of the document, which only Epistola can make", async () => {
+    await setup();
+
+    expect(
+      screen.queryByRole("button", { name: "actie.epistola.voorbeeld" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the submit disabled until the form is filled in", async () => {
@@ -1002,6 +1012,171 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       expect(foutAfhandelen).toHaveBeenCalled();
       expect(documentCreated).not.toHaveBeenCalled();
       expect(openSnackbar).not.toHaveBeenCalled();
+    });
+
+    describe("previewing the document before it is generated", () => {
+      const createObjectURL = jest.fn().mockReturnValue("blob:fakeObjectUrl");
+      const originalCreateObjectURL = URL.createObjectURL;
+      const originalRevokeObjectURL = URL.revokeObjectURL;
+      const postAndDigitaal: GeneratedType<"RestEpistolaKanalen"> = {
+        kanalen: ["post", "digitaal"],
+        voorgesteldKanaal: "digitaal",
+        communicatiekanaal: "E-mail",
+      };
+
+      beforeAll(() => {
+        URL.createObjectURL = createObjectURL;
+        URL.revokeObjectURL = jest.fn();
+      });
+
+      afterAll(() => {
+        URL.createObjectURL = originalCreateObjectURL;
+        URL.revokeObjectURL = originalRevokeObjectURL;
+      });
+
+      function previewButton() {
+        return screen.getByRole("button", { name: "actie.epistola.voorbeeld" });
+      }
+
+      async function chooseTheTemplate(
+        kanalen: GeneratedType<"RestEpistolaKanalen"> = postAndDigitaal,
+      ) {
+        await fillInValidEpistolaForm(kanalen);
+        // zac-select sets its options only after it has rendered
+        await sleep();
+        fixture.detectChanges();
+      }
+
+      it("is not possible until a template is chosen, and its kanalen are known", async () => {
+        await setupEpistola();
+        expect(previewButton()).toBeDisabled();
+
+        await chooseTemplateAndFillInTitle();
+        await sleep();
+        expect(previewButton()).toBeDisabled();
+
+        httpTestingController
+          .expectOne(EPISTOLA_KANALEN_URL)
+          .flush(postAndDigitaal);
+        await sleep();
+        fixture.detectChanges();
+        await sleep();
+        fixture.detectChanges();
+
+        expect(previewButton()).toBeEnabled();
+      });
+
+      it("asks Epistola for the template in the chosen kanaal, and shows what it renders, without generating anything", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        await choose("epistola.kanaal", "epistola.kanaal.post");
+
+        await user.click(previewButton());
+        await sleep();
+
+        const request = httpTestingController.expectOne(EPISTOLA_PREVIEW_URL);
+        expect(request.request.method).toBe("POST");
+        expect(request.request.responseType).toBe("blob");
+        expect(request.request.body).toEqual({
+          zaakUuid: "fakeZaakUuid",
+          taskId: undefined,
+          templateId: "fake-epistola-template-1",
+          kanaal: "post",
+        });
+        const pdf = new Blob(["fakePdfContent"], { type: "application/pdf" });
+        request.flush(pdf);
+
+        expect(
+          await screen.findByRole("heading", {
+            name: /epistola\.voorbeeld\.titel/,
+          }),
+        ).toBeVisible();
+        expect(screen.getByTitle("Standaardbrief")).toHaveAttribute(
+          "data",
+          "blob:fakeObjectUrl",
+        );
+        expect(createObjectURL).toHaveBeenCalledWith(pdf);
+        httpTestingController.expectNone(EPISTOLA_CREATE_URL);
+        expect(documentCreated).not.toHaveBeenCalled();
+      });
+
+      it("previews a template without a choice of kanaal, with no kanaal", async () => {
+        await setupEpistola();
+        await chooseTheTemplate({
+          kanalen: ["post"],
+          voorgesteldKanaal: "post",
+          communicatiekanaal: "Post",
+        });
+
+        await user.click(previewButton());
+        await sleep();
+
+        const request = httpTestingController.expectOne(EPISTOLA_PREVIEW_URL);
+        expect(request.request.body).toMatchObject({ kanaal: null });
+        request.flush(new Blob(["fakePdfContent"]));
+      });
+
+      it("previews with the data of the task the document is created from", async () => {
+        await setupEpistola({
+          taak: fromPartial<GeneratedType<"RestTask">>({ id: "fakeTaskId" }),
+        });
+        await chooseTheTemplate();
+
+        await user.click(previewButton());
+        await sleep();
+
+        const request = httpTestingController.expectOne(EPISTOLA_PREVIEW_URL);
+        expect(request.request.body).toMatchObject({ taskId: "fakeTaskId" });
+        request.flush(new Blob(["fakePdfContent"]));
+      });
+
+      it("offers no second preview while Epistola renders one", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+
+        await user.click(previewButton());
+        await sleep();
+
+        fixture.detectChanges();
+
+        expect(previewButton()).toBeDisabled();
+        httpTestingController
+          .expectOne(EPISTOLA_PREVIEW_URL)
+          .flush(new Blob(["fakePdfContent"]));
+      });
+
+      it("hands the reason Epistola gave to the error handler, and keeps the form as it was", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+
+        await user.click(previewButton());
+        await sleep();
+        httpTestingController
+          .expectOne(EPISTOLA_PREVIEW_URL)
+          .flush(
+            new Blob([
+              '{"message":"msg.error.epistola.template.data-rejected","exception":"/aanvrager: is required"}',
+            ]),
+            { status: 500, statusText: "fakeStatusText" },
+          );
+
+        await waitFor(() => {
+          fixture.detectChanges();
+          expect(foutAfhandelen).toHaveBeenCalledWith(
+            expect.objectContaining({
+              error: {
+                message: "msg.error.epistola.template.data-rejected",
+                exception: "/aanvrager: is required",
+              },
+            }),
+          );
+          expect(previewButton()).toBeEnabled();
+        });
+        expect(
+          screen.queryByRole("heading", { name: /epistola\.voorbeeld\.titel/ }),
+        ).not.toBeInTheDocument();
+        expect(field("titel")).toHaveValue("Ontvangstbevestiging aanvraag");
+      });
     });
   });
 });
