@@ -4,7 +4,7 @@
 |---|---|
 | Soort | Verkenning (`explore/`) en een extra buiten de Definition of Done. Geen onderdeel van het testplan, zoals de andere extra's (B25) |
 | Branch | `explore/epistola-preview-before-saving`, gebouwd op `feat/epistola-variant-by-kanaal` (#49) |
-| Stand | **3 oktober 2026.** Gebouwd en getest: unittests, Epistola's testserver en een echte client tegen een nepserver. De live-check in de ZAC-stack staat in [§5](#5-wat-is-gecontroleerd-en-wat-niet) |
+| Stand | **3 oktober 2026.** Gebouwd, en gecontroleerd met unittests, Epistola's testserver en een draaiende ZAC met een echte browser ([§5](#5-wat-is-gecontroleerd-en-wat-niet)) |
 
 > **Waarom deze branch bestaat.** Een voorstel dat de stakeholders kunnen bekijken en overnemen of laten liggen,
 > zonder dat iemand de achtergrond hoeft te kennen. Het staat los van de rest van het prototype: zonder deze branch
@@ -60,18 +60,35 @@ dag opnieuw ingericht, omdat de tenant elke dag wordt gereset.
 | Een verbroken datacontract geeft **direct** `400 template-data-invalid`, met `detail` `Data validation failed: /aanvrager: is required`: dezelfde tekst als een mislukte job | ZAC gebruikt alleen `detail` en laat de gebruiker die zien. `missingFields` bevat ook velden die niet verplicht zijn (`required: false`), en is dus niet geschikt om te tonen |
 | Een onbekend template geeft `404 Default Variant Not Found` | Wordt de bestaande melding *het template bestaat niet meer* |
 | Het kanaal `post` zonder voorkeur voor `system.locale` geeft `409 ambiguous-variant`, omdat de Nederlandse en de Engelse variant voor post even goed passen | Raakt ZAC niet: de variantkeuze uit #49 stuurt `nl-NL` als voorkeur mee |
-| De preview-PDF heeft op Suite 1.3.0 dezelfde PDF/A-kenmerken en dezelfde producer als een gegenereerd document | Het contract belooft dat niet. ZAC bewaart een preview daarom nooit |
+| Epistola zet de tekst **Epistola Preview** in de PDF (twee keer per pagina); een gegenereerd document heeft die niet | Een voorbeeld is zichtbaar een voorbeeld en niet te verwarren met het echte document. ZAC hoeft er niets voor te doen |
+| De preview-PDF heeft op Suite 1.3.0 dezelfde PDF/A-kenmerken en dezelfde producer als een gegenereerd document | Het contract belooft dat niet. ZAC bewaart een preview daarom nooit, en zegt in de dialoog alleen dat het niet is opgeslagen |
 
 ## 5. Wat is gecontroleerd, en wat niet
 
 - **Backend:** 2.824 unittests, 0 mislukt. Nieuw zijn onder meer `EpistolaDocumentPreviewTest`, `EpistolaClientServicePreviewTest` en
   `DocumentCreationRestServicePreviewTest`. Daarnaast draait `EpistolaClientServiceRequestTest` een **echte** MicroProfile-client tegen
-  een nepserver. Alleen zo is te zien dat de tekst van Epistola's 400 nog te lezen is uit de exception die de client gooit.
+  een nepserver. Alleen zo is te zien dat de tekst van Epistola's 400 nog te lezen is uit de exception die de client gooit, en dat hij
+  nergens in de oorzaak-keten van de eigen exception terugkomt.
 - **Frontend:** 3.039 tests, 0 mislukt, en de strikte speclint op de aangeraakte specs.
 - **Epistola:** de probes van §4, tegen de echte testserver.
-- **Detekt en spotless:** schoon.
-- **Niet gecontroleerd in deze tekst:** de knop en de dialoog in een draaiende ZAC met een echte browser. Zodra die check is gedaan, staat het
-  resultaat hier.
+- **Live, in ZAC met een echte browser** (3 oktober, `beheerder1`, Epistola's testserver):
+
+  | Wat | Uitkomst |
+  |---|---|
+  | De knop zonder template, en met een template waarvan de kanalen nog niet bekend zijn | Niet actief. Met template actief, met een spinner terwijl Epistola rendert |
+  | De dialoog | Toont de standaardbrief met de gegevens van de zaak (zaaknummer, zaaktype, status, de naam van de initiator) in de PDF-viewer van de browser |
+  | Drie voorbeelden achter elkaar bij ZAAK-2026-0000000032 | Het aantal documenten in de zaak bleef 15: er wordt niets opgeslagen |
+  | Besluitbrief zonder kanaal, bij een zaak met communicatiekanaal e-mail | De variant *digitaal*, byte voor byte gelijk aan een voorbeeld waar *digitaal* expliciet is gevraagd. *Post* geeft een ander bestand |
+  | Een template dat het zaaktype niet aanbiedt, en een onbestaand template | 400 `template.not-configured`, voordat er zaakgegevens naar Epistola gaan |
+  | Een zaak zonder initiator en het template *ZAC Verplichte aanvrager* | Na 0,5 s de standaardfoutdialoog: *Het template vraagt zaakgegevens die deze zaak niet heeft…* met daaronder `/aanvrager: is required`. Het aantal documenten bleef gelijk |
+  | Snelheid | Standaardbrief 0,2 tot 0,6 s, besluitbrief met afbeeldingen 1,7 tot 2,1 s |
+
+- **Gevonden door het log te lezen, en opgelost:** het log bevatte de redenen van Epistola (`/aanvrager: is required`), omdat de afwijzing
+  de exception van de client als oorzaak meekreeg en die de reden in zijn eigen bericht herhaalt. Dat strijdt met de afspraak dat die
+  tekst nooit in het log komt. De afwijzing heeft nu geen oorzaak (`b1eee445d`). Dit is bewezen met de test op de echte client, maar niet
+  opnieuw live bekeken, omdat daarvoor de image opnieuw gebouwd en de gebruiker opnieuw ingelogd moet worden.
+- **Niet gecontroleerd:** de variantkeuze in de browser met de kanaalkiezer (alleen via het endpoint en in de specs), een document bij
+  een taak, en meer dan één gebruiker tegelijk.
 
 ## 6. Open punten, en wat ik bewust niet deed
 
@@ -89,7 +106,10 @@ dag opnieuw ingericht, omdat de tenant elke dag wordt gereset.
    verzoeken*.
 6. **Content-Security-Policy.** De dialoog toont de PDF in een `<object>` met een `blob:`-adres. ZAC zet zelf geen CSP, maar een
    organisatie die er een afdwingt, moet `blob:` toestaan voor `object-src`.
-7. **Klein.** *Genereren* blijft aan terwijl een voorbeeld wordt gemaakt. De sluitknop van de gedeelde dialoog heeft geen
+7. **Het log bij andere fouten.** `EpistolaRequestFailedException` kent dezelfde constructie als de afwijzing hierboven had: de
+   exception van de client is de oorzaak, en die herhaalt Epistola's `title` en `detail` in zijn bericht. Voor die andere fouten is niet
+   gemeten welke tekst dat oplevert, en deze verkenning wijzigt ze niet.
+8. **Klein.** *Genereren* blijft aan terwijl een voorbeeld wordt gemaakt. De sluitknop van de gedeelde dialoog heeft geen
    toegankelijke naam. Dat laatste was er al.
 
 ## 7. Zelf proberen
