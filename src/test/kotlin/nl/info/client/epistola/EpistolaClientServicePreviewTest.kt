@@ -130,9 +130,10 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
                     epistolaTemplateDataRejectedException.detail shouldBe "/aanvrager: is required"
                 }
 
-                and("Epistola's reason stays out of the message that is logged") {
+                and("Epistola's reason stays out of the message that is logged, and out of a cause that would repeat it") {
                     epistolaTemplateDataRejectedException.message shouldContain FAKE_TEMPLATE_ID
                     epistolaTemplateDataRejectedException.message shouldNotContain "aanvrager"
+                    epistolaTemplateDataRejectedException.cause shouldBe null
                 }
             }
         }

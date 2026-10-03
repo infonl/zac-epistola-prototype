@@ -24,6 +24,9 @@ private val LOG = Logger.getLogger("nl.info.client.epistola.EpistolaApiException
  * A request that is answered synchronously, such as a preview, hears at once that the data breaks the template's
  * contract, as a 400 whose `detail` names the offending fields as a failed generation job does. Any other failure, and a
  * problem that cannot be read, is a failed request that names the HTTP status alone.
+ *
+ * The rejection has no cause: the client's own exception repeats the problem in its message, and the log would then
+ * carry the fields the behandelaar is shown.
  */
 internal fun ApiException.toEpistolaException(request: String, isTemplateRequest: Boolean): EpistolaException =
     toTemplateDataRejection(request) ?: toEpistolaRequestFailedException(request, isTemplateRequest)
@@ -35,8 +38,7 @@ private fun ApiException.toTemplateDataRejection(request: String) =
         ?.let {
             EpistolaTemplateDataRejectedException(
                 message = "Epistola rejected the data of $request against the template's contract",
-                detail = it.removePrefix(DATA_VALIDATION_FAILED_PREFIX).trim(),
-                cause = this
+                detail = it.removePrefix(DATA_VALIDATION_FAILED_PREFIX).trim()
             )
         }
 
