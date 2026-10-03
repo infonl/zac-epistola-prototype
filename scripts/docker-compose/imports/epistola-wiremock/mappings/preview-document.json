@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/tenants/[a-z][a-z0-9]*(-[a-z0-9]+)*/documents/preview",
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": {
+          "expression": "$.catalogId",
+          "matches": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        }
+      },
+      {
+        "matchesJsonPath": {
+          "expression": "$.templateId",
+          "matches": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/pdf",
+      "content-disposition": "inline; filename=\"preview.pdf\""
+    },
+    "bodyFileName": "epistola-document.pdf"
+  }
+}
