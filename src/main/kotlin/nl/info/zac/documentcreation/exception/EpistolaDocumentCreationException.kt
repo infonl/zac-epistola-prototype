@@ -14,10 +14,11 @@ import nl.info.zac.exception.ServerErrorException
 class EpistolaDocumentCreationException(
     templateId: String,
     zaakIdentificatie: String,
-    epistolaException: EpistolaException
+    epistolaException: EpistolaException,
+    action: String = "create a document"
 ) : ServerErrorException(
     errorCode = epistolaException.errorCode,
-    message = "Epistola could not create a document from template '$templateId' for zaak '$zaakIdentificatie'",
+    message = "Epistola could not $action from template '$templateId' for zaak '$zaakIdentificatie'",
     cause = epistolaException,
     detail = epistolaException.detail
 )
