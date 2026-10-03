@@ -32,6 +32,7 @@ import nl.info.zac.app.documentcreation.model.RestDocumentCreationAttendedRespon
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationStatus
+import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentPreviewData
 import nl.info.zac.app.documentcreation.model.RestEpistolaKanalen
 import nl.info.zac.app.documentcreation.model.toRestEpistolaKanalen
 import nl.info.zac.authentication.LoggedInUser
@@ -58,7 +59,7 @@ import java.util.logging.Logger
 @Produces(MediaType.APPLICATION_JSON)
 @NoArgConstructor
 @AllOpen
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 class DocumentCreationRestService @Inject constructor(
     private val policyService: PolicyService,
     private val documentCreationService: DocumentCreationService,
@@ -70,6 +71,8 @@ class DocumentCreationRestService @Inject constructor(
     private val documentCreationUserStore: DocumentCreationUserStore
 ) {
     companion object {
+        private const val MEDIA_TYPE_PDF = "application/pdf"
+
         enum class SmartDocumentsWizardResult(val value: String) {
             SUCCESS("success"),
             CANCELLED("cancelled"),
@@ -115,6 +118,29 @@ class DocumentCreationRestService @Inject constructor(
                 kanaal = restEpistolaDocumentCreationData.kanaal
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
+
+    /**
+     * Lets a behandelaar look at the document before it is generated: Epistola renders it from the data that creating it
+     * would send, and nothing is kept. Epistola promises nothing about a preview, so it is not what ends up in the
+     * zaak. It asks as much as creating the document, because it sends the zaak's data to Epistola just the same.
+     */
+    @POST
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MEDIA_TYPE_PDF)
+    @Path("/epistola/preview-document")
+    fun previewEpistolaDocument(
+        @Valid restEpistolaDocumentPreviewData: RestEpistolaDocumentPreviewData
+    ): ByteArray =
+        zrcClientService.readZaak(restEpistolaDocumentPreviewData.zaakUuid).also { zaak ->
+            assertDocumentCreationAllowed(zaak = zaak, taskId = restEpistolaDocumentPreviewData.taskId)
+        }.let { zaak ->
+            epistolaDocumentCreationService.previewDocument(
+                zaak = zaak,
+                templateId = restEpistolaDocumentPreviewData.templateId,
+                taskId = restEpistolaDocumentPreviewData.taskId,
+                kanaal = restEpistolaDocumentPreviewData.kanaal
+            )
+        }
 
     /** The kanalen a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
     @GET

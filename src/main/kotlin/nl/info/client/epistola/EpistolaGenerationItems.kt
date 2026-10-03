@@ -18,7 +18,7 @@ import nl.info.client.epistola.model.EpistolaJobStatus.WAITING_IN_QUEUE
 import java.time.Duration
 
 /** Epistola's own prefix for data that breaks the template's contract, followed by the offending fields. */
-private const val DATA_VALIDATION_FAILED_PREFIX = "Data validation failed:"
+internal const val DATA_VALIDATION_FAILED_PREFIX = "Data validation failed:"
 
 /**
  * Epistola's timestamps come from its own clock, so only the time between two of them is used: how long the job

@@ -11,7 +11,9 @@ import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
+import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.zac.configuration.createEpistolaSettings
 import org.json.JSONObject
@@ -22,6 +24,7 @@ import java.time.Duration
 private const val FAKE_TENANT_ID = "fake-tenant"
 private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
+private const val FAKE_TEMPLATE_ID_WITH_INVALID_DATA = "fake-template-with-invalid-data"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
 private const val FAKE_DOCUMENT_ID = "3d9f8e7a-6b5c-4d3e-8f1a-0b9c8d7e6f5a"
@@ -137,6 +140,51 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
         }
     }
 
+    context("previewing a document") {
+        given("a configured tenant and catalog") {
+            `when`("a preview is made for a kanaal") {
+                epistolaServer.clearRecordedRequests()
+                val preview = createService().previewDocument(
+                    templateId = FAKE_TEMPLATE_ID,
+                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
+                    kanaal = "digitaal"
+                )
+
+                then("Epistola is asked to preview inside that tenant, without submitting a generation job") {
+                    epistolaServer.requestPaths.single() shouldBe "/tenants/$FAKE_TENANT_ID/documents/preview"
+                }
+
+                and("the request names the catalog and the template, and requires the variant of the kanaal") {
+                    val request = JSONObject(epistolaServer.requestBodies.single())
+                    request.getString("catalogId") shouldBe FAKE_CATALOG_ID
+                    request.getString("templateId") shouldBe FAKE_TEMPLATE_ID
+                    request.getJSONArray("attributes").getJSONObject(0).getString("value") shouldBe "digitaal"
+                }
+
+                and("the PDF Epistola answers with is returned") {
+                    preview.toString(StandardCharsets.UTF_8) shouldBe FAKE_PDF_CONTENT
+                }
+            }
+        }
+
+        given("a template whose data contract the zaak's data breaks") {
+            `when`("a preview is made") {
+                epistolaServer.clearRecordedRequests()
+                val epistolaTemplateDataRejectedException = shouldThrow<EpistolaTemplateDataRejectedException> {
+                    createService().previewDocument(templateId = FAKE_TEMPLATE_ID_WITH_INVALID_DATA, data = emptyMap())
+                }
+
+                then("the field Epistola names is read from its problem response, so the behandelaar can see it") {
+                    epistolaTemplateDataRejectedException.detail shouldBe "/aanvrager: is required"
+                }
+
+                and("it is not part of the message that is logged") {
+                    epistolaTemplateDataRejectedException.message shouldNotContain "aanvrager"
+                }
+            }
+        }
+    }
+
     context("Epistola carrying the catalog as a path segment rather than as a query parameter") {
         given("a template request without a catalog") {
             `when`("the client is asked to send it") {
@@ -164,10 +212,9 @@ private class FakeEpistolaServer {
             val path = exchange.requestURI.path
             requestPaths += path
             exchange.requestHeaders.getFirst("User-Agent")?.let { requestUserAgents += it }
-            exchange.requestBody.readBytes().takeIf { it.isNotEmpty() }?.let {
-                requestBodies += it.toString(StandardCharsets.UTF_8)
-            }
-            respond(exchange, path)
+            val requestBody = exchange.requestBody.readBytes().toString(StandardCharsets.UTF_8)
+            requestBody.takeIf { it.isNotEmpty() }?.let { requestBodies += it }
+            respond(exchange, path, requestBody)
         }
         start()
     }
@@ -182,23 +229,38 @@ private class FakeEpistolaServer {
 
     fun stop() = server.stop(0)
 
-    private fun respond(exchange: HttpExchange, path: String) =
+    private fun respond(exchange: HttpExchange, path: String, requestBody: String) =
         when {
+            path.endsWith("/documents/preview") && requestBody.contains(FAKE_TEMPLATE_ID_WITH_INVALID_DATA) ->
+                exchange.send(PROBLEM_MEDIA_TYPE, TEMPLATE_DATA_INVALID_RESPONSE, status = 400)
             path.contains("/catalogs/") -> exchange.send(EPISTOLA_MEDIA_TYPE, TEMPLATE_RESPONSE)
             path.endsWith("/documents/generate") -> exchange.send(EPISTOLA_MEDIA_TYPE, GENERATION_JOB_RESPONSE)
             path.contains("/documents/jobs/") -> exchange.send(EPISTOLA_MEDIA_TYPE, COMPLETED_JOB_RESPONSE)
             else -> exchange.send("application/pdf", FAKE_PDF_CONTENT)
         }
 
-    private fun HttpExchange.send(contentType: String, body: String) {
+    private fun HttpExchange.send(contentType: String, body: String, status: Int = 200) {
         val bytes = body.toByteArray(StandardCharsets.UTF_8)
         responseHeaders.add("Content-Type", contentType)
-        sendResponseHeaders(200, bytes.size.toLong())
+        sendResponseHeaders(status, bytes.size.toLong())
         responseBody.use { it.write(bytes) }
     }
 
     private companion object {
         const val EPISTOLA_MEDIA_TYPE = "application/vnd.epistola.v1+json"
+        const val PROBLEM_MEDIA_TYPE = "application/problem+json"
+
+        val TEMPLATE_DATA_INVALID_RESPONSE = """
+            {
+              "type": "https://epistola.app/errors/template-data-invalid",
+              "title": "Template Data Invalid",
+              "status": 400,
+              "detail": "Data validation failed: /aanvrager: is required",
+              "errors": [{ "field": "/data/aanvrager", "message": "is required", "rejectedValue": null }],
+              "missingFields": [{ "path": "/aanvrager", "required": true, "schema": { "type": "object" } }],
+              "invalidFields": []
+            }
+        """.trimIndent()
 
         val TEMPLATE_RESPONSE = """
             {

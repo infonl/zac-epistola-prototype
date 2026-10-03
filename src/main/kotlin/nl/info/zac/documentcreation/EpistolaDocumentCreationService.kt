@@ -134,28 +134,17 @@ class EpistolaDocumentCreationService @Inject constructor(
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument =
         try {
-            val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
-            val templateData = documentCreationDataService.createEpistolaData(
-                loggedInUser = loggedInUserInstance.get(),
-                zaak = zaak,
-                taskId = taskId
-            ).toEpistolaTemplateData(
-                templateId = templateId,
-                templateSchema = generationTemplate.dataContract
-            )
-            LOG.fine { "Generating Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
-
-            epistolaClientService.generateDocument(
-                templateId = templateId,
-                data = templateData,
-                fileName = fileName,
-                correlationId = zaak.uuid.toString(),
-                kanaal = generationTemplate.kanalen.choose(
-                    requestedKanaal = kanaal,
-                    communicatiekanaal = zaak.communicatiekanaalNaam
-                ),
-                onJobStatus = onJobStatus
-            ).let { it.copy(kanaal = it.kanaal ?: generationTemplate.kanalen.defaultKanaal) }
+            readGenerationInput(zaak = zaak, templateId = templateId, taskId = taskId, kanaal = kanaal).let { generationInput ->
+                LOG.fine { "Generating Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
+                epistolaClientService.generateDocument(
+                    templateId = templateId,
+                    data = generationInput.templateData,
+                    fileName = fileName,
+                    correlationId = zaak.uuid.toString(),
+                    kanaal = generationInput.kanaal,
+                    onJobStatus = onJobStatus
+                ).let { it.copy(kanaal = it.kanaal ?: generationInput.defaultKanaal) }
+            }
         } catch (epistolaException: EpistolaException) {
             throw EpistolaDocumentCreationException(
                 templateId = templateId,
@@ -163,6 +152,50 @@ class EpistolaDocumentCreationService @Inject constructor(
                 epistolaException = epistolaException
             )
         }
+
+    /**
+     * Renders the document as [createDocument] would, from the same data and in the same variant, so that a behandelaar
+     * sees what they would get, but keeps nothing: not in Epistola, and not in the zaak.
+     */
+    fun previewDocument(zaak: Zaak, templateId: String, taskId: String? = null, kanaal: String? = null): ByteArray {
+        epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
+        return try {
+            readGenerationInput(zaak = zaak, templateId = templateId, taskId = taskId, kanaal = kanaal).let { generationInput ->
+                LOG.fine { "Previewing Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
+                epistolaClientService.previewDocument(
+                    templateId = templateId,
+                    data = generationInput.templateData,
+                    kanaal = generationInput.kanaal
+                )
+            }
+        } catch (epistolaException: EpistolaException) {
+            throw EpistolaDocumentCreationException(
+                templateId = templateId,
+                zaakIdentificatie = zaak.identificatie,
+                epistolaException = epistolaException,
+                action = "preview a document"
+            )
+        }
+    }
+
+    private fun readGenerationInput(zaak: Zaak, templateId: String, taskId: String?, kanaal: String?): GenerationInput {
+        val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
+        return GenerationInput(
+            templateData = documentCreationDataService.createEpistolaData(
+                loggedInUser = loggedInUserInstance.get(),
+                zaak = zaak,
+                taskId = taskId
+            ).toEpistolaTemplateData(
+                templateId = templateId,
+                templateSchema = generationTemplate.dataContract
+            ),
+            kanaal = generationTemplate.kanalen.choose(
+                requestedKanaal = kanaal,
+                communicatiekanaal = zaak.communicatiekanaalNaam
+            ),
+            defaultKanaal = generationTemplate.kanalen.defaultKanaal
+        )
+    }
 
     fun readKanalen(zaak: Zaak, templateId: String): EpistolaKanalen {
         epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
@@ -246,4 +279,9 @@ class EpistolaDocumentCreationService @Inject constructor(
         bestandsomvang = this@toCreateLockRequest.content.size
     }
 
+    private class GenerationInput(
+        val templateData: Map<String, Any>,
+        val kanaal: String?,
+        val defaultKanaal: String?
+    )
 }

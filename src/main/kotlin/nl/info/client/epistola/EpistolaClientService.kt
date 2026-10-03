@@ -11,6 +11,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.COMPLETED
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
+import app.epistola.client.jakarta.model.PreviewDocumentRequest
 import app.epistola.client.jakarta.model.TemplateSummaryDto
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -110,6 +111,34 @@ class EpistolaClientService @Inject constructor(
         return downloadDocument(tenant, finishedItem, fileName, generationRequest).copy(kanaal = kanaal)
     }
 
+    /**
+     * Epistola's preview renders at once and keeps nothing, so there is no job to wait for and no document to delete.
+     * Epistola promises neither PDF/A nor a latency for it, and rate-limits it, which is why it is only for a
+     * behandelaar to look at before the document is generated, never what is stored. It sends the data and chooses
+     * the variant exactly as [generateDocument] does, and unlike a generation it tells straight away when the data
+     * breaks the template's contract.
+     */
+    fun previewDocument(templateId: String, data: Map<String, Any>, kanaal: String? = null): ByteArray {
+        val previewRequest = "a preview of template '$templateId'${kanaal?.let { " (kanaal '$it')" }.orEmpty()}"
+        val previewFile = requestEpistola(request = previewRequest, isTemplateRequest = true) {
+            generationApi.previewDocument(
+                epistolaSettings.tenantId,
+                PreviewDocumentRequest()
+                    .catalogId(epistolaSettings.catalogId)
+                    .templateId(templateId)
+                    .attributes(kanaal?.let { selectVariantFor(kanaal = it, catalogId = epistolaSettings.catalogId) })
+                    .data(data)
+            )
+        }
+        try {
+            return previewFile.readBytes()
+        } finally {
+            if (!previewFile.delete()) {
+                LOG.warning { "Could not remove the temporary file for a preview of template '$templateId'" }
+            }
+        }
+    }
+
     /** Epistola returns at most [TEMPLATE_PAGE_SIZE] templates per request, so a larger catalog is read page by page. */
     fun listTemplates(): List<TemplateSummaryDto> {
         val templates = mutableListOf<TemplateSummaryDto>()
@@ -166,7 +195,7 @@ class EpistolaClientService @Inject constructor(
         try {
             call()
         } catch (apiException: ApiException) {
-            throw apiException.toEpistolaRequestFailedException(request, isTemplateRequest)
+            throw apiException.toEpistolaException(request, isTemplateRequest)
         } catch (processingException: ProcessingException) {
             throw processingException.toEpistolaRequestFailedException(request)
         }
