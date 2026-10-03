@@ -29,6 +29,14 @@ bijbehorende projectbord.
 De uitgangspunten, eisen en wensen (#13) en de ontwerpverantwoording (#16) zijn op 1 oktober uit hun artifact
 overgezet, zodat ook wie geen toegang tot claude.ai heeft ze kan lezen.
 
+## Verkenningen
+
+Voorstellen buiten de Definition of Done, op een eigen `explore/`-branch, zodat ze los van het prototype te bekijken zijn.
+
+| Document | Onderwerp | Branch |
+|---|---|---|
+| [Voorbeeld van het document, vóór het wordt opgeslagen](explore-voorbeeld-voor-opslaan.md) | Een knop *Voorbeeld bekijken* in *Document maken*, op Epistola's `preview`: de brief zien voordat hij in het dossier staat, en een verbroken datacontract direct gemeld krijgen | `explore/epistola-preview-before-saving` |
+
 ## Kernbesluiten in één oogopslag
 
 | | Besluit |
