@@ -84,7 +84,7 @@ export class FoutAfhandelingService {
 
   public openFoutDetailedDialog(
     error: string,
-    details: string,
+    details?: string,
     showServerErrorTexts?: boolean,
   ) {
     this.dialog.closeAll(); // Make sure that only one error dialog is open at a time
@@ -96,7 +96,7 @@ export class FoutAfhandelingService {
       },
     });
 
-    return throwError(() => `${error}: ${details}`);
+    return throwError(() => (details ? `${error}: ${details}` : error));
   }
 
   public log(melding: string) {
@@ -166,7 +166,7 @@ export class FoutAfhandelingService {
       this.translateService.instant(
         errorMessage || "dialoog.error.body.technisch",
       ),
-      errorDetail ?? this.translateService.instant("dialoog.error.body.fout"),
+      errorDetail,
       showServerErrorTexts,
     );
   }
