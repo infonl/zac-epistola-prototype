@@ -32,41 +32,57 @@ const BIJLAGE: GeneratedType<"RestInformatieobjecttype"> = {
   vertrouwelijkheidaanduiding: "OPENBAAR",
 };
 
-const BESLUIT_EVENEMENTENVERGUNNING: GeneratedType<"RestEpistolaTemplate"> = {
-  id: "besluit-evenementenvergunning",
-  name: "Besluit evenementenvergunning",
+const VERGUNNINGEN: GeneratedType<"RestEpistolaCatalog"> = {
+  id: "fake-catalog-vergunningen",
+  name: "Vergunningen",
 };
-const ONTVANGSTBEVESTIGING: GeneratedType<"RestEpistolaTemplate"> = {
-  id: "ontvangstbevestiging-aanvraag",
-  name: "Ontvangstbevestiging aanvraag",
+const HANDHAVING: GeneratedType<"RestEpistolaCatalog"> = {
+  id: "fake-catalog-handhaving",
+  name: "Handhaving",
 };
 
-const STORED_TEMPLATE_GROUP: GeneratedType<"RestMappedEpistolaTemplateGroup"> =
-  {
-    name: "Vergunningen",
-    templates: [
-      {
-        ...BESLUIT_EVENEMENTENVERGUNNING,
-        informatieObjectTypeUUID: BESLUIT.uuid,
-      },
-    ],
-  };
+const TEMPLATES_BY_CATALOG: Record<
+  string,
+  GeneratedType<"RestEpistolaTemplate">[]
+> = {
+  [VERGUNNINGEN.id]: [
+    {
+      id: "besluit-evenementenvergunning",
+      name: "Besluit evenementenvergunning",
+    },
+    {
+      id: "ontvangstbevestiging-aanvraag",
+      name: "Ontvangstbevestiging aanvraag",
+    },
+  ],
+  [HANDHAVING.id]: [
+    { id: "vooraankondiging-last", name: "Vooraankondiging last" },
+  ],
+};
 
 describe(EpistolaTemplatesFormComponent.name, () => {
   async function setup({
     enabledForZaaktype = true,
-    templates = [BESLUIT_EVENEMENTENVERGUNNING, ONTVANGSTBEVESTIGING],
-    templateMapping = [],
-    readTemplateMapping = () => Promise.resolve(templateMapping),
+    catalogs = [VERGUNNINGEN, HANDHAVING],
+    templatesByCatalog = TEMPLATES_BY_CATALOG,
+    catalogMapping = {
+      catalogId: VERGUNNINGEN.id,
+      informatieObjectTypeUUID: BESLUIT.uuid,
+    },
+    readCatalogMapping = () => Promise.resolve(catalogMapping),
   }: {
     enabledForZaaktype?: boolean;
-    templates?: GeneratedType<"RestEpistolaTemplate">[];
-    templateMapping?: GeneratedType<"RestMappedEpistolaTemplateGroup">[];
-    readTemplateMapping?: () => Promise<
-      GeneratedType<"RestMappedEpistolaTemplateGroup">[]
+    catalogs?: GeneratedType<"RestEpistolaCatalog">[];
+    templatesByCatalog?: Record<
+      string,
+      GeneratedType<"RestEpistolaTemplate">[]
+    >;
+    catalogMapping?: GeneratedType<"RestEpistolaCatalogMapping">;
+    readCatalogMapping?: () => Promise<
+      GeneratedType<"RestEpistolaCatalogMapping">
     >;
   } = {}) {
-    const storeTemplatesMapping = jest.fn().mockReturnValue(of(undefined));
+    const storeCatalogMapping = jest.fn().mockReturnValue(of(undefined));
 
     const rendered = await render(EpistolaTemplatesFormComponent, {
       imports: [TranslateModule.forRoot(), NoopAnimationsModule],
@@ -75,17 +91,23 @@ describe(EpistolaTemplatesFormComponent.name, () => {
         {
           provide: EpistolaTemplatesService,
           useValue: fromPartial<EpistolaTemplatesService>({
-            listTemplatesQuery: () =>
+            listCatalogsQuery: () =>
               queryOptions({
-                queryKey: ["epistola-templates"],
-                queryFn: () => Promise.resolve(templates),
+                queryKey: ["epistola-catalogs"],
+                queryFn: () => Promise.resolve(catalogs),
               }),
-            getTemplatesMappingQuery: (zaaktypeUuid: string) =>
+            listCatalogTemplatesQuery: (catalogId: string) =>
               queryOptions({
-                queryKey: ["epistola-templates-mapping", zaaktypeUuid],
-                queryFn: readTemplateMapping,
+                queryKey: ["epistola-catalog-templates", catalogId],
+                queryFn: () =>
+                  Promise.resolve(templatesByCatalog[catalogId] ?? []),
               }),
-            storeTemplatesMapping,
+            getCatalogMappingQuery: (zaaktypeUuid: string) =>
+              queryOptions({
+                queryKey: ["epistola-catalog-mapping", zaaktypeUuid],
+                queryFn: readCatalogMapping,
+              }),
+            storeCatalogMapping,
           }),
         },
         {
@@ -108,27 +130,15 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     return {
       ...rendered,
       component: rendered.fixture.componentInstance,
-      storeTemplatesMapping,
+      storeCatalogMapping,
       user: userEvent.setup(),
     };
   }
 
-  async function addTemplateGroup(user: UserEvent, name: string) {
-    await user.click(
-      screen.getByRole("button", { name: "actie.templategroep.toevoegen" }),
-    );
-    const newTemplateGroups = screen.getAllByRole("group", {
-      name: "epistola.templategroep.nieuw",
-    });
-    const newTemplateGroup = newTemplateGroups[newTemplateGroups.length - 1];
-    await user.type(
-      within(newTemplateGroup).getByRole("textbox", {
-        name: "epistola.templategroep",
-      }),
-      name,
-    );
-    return newTemplateGroup;
-  }
+  const catalogPicker = () =>
+    screen.getByRole("combobox", { name: /epistola.catalog/ });
+  const informatieobjecttypePicker = () =>
+    screen.getByRole("combobox", { name: /informatieobjectTypeOmschrijving/ });
 
   async function chooseOption(
     user: UserEvent,
@@ -139,8 +149,16 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     await user.click(screen.getByRole("option", { name: option }));
   }
 
+  function catalogTemplateNames() {
+    return within(
+      screen.getByRole("list", { name: "epistola.catalog.templates" }),
+    )
+      .getAllByRole("listitem")
+      .map(({ textContent }) => textContent?.trim());
+  }
+
   describe("given Epistola is switched off for the zaaktype", () => {
-    it("says so and offers no template groups", async () => {
+    it("says so and offers no catalog to choose", async () => {
       await setup({ enabledForZaaktype: false });
 
       expect(
@@ -148,7 +166,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).not.toBeChecked();
       expect(screen.getByText("msg.epistola.form.disabled")).toBeVisible();
       expect(
-        screen.queryByRole("button", { name: "actie.templategroep.toevoegen" }),
+        screen.queryByRole("combobox", { name: /epistola.catalog/ }),
       ).not.toBeInTheDocument();
     });
 
@@ -166,10 +184,10 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     });
   });
 
-  describe("given the stored template groups have not arrived", () => {
+  describe("given the stored catalog and document type have not arrived", () => {
     it("is not valid while they are loading, so the empty form cannot be saved over them", async () => {
       const { component } = await setup({
-        readTemplateMapping: () => new Promise(() => {}),
+        readCatalogMapping: () => new Promise(() => {}),
       });
 
       expect(component.isValid()).toBe(false);
@@ -177,202 +195,107 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
     it("is not valid when they could not be loaded", async () => {
       const { component } = await setup({
-        readTemplateMapping: () => Promise.reject(new Error("fakeFailure")),
+        readCatalogMapping: () => Promise.reject(new Error("fakeFailure")),
       });
 
       expect(component.isValid()).toBe(false);
     });
-
-    it("is valid once they have arrived, even when the zaaktype has none", async () => {
-      const { component } = await setup({ templateMapping: [] });
-
-      await waitFor(() => expect(component.isValid()).toBe(true));
-    });
   });
 
-  describe("given a zaaktype with a stored template group", () => {
-    it("shows the group with its template, the template's document type and the confidentiality that follows from it", async () => {
-      await setup({ templateMapping: [STORED_TEMPLATE_GROUP] });
+  describe("given a zaaktype with a stored catalog and document type", () => {
+    it("shows the catalog by its name, the document type and the confidentiality that follows from it", async () => {
+      const { component } = await setup();
 
-      const templateGroup = await screen.findByRole("group", {
-        name: "Vergunningen",
-      });
-      expect(
-        within(templateGroup).getByRole("textbox", {
-          name: "epistola.templategroep",
-        }),
-      ).toHaveValue("Vergunningen");
-      const template = within(templateGroup).getByRole("group", {
-        name: "Besluit evenementenvergunning",
-      });
       await waitFor(() =>
-        expect(
-          within(template).getByRole("combobox", {
-            name: /informatieobjectTypeOmschrijving/,
-          }),
-        ).toHaveTextContent("Besluit"),
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
       );
+      expect(informatieobjecttypePicker()).toHaveTextContent("Besluit");
       expect(
-        within(template).getByRole("textbox", {
-          name: "vertrouwelijkheidaanduiding",
-        }),
+        screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
       ).toHaveValue("vertrouwelijkheidaanduiding.VERTROUWELIJK");
-    });
-
-    it("does not offer a template that is already in a group", async () => {
-      const { user } = await setup({
-        templateMapping: [STORED_TEMPLATE_GROUP],
-      });
-
-      await user.click(
-        within(
-          await screen.findByRole("group", { name: "Vergunningen" }),
-        ).getByRole("combobox", { name: /actie.template.toevoegen/ }),
-      );
-
-      expect(
-        screen.getByRole("option", { name: "Ontvangstbevestiging aanvraag" }),
-      ).toBeVisible();
-      expect(
-        screen.queryByRole("option", { name: "Besluit evenementenvergunning" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("says a group is empty once its last template is removed, and drops the group when it is removed", async () => {
-      const { user } = await setup({
-        templateMapping: [STORED_TEMPLATE_GROUP],
-      });
-      const templateGroup = await screen.findByRole("group", {
-        name: "Vergunningen",
-      });
-
-      await user.click(
-        within(templateGroup).getByRole("button", {
-          name: "actie.template.verwijderen",
-        }),
-      );
-
-      expect(
-        within(templateGroup).getByText("msg.epistola.templategroep.leeg"),
-      ).toBeVisible();
-
-      await user.click(
-        within(templateGroup).getByRole("button", {
-          name: "actie.templategroep.verwijderen",
-        }),
-      );
-
-      expect(
-        screen.queryByRole("group", { name: "Vergunningen" }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("given a zaaktype without template groups", () => {
-    it("lets the beheerder create a group and put a template in it, which needs a document type before it is valid", async () => {
-      const { component, user } = await setup();
-
-      const templateGroup = await addTemplateGroup(user, "Handhaving");
-      await chooseOption(
-        user,
-        within(templateGroup).getByRole("combobox", {
-          name: /actie.template.toevoegen/,
-        }),
-        "Ontvangstbevestiging aanvraag",
-      );
-
-      const template = within(templateGroup).getByRole("group", {
-        name: "Ontvangstbevestiging aanvraag",
-      });
-      expect(within(template).getByText("verplicht")).toBeVisible();
-      expect(component.isValid()).toBe(false);
-
-      await chooseOption(
-        user,
-        within(template).getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
-        }),
-        "Bijlage",
-      );
-
-      expect(
-        within(template).getByRole("textbox", {
-          name: "vertrouwelijkheidaanduiding",
-        }),
-      ).toHaveValue("vertrouwelijkheidaanduiding.OPENBAAR");
       expect(component.isValid()).toBe(true);
     });
 
-    it("rejects two groups whose names differ only in case and surrounding spaces", async () => {
-      const { component, user } = await setup();
+    it("lists every template of the catalog, which the zaaktype then offers, without a way to pick them one by one", async () => {
+      await setup();
 
-      await addTemplateGroup(user, "Vergunningen");
-      await addTemplateGroup(user, " vergunningen ");
-      await user.tab();
-
-      expect(
-        screen.getAllByText("msg.epistola.templategroep.naam-bestaat-al"),
-      ).toHaveLength(2);
-      expect(component.isValid()).toBe(false);
+      await waitFor(() =>
+        expect(catalogTemplateNames()).toEqual([
+          "Besluit evenementenvergunning",
+          "Ontvangstbevestiging aanvraag",
+        ]),
+      );
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
-    it("rejects a group without a name", async () => {
-      const { component, user } = await setup();
+    it("lists the templates of another catalog once the beheerder chooses it", async () => {
+      const { user } = await setup();
+      await waitFor(() =>
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
+      );
 
-      await addTemplateGroup(user, "   ");
-      await user.tab();
+      await chooseOption(user, catalogPicker(), "Handhaving");
 
-      expect(screen.getByText("verplicht")).toBeVisible();
-      expect(component.isValid()).toBe(false);
+      await waitFor(() =>
+        expect(catalogTemplateNames()).toEqual(["Vooraankondiging last"]),
+      );
     });
 
-    it("saves each group with its name trimmed and its templates with their document type", async () => {
-      const { component, storeTemplatesMapping, user } = await setup();
-
-      const templateGroup = await addTemplateGroup(user, "  Handhaving ");
-      await chooseOption(
-        user,
-        within(templateGroup).getByRole("combobox", {
-          name: /actie.template.toevoegen/,
-        }),
-        "Ontvangstbevestiging aanvraag",
-      );
-      await chooseOption(
-        user,
-        within(templateGroup).getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
-        }),
-        "Bijlage",
+    it("saves the chosen catalog with the document type", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await waitFor(() =>
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
       );
 
+      await chooseOption(user, catalogPicker(), "Handhaving");
+      await chooseOption(user, informatieobjecttypePicker(), "Bijlage");
       component.saveEpistolaTemplatesMapping().subscribe();
 
-      expect(storeTemplatesMapping).toHaveBeenCalledWith(ZAAKTYPE_UUID, [
-        {
-          name: "Handhaving",
-          templates: [
-            {
-              ...ONTVANGSTBEVESTIGING,
-              informatieObjectTypeUUID: BIJLAGE.uuid,
-            },
-          ],
-        },
-      ]);
+      expect(storeCatalogMapping).toHaveBeenCalledWith(ZAAKTYPE_UUID, {
+        catalogId: HANDHAVING.id,
+        informatieObjectTypeUUID: BIJLAGE.uuid,
+      });
     });
   });
 
-  describe("given Epistola's catalog holds no templates", () => {
-    it("says so and offers no template to add to a group", async () => {
-      const { user } = await setup({ templates: [] });
+  describe("given a zaaktype without a document type for its Epistola documents", () => {
+    it("says the document type is required, and is valid once one is chosen", async () => {
+      const { component, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: null,
+        },
+      });
 
-      const templateGroup = await addTemplateGroup(user, "Handhaving");
+      expect(await screen.findByText("verplicht")).toBeVisible();
+      expect(component.isValid()).toBe(false);
 
-      expect(screen.getByText("msg.epistola.templates.geen")).toBeVisible();
+      await chooseOption(user, informatieobjecttypePicker(), "Bijlage");
+
       expect(
-        within(templateGroup).queryByRole("combobox", {
-          name: /actie.template.toevoegen/,
-        }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
+      ).toHaveValue("vertrouwelijkheidaanduiding.OPENBAAR");
+      expect(component.isValid()).toBe(true);
+    });
+  });
+
+  describe("given a catalog that holds no templates", () => {
+    it("says so", async () => {
+      await setup({ templatesByCatalog: { [VERGUNNINGEN.id]: [] } });
+
+      expect(
+        await screen.findByText("msg.epistola.templates.geen"),
+      ).toBeVisible();
+    });
+  });
+
+  describe("given a tenant without catalogs to choose from", () => {
+    it("says so under the catalog picker", async () => {
+      await setup({ catalogs: [] });
+
+      expect(
+        await screen.findByText("msg.epistola.catalogs.geen"),
+      ).toBeVisible();
     });
   });
 });
