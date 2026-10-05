@@ -6,7 +6,7 @@ package nl.info.client.epistola.model
 
 import java.util.UUID
 
-/** [kanaal] is that of the variant the document was rendered in, as far as ZAC knows it. */
+/** [kanaal] is the one ZAC asked Epistola for, and null when it asked for none. */
 data class EpistolaGeneratedDocument(
     val documentId: UUID,
     val fileName: String,

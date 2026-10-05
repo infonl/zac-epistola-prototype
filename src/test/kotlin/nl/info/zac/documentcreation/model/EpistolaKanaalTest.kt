@@ -108,5 +108,15 @@ class EpistolaKanaalTest : BehaviorSpec({
                 }
             }
         }
+
+        given("a template with a post and a digital variant, whose default variant is the one by post") {
+            val kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+
+            `when`("the behandelaar keeps post, which the picker preselects because the communicatiekanaal suggests nothing") {
+                then("post is asked for, like any kanaal the behandelaar chose") {
+                    kanalen.choose(requestedKanaal = "post", communicatiekanaal = "Intern") shouldBe "post"
+                }
+            }
+        }
     }
 })

@@ -59,7 +59,7 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) != null
 
     /**
-     * Generates the document again from the template that produced it, in the kanaal it was generated in while the
+     * Generates the document again from the template that produced it, asking for the kanaal stored with it while the
      * template still offers that one, with the zaak's data as it is now, and stores it as the next version of the same
      * informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored the current
      * one is left as it was.

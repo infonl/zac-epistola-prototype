@@ -121,8 +121,8 @@ class EpistolaDocumentCreationService @Inject constructor(
 
     /**
      * Without a [kanaal], or with one the template has no variant for, the zaak's communicatiekanaal decides. The document
-     * names the kanaal of the variant it was rendered in, also when that is the default variant, so that a new version
-     * stays in it.
+     * names the kanaal ZAC asked Epistola for, and none when it asked for none and Epistola rendered the default
+     * variant, so that a new version asks for the same.
      */
     @Suppress("LongParameterList")
     fun createDocument(
@@ -155,7 +155,7 @@ class EpistolaDocumentCreationService @Inject constructor(
                     communicatiekanaal = zaak.communicatiekanaalNaam
                 ),
                 onJobStatus = onJobStatus
-            ).let { it.copy(kanaal = it.kanaal ?: generationTemplate.kanalen.defaultKanaal) }
+            )
         } catch (epistolaException: EpistolaException) {
             throw EpistolaDocumentCreationException(
                 templateId = templateId,

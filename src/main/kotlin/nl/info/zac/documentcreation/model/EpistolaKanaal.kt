@@ -32,8 +32,11 @@ fun EpistolaKanalen.suggestFor(communicatiekanaal: String?): String? =
     kanaalSuggestedBy(communicatiekanaal) ?: defaultKanaal
 
 /**
- * Without a kanaal to ask for, Epistola renders the template's default variant. Asking for the default variant's kanaal
- * instead could get another variant of that kanaal, so it is not asked for.
+ * The kanaal ZAC asks Epistola for, which the document then stores: the [requestedKanaal] when the template has it,
+ * also when it is the default variant's kanaal that the picker preselected, or else the one the [communicatiekanaal]
+ * suggests. With neither there is nothing to ask for: Epistola renders the template's default variant, and the
+ * document stores no kanaal, so that a new version asks for none either. Asking for the default variant's kanaal
+ * instead could get another variant of that kanaal, such as a Dutch one next to an English default.
  */
 fun EpistolaKanalen.choose(requestedKanaal: String?, communicatiekanaal: String?): String? =
     requestedKanaal?.takeIf { it in kanalen } ?: kanaalSuggestedBy(communicatiekanaal)
