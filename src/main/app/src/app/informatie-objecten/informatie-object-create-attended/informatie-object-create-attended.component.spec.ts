@@ -1021,6 +1021,45 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(previewButton()).toBeEnabled();
       });
 
+      it("is possible without touching the form when the zaaktype offers only one template, once its kanalen are known", async () => {
+        await setupEpistola({}, (request) =>
+          request.flush([
+            fromPartial<GeneratedType<"RestMappedEpistolaTemplateGroup">>({
+              name: "Brieven",
+              templates: [
+                {
+                  id: "fake-epistola-template-1",
+                  name: "Standaardbrief",
+                  informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
+                },
+              ],
+            }),
+          ]),
+        );
+        expect(field("template")).toHaveValue("Standaardbrief");
+        expect(previewButton()).toBeDisabled();
+
+        const kanalenRequest = await waitFor(() =>
+          httpTestingController.expectOne(EPISTOLA_KANALEN_URL),
+        );
+        kanalenRequest.flush(postAndDigitaal);
+        await waitFor(() => {
+          fixture.detectChanges();
+          expect(previewButton()).toBeEnabled();
+        });
+
+        await user.click(previewButton());
+
+        const previewRequest = await waitFor(() =>
+          httpTestingController.expectOne(EPISTOLA_PREVIEW_URL),
+        );
+        expect(previewRequest.request.body).toMatchObject({
+          templateId: "fake-epistola-template-1",
+          kanaal: "digitaal",
+        });
+        previewRequest.flush(new Blob(["fakePdfContent"]));
+      });
+
       it("asks Epistola for the template in the chosen kanaal, and shows what it renders, without generating anything", async () => {
         await setupEpistola();
         await chooseTheTemplate();
