@@ -696,6 +696,44 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
       });
 
+      it("suggests the kanaal of the zaak's communicatiekanaal as it is now, when the same template is chosen again after the communicatiekanaal was edited", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.digitaal");
+
+        await user.clear(field("sjabloon"));
+        await user.click(
+          screen.getByRole("option", { name: "Ontvangstbevestiging" }),
+        );
+        await sleep();
+        httpTestingController.expectOne(EPISTOLA_OTHER_KANALEN_URL).flush({
+          kanalen: ["post", "digitaal"],
+          voorgesteldKanaal: "digitaal",
+          communicatiekanaal: "E-mail",
+        });
+        await sleep();
+
+        await user.clear(field("sjabloon"));
+        await user.click(
+          screen.getByRole("option", { name: "Standaardbrief" }),
+        );
+        await sleep();
+        httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush({
+          kanalen: ["post", "digitaal"],
+          voorgesteldKanaal: "post",
+          communicatiekanaal: "Balie",
+        });
+        await sleep();
+        fixture.detectChanges();
+        await sleep();
+        fixture.detectChanges();
+
+        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
+        expect(
+          screen.getByText("epistola.kanaal.hint.communicatiekanaal"),
+        ).toBeVisible();
+      });
+
       it("shows a kanaal it has no label for as Epistola names it", async () => {
         await setupEpistola();
         await chooseTheTemplate({

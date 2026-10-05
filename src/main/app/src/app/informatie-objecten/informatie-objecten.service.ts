@@ -127,6 +127,9 @@ export class InformatieObjectenService {
   /**
    * Without an answer the behandelaar just has no kanaal to choose, and ZAC still picks one by the zaak's
    * communicatiekanaal, so a failure is not reported.
+   *
+   * The suggested kanaal follows the zaak's communicatiekanaal, which can be edited while this page stays open, so an
+   * answer is never kept for a next time.
    */
   readEpistolaKanalenQuery(zaakUuid: string, templateId: string) {
     return {
@@ -135,6 +138,8 @@ export class InformatieObjectenService {
         { path: { zaakUuid, templateId } },
       ),
       meta: SKIP_GLOBAL_ERROR_HANDLING,
+      staleTime: StaleTimes.Instant,
+      gcTime: StaleTimes.Instant,
       retry: false,
     };
   }
