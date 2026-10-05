@@ -34,11 +34,11 @@ internal fun ApiException.toEpistolaException(request: String, isTemplateRequest
 private fun ApiException.toTemplateDataRejection(request: String) =
     response?.takeIf { it.status == Status.BAD_REQUEST.statusCode }
         ?.let(::readProblemDetail)
-        ?.takeIf { it.startsWith(DATA_VALIDATION_FAILED_PREFIX) }
+        ?.toDataRejectionDetailOrNull()
         ?.let {
             EpistolaTemplateDataRejectedException(
                 message = "Epistola rejected the data of $request against the template's contract",
-                detail = it.removePrefix(DATA_VALIDATION_FAILED_PREFIX).trim()
+                detail = it
             )
         }
 
