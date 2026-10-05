@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6). Op 1 oktober bijgewerkt naar de variantkeuze per kanaal (#47, §5 en §6), en op 5 oktober naar de keuzelijst *Kanaal* in de dialoog, het endpoint dat die vult en de regel voor het opgeslagen kanaal (#47, §1, §5 en §6) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6). Op 1 oktober bijgewerkt naar de variantkeuze per kanaal (#47, §5 en §6), en op 5 oktober naar de keuzelijst in de dialoog, het endpoint dat die vult en de regel voor het opgeslagen kanaal (#47, §1, §5 en §6), en naar de naam *Variant* voor die keuzelijst (#53, §1 en §5) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -44,7 +44,7 @@ gebouwde versie noemen Epistola wel (§5).
    vertrouwelijkheid zijn read-only en komen uit de beheermapping, zodat een behandelaar een document niet
    onder het verkeerde informatieobjecttype kan wegschrijven.
    *5 oktober:* heeft het gekozen template varianten voor twee of meer kanalen, dan toont de dialoog ook een keuzelijst
-   **Kanaal** met *Per post* en *Digitaal* (#47). Die staat op het kanaal dat het communicatiekanaal van de zaak
+   **Variant** (#53; eerst *Kanaal*) met *Per post* en *Digitaal* (#47). Die staat op het kanaal dat het communicatiekanaal van de zaak
    voorstelt, en de hint noemt dat communicatiekanaal; stelt het niets voor, dan op het kanaal van de standaardvariant.
    Het gekozen kanaal, ook het voorgeselecteerde, is het kanaal waar ZAC Epistola om vraagt. Heeft het template minder
    dan twee kanalen, dan ontbreekt de keuzelijst en vraagt ZAC om het kanaal dat het communicatiekanaal voorstelt, of om
@@ -434,15 +434,15 @@ de drie rechten via twee rollen: `DOCUMENT_GENERATOR` geeft `DOCUMENT_GENERATE`,
 meer `TEMPLATE_VIEW` en `DOCUMENT_VIEW`. Die twee rollen staan ook bij de sleutel in `.env.example` en in de
 Helm-chart.
 
-*5 oktober:* **ZAC's eigen endpoint voor de keuzelijst *Kanaal*** (#47). Zodra de behandelaar in *Document maken* een
+*5 oktober:* **ZAC's eigen endpoint voor de keuzelijst *Variant*** (#47, #53). Zodra de behandelaar in *Document maken* een
 template kiest, vraagt de dialoog
-`GET /rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/kanalen`. Het antwoord heeft
+`GET /rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/varianten`. Het antwoord heeft
 drie velden:
 
 | Veld | Inhoud |
 |---|---|
-| `kanalen` | De kanalen waarvoor de varianten van het template gemaakt zijn, uit het attribuut `kanaal` in ZAC's catalogus, elk één keer. Leeg voor een template zonder varianten per kanaal |
-| `voorgesteldKanaal` | Het kanaal dat het communicatiekanaal van de zaak voorstelt, en anders dat van de standaardvariant. De keuzelijst staat erop |
+| `varianten` | De varianten, elk aangeduid met het kanaal waarvoor ze gemaakt zijn: de kanalen waarvoor de varianten van het template gemaakt zijn, uit het attribuut `kanaal` in ZAC's catalogus, elk één keer. Leeg voor een template zonder varianten per kanaal |
+| `voorgesteldeVariant` | Het kanaal dat het communicatiekanaal van de zaak voorstelt, en anders dat van de standaardvariant. De keuzelijst staat erop |
 | `communicatiekanaal` | De naam van het communicatiekanaal van de zaak, alleen als dat het voorstel deed. De hint noemt het |
 
 Het endpoint toetst dezelfde policy als het genereren, `creeren_document` op de zaak ([§4](#4--autorisatiemodel)), en
@@ -480,10 +480,10 @@ markering in een contract zegt wat er verandert, niet waarom, en dat laatste moe
 Een generatieverzoek benoemt het template en ofwel een expliciete `variantId` ofwel `attributes` voor
 automatische variantkeuze — nooit allebei. Voor een template waarvan de varianten het attribuut `kanaal` in ZAC's
 catalogus dragen (`post` of `digitaal`), stuurt ZAC `attributes`: het kanaal als vereiste en `system.locale` `nl-NL`
-als voorkeur, zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen (#47). Het
-kanaal kiest de behandelaar in *Document maken*, voorgesteld door het communicatiekanaal van de zaak; een nieuwe
-versie krijgt het kanaal van het document. Zonder kanaal, en voor elk ander template, stuurt ZAC geen van beide en
-kiest Epistola de standaardvariant. *5 oktober:* ZAC slaat bij het document het kanaal op waar het om vroeg, ook het
+als voorkeur, zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen (#47). De
+behandelaar kiest de variant in *Document maken*, met de kiezer *Variant* (#53), voorgesteld door het
+communicatiekanaal van de zaak; een nieuwe versie krijgt het kanaal van het document. Zonder kanaal, en voor elk
+ander template, stuurt ZAC geen van beide en kiest Epistola de standaardvariant. *5 oktober:* ZAC slaat bij het document het kanaal op waar het om vroeg, ook het
 kanaal van de standaardvariant als de behandelaar dat in de keuzelijst liet staan. Vroeg het om geen kanaal, omdat de
 behandelaar er geen kon kiezen en het communicatiekanaal er geen voorstelde, dan slaat het geen kanaal op, en vraagt
 ook een nieuwe versie om geen ([§1](#1--functioneel-ontwerp), stap 7). Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
