@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/tenants/[a-z][a-z0-9]*(-[a-z0-9]+)*/catalogs"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/vnd.epistola.v1+json"
+    },
+    "jsonBody": {
+      "items": [
+        {
+          "slug": "system",
+          "id": "system",
+          "name": "System",
+          "type": "SUBSCRIBED",
+          "releasedVersion": "1.0.0"
+        },
+        {
+          "slug": "zac-catalogus",
+          "id": "zac-catalogus",
+          "name": "ZAC-catalogus",
+          "description": "De templates die ZAC tot nu toe gebruikte",
+          "type": "AUTHORED"
+        },
+        {
+          "slug": "zac-besluiten",
+          "id": "zac-besluiten",
+          "name": "Besluiten",
+          "type": "AUTHORED"
+        }
+      ],
+      "page": {
+        "number": 0,
+        "size": 100,
+        "totalElements": 3,
+        "totalPages": 1
+      }
+    }
+  }
+}
