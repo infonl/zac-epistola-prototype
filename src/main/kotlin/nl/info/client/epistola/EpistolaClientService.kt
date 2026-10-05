@@ -25,6 +25,7 @@ import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.selectVariantFor
 import nl.info.client.epistola.model.toEpistolaKanalen
+import nl.info.client.epistola.model.toEpistolaLocales
 import nl.info.zac.configuration.EpistolaSettings
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -69,7 +70,7 @@ class EpistolaClientService @Inject constructor(
 
     /**
      * Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak.
-     * Without a [kanaal], Epistola renders the template's default variant.
+     * Without a [kanaal] and a [locale], Epistola renders the template's default variant.
      * [onJobStatus] hears the job's status at every poll until it finishes.
      */
     @Suppress("LongParameterList")
@@ -79,6 +80,7 @@ class EpistolaClientService @Inject constructor(
         fileName: String,
         correlationId: String,
         kanaal: String? = null,
+        locale: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument {
         val tenant = epistolaSettings.tenantId
@@ -91,14 +93,14 @@ class EpistolaClientService @Inject constructor(
                 GenerateDocumentRequest()
                     .catalogId(epistolaSettings.catalogId)
                     .templateId(templateId)
-                    .attributes(kanaal?.let { selectVariantFor(kanaal = it, catalogId = epistolaSettings.catalogId) })
+                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = epistolaSettings.catalogId))
                     .data(data)
                     .filename(fileName)
                     .correlationId(correlationId)
             )
         }.requestId
         val generationRequest = "generation request '$requestId' for template '$templateId' " +
-            "(correlation id '$correlationId'${kanaal?.let { ", kanaal '$it'" }.orEmpty()})"
+            "(correlation id '$correlationId'${describeVariant(kanaal, locale)?.let { ", $it" }.orEmpty()})"
         LOG.fine { "Epistola accepted $generationRequest" }
 
         var isJobFinished = false
@@ -108,7 +110,7 @@ class EpistolaClientService @Inject constructor(
             if (!isJobFinished) cancelGenerationJob(tenant, requestId)
         }
         if (finishedItem.status == FAILED) throw finishedItem.toGenerationFailure(generationRequest)
-        return downloadDocument(tenant, finishedItem, fileName, generationRequest).copy(kanaal = kanaal)
+        return downloadDocument(tenant, finishedItem, fileName, generationRequest).copy(kanaal = kanaal, locale = locale)
     }
 
     /**
@@ -118,15 +120,20 @@ class EpistolaClientService @Inject constructor(
      * the variant exactly as [generateDocument] does, and unlike a generation it tells straight away when the data
      * breaks the template's contract.
      */
-    fun previewDocument(templateId: String, data: Map<String, Any>, kanaal: String? = null): ByteArray {
-        val previewRequest = "a preview of template '$templateId'${kanaal?.let { " (kanaal '$it')" }.orEmpty()}"
+    fun previewDocument(
+        templateId: String,
+        data: Map<String, Any>,
+        kanaal: String? = null,
+        locale: String? = null
+    ): ByteArray {
+        val previewRequest = "a preview of template '$templateId'${describeVariant(kanaal, locale)?.let { " ($it)" }.orEmpty()}"
         val previewFile = requestEpistola(request = previewRequest, isTemplateRequest = true) {
             generationApi.previewDocument(
                 epistolaSettings.tenantId,
                 PreviewDocumentRequest()
                     .catalogId(epistolaSettings.catalogId)
                     .templateId(templateId)
-                    .attributes(kanaal?.let { selectVariantFor(kanaal = it, catalogId = epistolaSettings.catalogId) })
+                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = epistolaSettings.catalogId))
                     .data(data)
             )
         }
@@ -181,7 +188,8 @@ class EpistolaClientService @Inject constructor(
         readTemplate(templateId).let {
             EpistolaGenerationTemplate(
                 dataContract = it.dataModel ?: it.schema,
-                kanalen = it.toEpistolaKanalen(epistolaSettings.catalogId)
+                kanalen = it.toEpistolaKanalen(epistolaSettings.catalogId),
+                locales = it.toEpistolaLocales(epistolaSettings.catalogId)
             )
         }
 
@@ -289,3 +297,8 @@ class EpistolaClientService @Inject constructor(
             )
         }
 }
+
+private fun describeVariant(kanaal: String?, locale: String?) =
+    listOfNotNull(kanaal?.let { "kanaal '$it'" }, locale?.let { "locale '$it'" })
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString(", ")

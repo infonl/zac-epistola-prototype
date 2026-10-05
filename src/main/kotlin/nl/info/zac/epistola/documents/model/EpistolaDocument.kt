@@ -14,8 +14,8 @@ import java.time.ZonedDateTime
 import java.util.UUID
 
 /**
- * The Epistola template that produced a document in Open Zaak, and the kanaal ZAC asked Epistola for. The document
- * itself is only stored there.
+ * The Epistola template that produced a document in Open Zaak, and the kanaal and the language ZAC asked Epistola for.
+ * The document itself is only stored there.
  */
 @Entity
 @Table(schema = FlywayIntegrator.SCHEMA, name = "epistola_document")
@@ -38,4 +38,11 @@ class EpistolaDocument {
      */
     @Column(name = "kanaal")
     var kanaal: String? = null
+
+    /**
+     * The BCP-47 tag ZAC asked Epistola for as `system.locale`. Null when ZAC asked for no language, for a template whose
+     * variants carry none, and for a document generated before this column existed.
+     */
+    @Column(name = "locale")
+    var locale: String? = null
 }

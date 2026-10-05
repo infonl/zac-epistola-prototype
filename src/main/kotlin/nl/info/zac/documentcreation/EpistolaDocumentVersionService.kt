@@ -19,6 +19,7 @@ import nl.info.zac.documentcreation.exception.EpistolaDocumentNotStoredException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
+import nl.info.zac.documentcreation.model.toInformatieobjectTaal
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.exception.EpistolaNewVersionNotPossibleException
@@ -59,10 +60,10 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) != null
 
     /**
-     * Generates the document again from the template that produced it, asking for the kanaal stored with it while the
-     * template still offers that one, with the zaak's data as it is now, and stores it as the next version of the same
-     * informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored the current
-     * one is left as it was.
+     * Generates the document again from the template that produced it, asking for the kanaal and the language stored
+     * with it while the template still offers them, with the zaak's data as it is now, and stores it as the next version
+     * of the same informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored
+     * the current one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
      * Epistola's copy is deleted.
@@ -90,7 +91,8 @@ class EpistolaDocumentVersionService @Inject constructor(
                 zaak = zaak,
                 templateId = templateId,
                 fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
-                variant = epistolaDocument.kanaal
+                variant = epistolaDocument.kanaal,
+                taal = epistolaDocument.locale
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(
@@ -136,9 +138,11 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaClientService.deleteDocument(generatedDocument.documentId)
         }
 
+    /** A version whose language ZAC did not ask for keeps the language the informatieobject has. */
     private fun EpistolaGeneratedDocument.toNewVersionRequest(author: String) =
         EnkelvoudigInformatieObjectWithLockRequest().apply {
             auteur = author
+            taal = this@toNewVersionRequest.locale?.let(::toInformatieobjectTaal)
             formaat = PDF_MEDIA_TYPE
             bestandsnaam = this@toNewVersionRequest.fileName
             inhoud = this@toNewVersionRequest.content.toBase64String()

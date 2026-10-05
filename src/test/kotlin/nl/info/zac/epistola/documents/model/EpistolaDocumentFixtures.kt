@@ -10,10 +10,12 @@ import java.util.UUID
 fun createEpistolaDocument(
     informatieObjectUUID: UUID = UUID.randomUUID(),
     templateId: String = "fake-template-id",
-    kanaal: String? = null
+    kanaal: String? = null,
+    locale: String? = null
 ) = EpistolaDocument().apply {
     this.informatieObjectUUID = informatieObjectUUID
     this.templateId = templateId
     this.kanaal = kanaal
+    this.locale = locale
     creationDate = ZonedDateTime.now()
 }
