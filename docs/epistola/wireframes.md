@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de schermen 2, 3 en 4 naar wat #7, #8 en #30 hebben gebouwd (30 september). Scherm 3 heeft op 5 oktober de keuzelijst van #47 gekregen, met de naam *Variant* (#53) |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de schermen 2, 3 en 4 naar wat #7, #8 en #30 hebben gebouwd (30 september). Scherm 3 heeft op 5 oktober de keuzelijst van #47 gekregen, met de naam *Variant* (#53), en de keuzelijst *Taal* (#52) |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -111,12 +111,14 @@ verandert.
 
 Dezelfde velden als de bestaande SmartDocuments-dialoog, met één veld eruit en één veld
 niet-onderhandelbaar. *5 oktober:* en één veld erbij, *Variant* (#53; eerst *Kanaal*), maar alleen bij een template met varianten voor
-twee of meer kanalen (#47).
+twee of meer kanalen (#47). *Ook 5 oktober:* en nog een veld erboven, *Taal* (#52), maar alleen bij een template met
+varianten in twee of meer talen.
 
 | Veld | Type | Verplicht | Herkomst |
 |---|---|---|---|
 | Templategroep | `mat-select` | Ja | De groepen die voor dit zaaktype zijn geconfigureerd |
 | Template | `mat-select` | Ja | Leeg tot er een groep is gekozen; toont alleen templates die aan dit zaaktype gekoppeld zijn |
+| Taal *(5 oktober, #52)* | `mat-select` met de talen van het template, bij naam, zoals *Nederlands (Nederland)* en *Engels (Verenigd Koninkrijk)* | Ja, als het er staat | Alleen bij een template met varianten in twee of meer talen; ZAC leest de talen uit het attribuut `system.locale` van de varianten. Voorgeselecteerd op Nederlands als het template dat heeft, en anders op de taal van de standaardvariant, met de hint *Bepaalt in welke taal Epistola het document maakt. Bij Variant staan alleen de varianten die het template in deze taal heeft.* Een andere taal beperkt de keuzes van *Variant* tot de varianten in die taal |
 | Variant *(5 oktober, #47 en #53)* | `mat-select` met *Per post* en *Digitaal* | Ja, als het er staat | Alleen bij een template met varianten voor twee of meer kanalen. Voorgeselecteerd op het kanaal dat het communicatiekanaal van de zaak voorstelt, met de hint *Voorgesteld door het communicatiekanaal van de zaak: E-mail*. Stelt het communicatiekanaal niets voor, dan op het kanaal van de standaardvariant, met de hint *Bepaalt welke variant van het template Epistola maakt.* |
 | Titel | tekstveld | Ja | Door de behandelaar in te vullen |
 | Toelichting | tekstveld | Nee | Door de behandelaar in te vullen |
