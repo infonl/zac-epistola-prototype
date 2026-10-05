@@ -45,7 +45,21 @@
         <mat-label>{{ "template" | translate }}</mat-label>
       </zac-auto-complete>
     </section>
-    @if (variantOptions().length) {
+    @if (taalOptions().length) {
+      <section class="row">
+        <zac-select
+          [form]="form"
+          key="taal"
+          class="col-12"
+          [options]="taalOptions()"
+          [optionDisplayValue]="taalLabel"
+        >
+          <mat-label>{{ "epistola.taal" | translate }}</mat-label>
+          <mat-hint>{{ "epistola.taal.hint" | translate }}</mat-hint>
+        </zac-select>
+      </section>
+    }
+    @if (isVariantChoiceOffered()) {
       <section class="row">
         <zac-select
           [form]="form"

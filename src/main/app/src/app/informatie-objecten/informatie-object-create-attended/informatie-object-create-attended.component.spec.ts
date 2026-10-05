@@ -17,7 +17,7 @@ import { provideMomentDateAdapter } from "@angular/material-moment-adapter";
 import { MatDrawer } from "@angular/material/sidenav";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { provideRouter } from "@angular/router";
-import { TranslateModule } from "@ngx-translate/core";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import {
   provideQueryClient,
   provideTanStackQuery,
@@ -112,6 +112,21 @@ const epistolaTemplateGroup = fromPartial<
     },
   ],
 });
+
+const dutchAndEnglish: GeneratedType<"RestEpistolaVarianten"> = {
+  varianten: ["post", "digitaal"],
+  voorgesteldeVariant: "digitaal",
+  communicatiekanaal: "E-mail",
+  talen: [
+    {
+      taal: "nl-NL",
+      varianten: ["post", "digitaal"],
+      voorgesteldeVariant: "digitaal",
+    },
+    { taal: "en-GB", varianten: ["post"], voorgesteldeVariant: "post" },
+  ],
+  voorgesteldeTaal: "nl-NL",
+};
 
 const loggedInUser = fromPartial<GeneratedType<"RestUser">>({
   id: "fakeUserId1",
@@ -496,6 +511,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       varianten: ["post"],
       voorgesteldeVariant: "post",
       communicatiekanaal: null,
+      talen: [],
+      voorgesteldeTaal: null,
     };
 
     async function chooseTemplateAndFillInTitle() {
@@ -584,6 +601,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         title: "Ontvangstbevestiging aanvraag",
         description: null,
         variant: null,
+        taal: null,
       });
       request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
       await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS + 50);
@@ -636,6 +654,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         varianten: ["post", "digitaal"],
         voorgesteldeVariant: "digitaal",
         communicatiekanaal: "E-mail",
+        talen: [],
+        voorgesteldeTaal: null,
       };
 
       function variantPicker() {
@@ -667,6 +687,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "digitaal"],
           voorgesteldeVariant: "post",
           communicatiekanaal: null,
+          talen: [],
+          voorgesteldeTaal: null,
         });
 
         expect(variantPicker()).toHaveTextContent("epistola.variant.post");
@@ -725,6 +747,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "digitaal"],
           voorgesteldeVariant: "post",
           communicatiekanaal: "Post",
+          talen: [],
+          voorgesteldeTaal: null,
         });
         await sleep();
         fixture.detectChanges();
@@ -750,6 +774,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "digitaal"],
           voorgesteldeVariant: "post",
           communicatiekanaal: "Post",
+          talen: [],
+          voorgesteldeTaal: null,
         });
         await sleep();
         fixture.detectChanges();
@@ -771,6 +797,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "digitaal"],
           voorgesteldeVariant: "digitaal",
           communicatiekanaal: "E-mail",
+          talen: [],
+          voorgesteldeTaal: null,
         });
         await sleep();
 
@@ -783,6 +811,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "digitaal"],
           voorgesteldeVariant: "post",
           communicatiekanaal: "Balie",
+          talen: [],
+          voorgesteldeTaal: null,
         });
         await sleep();
         fixture.detectChanges();
@@ -801,6 +831,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           varianten: ["post", "fakeKanaal"],
           voorgesteldeVariant: "fakeKanaal",
           communicatiekanaal: null,
+          talen: [],
+          voorgesteldeTaal: null,
         });
 
         expect(variantPicker()).toHaveTextContent("fakeKanaal");
@@ -813,6 +845,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         varianten: ["post"],
         voorgesteldeVariant: "post",
         communicatiekanaal: "Post",
+        talen: [],
+        voorgesteldeTaal: null,
       });
 
       expect(
@@ -860,6 +894,148 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       fixture.detectChanges();
 
       expect(generateButton()).toBeEnabled();
+    });
+
+    describe("given a template with Dutch variants by post and digitally, and an English one by post", () => {
+      function taalPicker() {
+        return screen.getByRole("combobox", { name: "epistola.taal" });
+      }
+
+      function variantPicker() {
+        return screen.getByRole("combobox", { name: "epistola.variant" });
+      }
+
+      async function chooseTheTemplate(
+        varianten: GeneratedType<"RestEpistolaVarianten"> = dutchAndEnglish,
+      ) {
+        await fillInValidEpistolaForm(varianten);
+        await settle();
+      }
+
+      async function settle() {
+        await sleep();
+        fixture.detectChanges();
+        // zac-select sets its options only after it has rendered
+        await sleep();
+        fixture.detectChanges();
+      }
+
+      it("offers its languages by their names in Dutch, the language ZAC is shown in, with Dutch preselected", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+
+        expect(taalPicker()).toHaveTextContent("Nederlands (Nederland)");
+        expect(screen.getByText("epistola.taal.hint")).toBeVisible();
+        await user.click(taalPicker());
+        expect(
+          screen.getByRole("option", { name: "Nederlands (Nederland)" }),
+        ).toBeVisible();
+        expect(
+          screen.getByRole("option", { name: "Engels (Verenigd Koninkrijk)" }),
+        ).toBeVisible();
+      });
+
+      it("names the languages in English when ZAC is shown in English", async () => {
+        await setupEpistola();
+        TestBed.inject(TranslateService).use("en");
+        await chooseTheTemplate();
+
+        expect(taalPicker()).toHaveTextContent("Dutch (Netherlands)");
+      });
+
+      it("offers only the variants the chosen language has, and moves to the one suggested in that language", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        expect(variantPicker()).toHaveTextContent("epistola.variant.digitaal");
+
+        await choose("epistola.taal", "Engels (Verenigd Koninkrijk)");
+        await settle();
+
+        expect(variantPicker()).toHaveTextContent("epistola.variant.post");
+        await user.click(variantPicker());
+        expect(
+          screen.getByRole("option", { name: "epistola.variant.post" }),
+        ).toBeVisible();
+        expect(
+          screen.queryByRole("option", { name: "epistola.variant.digitaal" }),
+        ).not.toBeInTheDocument();
+      });
+
+      it("keeps the variant the behandelaar chose while the language they switch to has it too", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        await choose("epistola.variant", "epistola.variant.post");
+
+        await choose("epistola.taal", "Engels (Verenigd Koninkrijk)");
+        await settle();
+        await choose("epistola.taal", "Nederlands (Nederland)");
+        await settle();
+
+        expect(variantPicker()).toHaveTextContent("epistola.variant.post");
+      });
+
+      it("generates the document in the chosen language, in a variant that language has", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+        await choose("epistola.taal", "Engels (Verenigd Koninkrijk)");
+        await settle();
+
+        await user.click(generateButton());
+        await sleep();
+
+        const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
+        expect(request.request.body).toMatchObject({
+          taal: "en-GB",
+          variant: "post",
+        });
+        request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      });
+
+      it("offers no choice of language for a template in one language, and leaves the language to ZAC", async () => {
+        await setupEpistola();
+        await chooseTheTemplate({
+          ...dutchAndEnglish,
+          talen: [
+            {
+              taal: "nl-NL",
+              varianten: ["post", "digitaal"],
+              voorgesteldeVariant: "digitaal",
+            },
+          ],
+        });
+
+        expect(
+          screen.queryByRole("combobox", { name: "epistola.taal" }),
+        ).not.toBeInTheDocument();
+        await user.click(generateButton());
+        await sleep();
+        const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
+        expect(request.request.body).toMatchObject({
+          taal: null,
+          variant: "digitaal",
+        });
+        request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+      });
+
+      it("asks the behandelaar for a language when there is none to preselect", async () => {
+        await setupEpistola();
+        await chooseTheTemplate({
+          ...dutchAndEnglish,
+          talen: [
+            { taal: "en-GB", varianten: ["post"], voorgesteldeVariant: "post" },
+            { taal: "de-DE", varianten: ["post"], voorgesteldeVariant: "post" },
+          ],
+          voorgesteldeTaal: null,
+        });
+
+        expect(taalPicker()).not.toHaveTextContent("Engels");
+        expect(generateButton()).toBeDisabled();
+
+        await choose("epistola.taal", "Duits (Duitsland)");
+        await settle();
+
+        expect(generateButton()).toBeEnabled();
+      });
     });
 
     it("links the document to the task it was created from", async () => {
@@ -1022,6 +1198,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         varianten: ["post", "digitaal"],
         voorgesteldeVariant: "digitaal",
         communicatiekanaal: "E-mail",
+        talen: [],
+        voorgesteldeTaal: null,
       };
 
       beforeAll(() => {
@@ -1121,6 +1299,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           taskId: undefined,
           templateId: "fake-epistola-template-1",
           variant: "post",
+          taal: null,
         });
         const pdf = new Blob(["fakePdfContent"], { type: "application/pdf" });
         request.flush(pdf);
@@ -1139,12 +1318,32 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(documentCreated).not.toHaveBeenCalled();
       });
 
+      it("previews the document in the chosen language, as it would be generated", async () => {
+        await setupEpistola();
+        await chooseTheTemplate(dutchAndEnglish);
+        await choose("epistola.taal", "Engels (Verenigd Koninkrijk)");
+        await sleep();
+        fixture.detectChanges();
+
+        await user.click(previewButton());
+        await sleep();
+
+        const request = httpTestingController.expectOne(EPISTOLA_PREVIEW_URL);
+        expect(request.request.body).toMatchObject({
+          taal: "en-GB",
+          variant: "post",
+        });
+        request.flush(new Blob(["fakePdfContent"]));
+      });
+
       it("previews a template without a choice of variant, with no variant", async () => {
         await setupEpistola();
         await chooseTheTemplate({
           varianten: ["post"],
           voorgesteldeVariant: "post",
           communicatiekanaal: "Post",
+          talen: [],
+          voorgesteldeTaal: null,
         });
 
         await user.click(previewButton());
