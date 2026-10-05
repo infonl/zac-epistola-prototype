@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
+import { DOCUMENT } from "@angular/common";
 import { Component, inject } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Title } from "@angular/platform-browser";
 import { TranslateService } from "@ngx-translate/core";
 import { QueryClient } from "@tanstack/angular-query-experimental";
@@ -21,6 +23,7 @@ export class AppComponent {
   private readonly queryClient = inject(QueryClient);
   private readonly identityService = inject(IdentityService);
   private readonly translateService = inject(TranslateService);
+  private readonly document = inject(DOCUMENT);
   private readonly titleService = inject(Title);
   private readonly fontLoaderService = inject(FontLoaderService);
   private readonly fontPreloadInjectorService = inject(
@@ -31,10 +34,14 @@ export class AppComponent {
     this.titleService.setTitle("Zaakafhandelcomponent");
     this.translateService.addLangs(["nl", "en"]);
     this.translateService.setFallbackLang("nl");
+    this.translateService.onLangChange
+      .pipe(takeUntilDestroyed())
+      .subscribe(({ lang }) => this.setPageLanguage(lang));
     const browserLanguage = this.translateService.getBrowserLang();
     this.translateService.use(
       browserLanguage?.match(/nl|en/) ? browserLanguage : "nl",
     );
+    this.setPageLanguage(this.translateService.getCurrentLang());
 
     void this.queryClient.removeQueries({
       queryKey: this.identityService.readLoggedInUser().queryKey,
@@ -43,5 +50,10 @@ export class AppComponent {
     // Inject font preloads and load fonts with cache busting
     this.fontPreloadInjectorService.injectFontPreloads();
     this.fontLoaderService.loadFonts();
+  }
+
+  /** A language that was set before this component existed raises no change, so the current one is applied too. */
+  private setPageLanguage(lang?: string) {
+    if (lang) this.document.documentElement.lang = lang;
   }
 }
