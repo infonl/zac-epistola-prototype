@@ -17,7 +17,7 @@ bijbehorende projectbord.
 | Document | Onderwerp | Issue |
 |---|---|---|
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
-| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en de vier wijzigingen die Epistola nodig heeft, met ERD | #14 |
+| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en ~~de vier wijzigingen die Epistola nodig heeft~~ *5 oktober:* wat Epistola eraan toevoegt, sinds `V104` drie kolommen op het zaaktype en de tabel `epistola_document` (#51), met ERD | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testcases, positief en negatief, over de acht afgesproken gebieden, plus 8 voor het optionele #9. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testscenario's](testscenarios.md) | De testcases uit het testplan uitgewerkt tot elf testscenario's, één per functionaliteit, met randvoorwaarden, testdata en teststappen, positief en negatief. Volgens het examensjabloon (B1-K1-W4) | #18 |
@@ -38,10 +38,10 @@ overgezet, zodat ook wie geen toegang tot claude.ai heeft ze kan lezen.
 | Client | De officiële Jakarta EE-client van Epistola wordt overgenomen, niet zelf gegenereerd |
 | Generatie | Asynchroon: indienen, de job pollen, downloaden — alles binnen de al geauthenticeerde aanroep |
 | Authenticatie | Een API key van de tenant, met de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER`. Sinds contract 1.3.1 is dat Epistola's ondersteunde methode; de twee JWT-methoden zijn experimenteel |
-| Templategroepen | Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder |
+| ~~Templategroepen~~ Catalog | ~~Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder~~ *5 oktober:* ZAC houdt geen templategroepen meer bij voor Epistola. Elk zaaktype kiest één Epistola-catalog en biedt elk template daarin aan, met één documenttype voor het hele zaaktype (#51) |
 | Autorisatie | Het bestaande recht `creeren_document` wordt hergebruikt, er komt geen Epistola-specifiek recht |
 | Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee. Datums in ISO 8601 |
-| Templatenaam | Het id is de sleutel en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst in het geheugen, en toont ze als Epistola niet bereikbaar is (B16) |
+| Templatenaam | Het id is de sleutel en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst in het geheugen, *5 oktober:* per catalog, en toont ze als Epistola niet bereikbaar is (B16) |
 | Foutafhandeling | Elke Epistola-fout krijgt een eigen foutcode en een melding die zegt of opnieuw proberen helpt. Mislukt de opslag in Open Zaak, dan wordt het document niet bewaard en ook bij Epistola verwijderd (B20, B21) |
 | Namen | Volgen Epistola, niet SmartDocuments: *template* en *templategroep*, ook in het Nederlands (B18) |
 

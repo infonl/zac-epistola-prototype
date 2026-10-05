@@ -7,7 +7,7 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Stand | **29 september 2026, bijgewerkt op 30 september, op 1 oktober door Symon nagelezen** (de samenvatting volgt de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders |
+| Stand | **29 september 2026, bijgewerkt op 30 september, op 1 oktober door Symon nagelezen** (de samenvatting volgt de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders. Op 5 oktober bijgewerkt naar de catalog per zaaktype (#51): VV-12, VV-14, §5 en de verantwoording |
 
 > **Wat dit document is.** De uitkomst van het prototype, vertaald naar besluiten die Dimpact kan nemen: wat er
 > tussen dit prototype en productiegebruik ligt, wat nu al is opgelost, en welke voorstellen realiseerbaar zijn.
@@ -172,10 +172,12 @@ want SmartDocuments mocht niet van gedrag veranderen (DoD 1). Het is een fout di
 **VV-12 · Ondersteuning voor BPMN-zaken** · M · besluit van het ZAC-team over de richting
 *Nu.* Alleen CMMN. Sinds #7 is de beperking zichtbaar (uitgeschakelde actie met toelichting) en weigert de backend
 een BPMN-zaak met een eigen foutcode.
-*Wat er wél al is.* De templategroepen hangen aan de basisklasse `ZaaktypeConfiguration`, niet aan de CMMN-variant,
-dus het datamodel staat het al toe. De payloadbouw bevat niets CMMN-specifieks.
+*Wat er wél al is.* ~~De templategroepen hangen aan de basisklasse `ZaaktypeConfiguration`, niet aan de CMMN-variant,~~
+*5 oktober:* de catalog en het informatieobjecttype staan op de basisklasse `ZaaktypeConfiguration` (#51), niet op de
+CMMN-variant, dus het datamodel staat het al toe. De payloadbouw bevat niets CMMN-specifieks.
 *Wat ontbreekt.* (1) De beheerkaart bestaat alleen in het CMMN-bewerkscherm. (2) Bij een BPMN-configuratie is
-Epistola nooit "ingeschakeld voor het zaaktype". (3) De backend-controle moet weg. (4) Een besluit *waar* een
+Epistola nooit "ingeschakeld voor het zaaktype". (3) De backend-controle moet weg. *5 oktober:* ook het opslaan van de
+catalog vraagt sinds #51 een CMMN-zaaktype. (4) Een besluit *waar* een
 behandelaar in een procesgestuurde zaak een document maakt, want ZAC verbergt daar al veel acties. Dat vierde is een
 productkeuze en geen technische.
 
@@ -188,7 +190,8 @@ productkeuze en geen technische.
 De actie *Nieuwe versie genereren* staat op de pagina van een document dat Epistola maakte, en zet de volgende versie van
 hetzelfde informatieobject in Open Zaak. Wat het kostte, week af van de schatting: Open Zaak's versiestroom bestond al, maar ZAC
 moest onthouden welk template een document maakte (`epistola_document`, `V101`). Of die tabel mag blijven, beslissen de
-stakeholders als ze het prototype in ZAC willen opnemen (TFO §6).
+stakeholders als ze het prototype in ZAC willen opnemen (TFO §6). *5 oktober:* sinds #51 onthoudt ze ook de catalog
+(`V104`), zodat een nieuwe versie het template vindt als het zaaktype naar een andere catalog is overgestapt.
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
 *Voorstel.* Niet beginnen voordat de belastingtest laat zien wat één document kost. Een bulkstroom die een thread
@@ -199,7 +202,7 @@ per document vasthoudt, herhaalt het probleem uit VV-05 op grotere schaal.
 | Onderwerp | Reden |
 |---|---|
 | Een gedeelde `DocumentCreationProvider`-interface (R7) | Met twee providers is het structuur die te vroeg wordt gekocht. Bij een derde provider wel doen, met een sealed uitkomst zoals het ontwerp beschreef |
-| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id had `V100` en alle PR's erboven geraakt en schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het een nieuwe migratie van één kolom |
+| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id had `V100` en alle PR's erboven geraakt en schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het ~~een nieuwe migratie van één kolom~~ *5 oktober:* een tabel met de namen per catalog, want sinds `V104` is er geen rij per template meer om een kolom aan toe te voegen (#51) |
 | `preview` gebruiken voor het dossierdocument | Geen PDF/A, rate-limited, niet opgeslagen (besluit B5) |
 | Een eigen provider-onafhankelijke templatetaal | Buiten scope. Namen en variabelen volgen Epistola, niet SmartDocuments (besluit van 28 september) |
 
@@ -260,8 +263,10 @@ belastingtest).
 
 Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cache` (PR #34, gestapeld op #33 en #32):
 `EpistolaSettings.kt` (geen controle van het schema, R9), `DocumentCreationService.kt:236` (`OPENBAAR`, R6),
-`EpistolaDocumentCreationService.kt` (auteur van het opgeslagen document), `EpistolaTemplateGroup.kt` (hangt aan
-`ZaaktypeConfiguration`), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),
+`EpistolaDocumentCreationService.kt` (auteur van het opgeslagen document), ~~`EpistolaTemplateGroup.kt` (hangt aan
+`ZaaktypeConfiguration`)~~ *5 oktober:* `ZaaktypeConfiguration.kt` (draagt sinds #51 de catalog en het
+informatieobjecttype; `EpistolaTemplateGroup.kt` is weg) en `EpistolaTemplatesService.kt` (biedt alleen bij een
+CMMN-zaaktype templates aan), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),
 `scripts/docker-compose/imports/epistola-wiremock/mappings/` (zeven mappings), en de chart-README en `.env.example`
 (geen rotatie- of verstrijktekst). De Epistola-kant komt uit de reviews op #24 (contract 1.3.1, Epistola Suite
 `3c92193`) en uit de toets van de wachtrij op 28 september (Epistola Suite `e2484c7`, contract `257770d`).
