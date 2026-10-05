@@ -31,8 +31,10 @@ import nl.info.zac.app.admin.model.createRestZaaktypeConfiguration
 import nl.info.zac.app.admin.model.createRestZaaktypeOverzicht
 import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.rest.createRestEpistolaCatalog
+import nl.info.zac.epistola.rest.createRestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.createRestEpistolaTemplate
-import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplateGroup
+import nl.info.zac.epistola.rest.createRestOfferedEpistolaTemplate
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_PRODUCTAANVRAAGTYPE_ALREADY_IN_USE
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_USER_NOT_IN_GROUP
 import nl.info.zac.exception.InputValidationFailedException
@@ -197,28 +199,33 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
         }
     }
 
-    context("Epistola templates") {
+    context("Epistola catalogs and templates") {
         given("a beheerder") {
             val zaaktypeUuid = UUID.randomUUID()
+            val restEpistolaCatalogs = listOf(createRestEpistolaCatalog())
             val restEpistolaTemplates = listOf(createRestEpistolaTemplate())
-            val restMappedEpistolaTemplateGroups = listOf(createRestMappedEpistolaTemplateGroup())
+            val restEpistolaCatalogMapping = createRestEpistolaCatalogMapping()
             every { policyService.readOverigeRechten().beheren } returns true
-            every { epistolaTemplatesService.listTemplates() } returns restEpistolaTemplates
-            every {
-                epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, restMappedEpistolaTemplateGroups)
-            } just runs
+            every { epistolaTemplatesService.listCatalogs() } returns restEpistolaCatalogs
+            every { epistolaTemplatesService.listTemplates("fake-catalog-id") } returns restEpistolaTemplates
+            every { epistolaTemplatesService.readCatalogMapping(zaaktypeUuid) } returns restEpistolaCatalogMapping
+            every { epistolaTemplatesService.storeCatalogMapping(zaaktypeUuid, restEpistolaCatalogMapping) } just runs
 
-            `when`("the Epistola templates are listed and a mapping is stored") {
-                val listedEpistolaTemplates = zaaktypeConfigurationRestService.listEpistolaTemplates()
-                zaaktypeConfigurationRestService.storeEpistolaTemplatesMapping(
+            `when`("the catalogs and a catalog's templates are listed, and a mapping is read and stored") {
+                val listedEpistolaCatalogs = zaaktypeConfigurationRestService.listEpistolaCatalogs()
+                val listedEpistolaTemplates = zaaktypeConfigurationRestService.listEpistolaTemplates("fake-catalog-id")
+                val readEpistolaCatalogMapping = zaaktypeConfigurationRestService.readEpistolaCatalogMapping(zaaktypeUuid)
+                zaaktypeConfigurationRestService.storeEpistolaCatalogMapping(
                     zaaktypeUuid = zaaktypeUuid,
-                    restMappedEpistolaTemplateGroups = restMappedEpistolaTemplateGroups
+                    restEpistolaCatalogMapping = restEpistolaCatalogMapping
                 )
 
-                then("both reach the Epistola templates service") {
+                then("each reaches the Epistola templates service") {
+                    listedEpistolaCatalogs shouldBe restEpistolaCatalogs
                     listedEpistolaTemplates shouldBe restEpistolaTemplates
+                    readEpistolaCatalogMapping shouldBe restEpistolaCatalogMapping
                     verify(exactly = 1) {
-                        epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, restMappedEpistolaTemplateGroups)
+                        epistolaTemplatesService.storeCatalogMapping(zaaktypeUuid, restEpistolaCatalogMapping)
                     }
                 }
             }
@@ -226,12 +233,11 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
 
         given("a user who is not a beheerder") {
             val zaaktypeUuid = UUID.randomUUID()
-            val restMappedEpistolaTemplateGroups = listOf(createRestMappedEpistolaTemplateGroup())
             every { policyService.readOverigeRechten().beheren } returns false
 
-            `when`("the Epistola templates are listed") {
+            `when`("the Epistola catalogs are listed") {
                 val policyException = shouldThrow<PolicyException> {
-                    zaaktypeConfigurationRestService.listEpistolaTemplates()
+                    zaaktypeConfigurationRestService.listEpistolaCatalogs()
                 }
 
                 then("the listing is refused") {
@@ -239,28 +245,52 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
                 }
             }
 
-            `when`("a mapping is stored") {
+            `when`("the templates of a catalog are listed") {
                 val policyException = shouldThrow<PolicyException> {
-                    zaaktypeConfigurationRestService.storeEpistolaTemplatesMapping(
+                    zaaktypeConfigurationRestService.listEpistolaTemplates("fake-catalog-id")
+                }
+
+                then("the listing is refused") {
+                    policyException shouldNotBe null
+                }
+            }
+
+            `when`("the catalog mapping of a zaaktype is read") {
+                val policyException = shouldThrow<PolicyException> {
+                    zaaktypeConfigurationRestService.readEpistolaCatalogMapping(zaaktypeUuid)
+                }
+
+                then("it is refused, since only the admin card shows it") {
+                    policyException shouldNotBe null
+                }
+            }
+
+            `when`("a catalog mapping is stored") {
+                val policyException = shouldThrow<PolicyException> {
+                    zaaktypeConfigurationRestService.storeEpistolaCatalogMapping(
                         zaaktypeUuid = zaaktypeUuid,
-                        restMappedEpistolaTemplateGroups = restMappedEpistolaTemplateGroups
+                        restEpistolaCatalogMapping = createRestEpistolaCatalogMapping()
                     )
                 }
 
                 then("the mapping is refused and not stored") {
                     policyException shouldNotBe null
-                    verify(exactly = 0) { epistolaTemplatesService.storeTemplateMapping(zaaktypeUuid, any()) }
+                    verify(exactly = 0) { epistolaTemplatesService.storeCatalogMapping(zaaktypeUuid, any()) }
                 }
             }
+        }
 
-            `when`("the mapping of a zaaktype is read") {
-                every {
-                    epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
-                } returns restMappedEpistolaTemplateGroups
-                val templateMapping = zaaktypeConfigurationRestService.getEpistolaTemplatesMapping(zaaktypeUuid)
+        given("a behandelaar, who need not be a beheerder") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val restOfferedEpistolaTemplates = listOf(createRestOfferedEpistolaTemplate())
+            every { epistolaTemplatesService.listOfferedTemplates(zaaktypeUuid) } returns restOfferedEpistolaTemplates
 
-                then("it is returned, because the document creation dialog needs it for every behandelaar") {
-                    templateMapping shouldBe restMappedEpistolaTemplateGroups
+            `when`("the templates a zaaktype offers are listed") {
+                val offeredEpistolaTemplates = zaaktypeConfigurationRestService.listOfferedEpistolaTemplates(zaaktypeUuid)
+
+                then("they are returned, because the document creation dialog needs them for every behandelaar") {
+                    offeredEpistolaTemplates shouldBe restOfferedEpistolaTemplates
+                    verify(exactly = 0) { policyService.readOverigeRechten() }
                 }
             }
         }

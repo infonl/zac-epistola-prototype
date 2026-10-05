@@ -4,6 +4,7 @@
  */
 package nl.info.client.epistola
 
+import app.epistola.client.jakarta.model.CatalogDto
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import io.kotest.assertions.throwables.shouldThrow
@@ -24,6 +25,7 @@ import java.time.Duration
 
 private const val FAKE_TENANT_ID = "fake-tenant"
 private const val FAKE_CATALOG_ID = "fake-catalog"
+private const val FAKE_DEFAULT_CATALOG_ID = "fake-default-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_TEMPLATE_ID_WITH_INVALID_DATA = "fake-template-with-invalid-data"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
@@ -38,7 +40,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
     val epistolaSettings = createEpistolaSettings(
         restUrl = epistolaServer.baseUri,
         tenantId = FAKE_TENANT_ID,
-        catalogId = FAKE_CATALOG_ID,
+        catalogId = FAKE_DEFAULT_CATALOG_ID,
         generationTimeout = Duration.ZERO
     )
     val epistolaClientProducer = EpistolaClientProducer(
@@ -50,6 +52,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
     fun createService() = EpistolaClientService(
         generationApi = epistolaClientProducer.generationApi(),
         templatesApi = templatesApi,
+        catalogsApi = epistolaClientProducer.catalogsApi(),
         epistolaSettings = epistolaSettings
     )
 
@@ -57,12 +60,15 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
     afterSpec { epistolaServer.stop() }
 
     context("reading a template to generate from") {
-        given("a configured tenant and catalog") {
+        given("a configured tenant and a catalog") {
             `when`("the template is read") {
                 epistolaServer.clearRecordedRequests()
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID
+                )
 
-                then("Epistola is asked for the template inside that tenant's catalog") {
+                then("Epistola is asked for the template inside that catalog of the tenant") {
                     epistolaServer.requestPaths.single() shouldBe
                         "/tenants/$FAKE_TENANT_ID/catalogs/$FAKE_CATALOG_ID/templates/$FAKE_TEMPLATE_ID"
                 }
@@ -92,11 +98,33 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
         }
     }
 
+    context("listing catalogs") {
+        given("a configured tenant") {
+            `when`("the catalogs are listed") {
+                epistolaServer.clearRecordedRequests()
+                val catalogs = createService().listCatalogs()
+
+                then("Epistola is asked for the tenant's catalogs, as many on a page as its contract allows") {
+                    epistolaServer.requestPaths.single() shouldBe "/tenants/$FAKE_TENANT_ID/catalogs"
+                    epistolaServer.requestQueries.single() shouldBe "page=0&size=100"
+                }
+
+                and("each catalog is read with its slug, name and type") {
+                    catalogs.map { Triple(it.slug, it.name, it.type) } shouldBe listOf(
+                        Triple("system", "System", CatalogDto.TypeEnum.SUBSCRIBED),
+                        Triple(FAKE_CATALOG_ID, "fakeCatalogName", CatalogDto.TypeEnum.AUTHORED)
+                    )
+                }
+            }
+        }
+    }
+
     context("generating a document") {
-        given("a configured tenant and catalog") {
+        given("a configured tenant and a catalog") {
             `when`("a document is generated") {
                 epistolaServer.clearRecordedRequests()
                 val generatedDocument = createService().generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -120,6 +148,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
             `when`("a document is generated for a kanaal") {
                 epistolaServer.clearRecordedRequests()
                 val generatedDocument = createService().generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -146,6 +175,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
             `when`("a document is generated for a kanaal in a language") {
                 epistolaServer.clearRecordedRequests()
                 val generatedDocument = createService().generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -180,6 +210,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
             `when`("a document is generated in a language, for a template whose variants are made for no kanaal") {
                 epistolaServer.clearRecordedRequests()
                 createService().generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -202,10 +233,11 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
     }
 
     context("previewing a document") {
-        given("a configured tenant and catalog") {
+        given("a configured tenant and a catalog") {
             `when`("a preview is made for a kanaal in a language") {
                 epistolaServer.clearRecordedRequests()
                 val preview = createService().previewDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     kanaal = "digitaal",
@@ -236,7 +268,11 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
             `when`("a preview is made") {
                 epistolaServer.clearRecordedRequests()
                 val epistolaTemplateDataRejectedException = shouldThrow<EpistolaTemplateDataRejectedException> {
-                    createService().previewDocument(templateId = FAKE_TEMPLATE_ID_WITH_INVALID_DATA, data = emptyMap())
+                    createService().previewDocument(
+                        catalogId = FAKE_CATALOG_ID,
+                        templateId = FAKE_TEMPLATE_ID_WITH_INVALID_DATA,
+                        data = emptyMap()
+                    )
                 }
 
                 then("the field Epistola names is read from its problem response, so the behandelaar can see it") {
@@ -271,6 +307,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 
 private class FakeEpistolaServer {
     val requestPaths = mutableListOf<String>()
+    val requestQueries = mutableListOf<String>()
     val requestBodies = mutableListOf<String>()
     val requestUserAgents = mutableListOf<String>()
 
@@ -278,6 +315,7 @@ private class FakeEpistolaServer {
         createContext("/") { exchange ->
             val path = exchange.requestURI.path
             requestPaths += path
+            exchange.requestURI.query?.let { requestQueries += it }
             exchange.requestHeaders.getFirst("User-Agent")?.let { requestUserAgents += it }
             val requestBody = exchange.requestBody.readBytes().toString(StandardCharsets.UTF_8)
             requestBody.takeIf { it.isNotEmpty() }?.let { requestBodies += it }
@@ -290,6 +328,7 @@ private class FakeEpistolaServer {
 
     fun clearRecordedRequests() {
         requestPaths.clear()
+        requestQueries.clear()
         requestBodies.clear()
         requestUserAgents.clear()
     }
@@ -300,6 +339,7 @@ private class FakeEpistolaServer {
         when {
             path.endsWith("/documents/preview") && requestBody.contains(FAKE_TEMPLATE_ID_WITH_INVALID_DATA) ->
                 exchange.send(PROBLEM_MEDIA_TYPE, TEMPLATE_DATA_INVALID_RESPONSE, status = 400)
+            path.endsWith("/catalogs") -> exchange.send(EPISTOLA_MEDIA_TYPE, CATALOG_LIST_RESPONSE)
             path.contains("/catalogs/") -> exchange.send(EPISTOLA_MEDIA_TYPE, TEMPLATE_RESPONSE)
             path.endsWith("/documents/generate") -> exchange.send(EPISTOLA_MEDIA_TYPE, GENERATION_JOB_RESPONSE)
             path.contains("/documents/jobs/") -> exchange.send(EPISTOLA_MEDIA_TYPE, COMPLETED_JOB_RESPONSE)
@@ -345,6 +385,16 @@ private class FakeEpistolaServer {
                 { "id": "other-catalog", "title": "Other catalog", "isDefault": false,
                   "attributes": { "other-catalog.kanaal": "sms" } }
               ]
+            }
+        """.trimIndent()
+
+        val CATALOG_LIST_RESPONSE = """
+            {
+              "items": [
+                { "slug": "system", "id": "system", "name": "System", "type": "SUBSCRIBED" },
+                { "slug": "$FAKE_CATALOG_ID", "id": "$FAKE_CATALOG_ID", "name": "fakeCatalogName", "type": "AUTHORED" }
+              ],
+              "page": { "number": 0, "size": 100, "totalElements": 2, "totalPages": 1 }
             }
         """.trimIndent()
 

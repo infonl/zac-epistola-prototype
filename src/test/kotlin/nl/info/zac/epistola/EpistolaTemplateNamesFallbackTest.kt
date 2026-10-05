@@ -12,18 +12,16 @@ import io.mockk.every
 import io.mockk.mockk
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
+import nl.info.client.epistola.model.createCatalog
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.client.zgw.ztc.ZtcClientService
+import nl.info.zac.admin.ZaaktypeCmmnConfigurationBeheerService
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplate
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
-import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplate
-import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplateGroup
-import nl.info.zac.epistola.templates.EpistolaTemplateGroupRepository
-import nl.info.zac.epistola.templates.model.createEpistolaTemplateGroup
+import nl.info.zac.epistola.rest.RestOfferedEpistolaTemplate
+import nl.info.zac.epistola.rest.createRestEpistolaCatalogMapping
 import nl.info.zac.exception.ErrorCode
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
@@ -31,19 +29,20 @@ import java.util.UUID
 
 class EpistolaTemplateNamesFallbackTest : BehaviorSpec({
     val epistolaClientService = mockk<EpistolaClientService>()
-    val epistolaTemplateGroupRepository = mockk<EpistolaTemplateGroupRepository>()
     val zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>()
+    val zaaktypeCmmnConfigurationBeheerService = mockk<ZaaktypeCmmnConfigurationBeheerService>()
     val ztcClientService = mockk<ZtcClientService>()
     val documentCreationProviderConfiguration = mockk<DocumentCreationProviderConfiguration>()
     val zaaktypeUuid = UUID.randomUUID()
+    val otherZaaktypeUuid = UUID.randomUUID()
     val informatieObjectTypeUuid = UUID.randomUUID()
 
     afterEach { checkUnnecessaryStub() }
 
     fun newEpistolaTemplatesService() = EpistolaTemplatesService(
         epistolaClientService = epistolaClientService,
-        epistolaTemplateGroupRepository = epistolaTemplateGroupRepository,
         zaaktypeConfigurationService = zaaktypeConfigurationService,
+        zaaktypeCmmnConfigurationBeheerService = zaaktypeCmmnConfigurationBeheerService,
         ztcClientService = ztcClientService,
         documentCreationProviderConfiguration = documentCreationProviderConfiguration
     )
@@ -54,115 +53,152 @@ class EpistolaTemplateNamesFallbackTest : BehaviorSpec({
         cause = RuntimeException("fakeCause")
     )
 
-    fun givenStoredTemplates(vararg templateIds: String) {
-        val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+    fun givenZaaktypeOffering(zaaktypeUuid: UUID, catalogId: String) {
         every { documentCreationProviderConfiguration.activeProvider } returns DocumentCreationProvider.EPISTOLA
         every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
-            zaaktypeCmmnConfiguration
-        every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-            createEpistolaTemplateGroup(
-                name = "Vergunningen",
-                zaaktypeConfiguration = zaaktypeCmmnConfiguration,
-                templateIdsToInformatieObjectTypeUuids = templateIds.associateWith { informatieObjectTypeUuid }
-            )
-        )
+            createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply {
+                isEpistolaEnabled = true
+                epistolaCatalogId = catalogId
+                epistolaInformatieobjecttypeUuid = informatieObjectTypeUuid
+            }
     }
 
-    fun mappedTemplate(id: String, name: String) = RestMappedEpistolaTemplate(
+    fun offeredTemplate(id: String, name: String) = RestOfferedEpistolaTemplate(
         id = id,
         name = name,
         informatieObjectTypeUUID = informatieObjectTypeUuid
     )
 
-    context("reading the template mapping while Epistola cannot be reached") {
-        given("a mapping that was read while Epistola answered, and Epistola then cannot be reached") {
+    context("listing a zaaktype's templates while Epistola cannot be reached") {
+        given("templates that were listed while Epistola answered, and Epistola then cannot be reached") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } returns
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
                 listOf(createTemplateSummary(id = "fake-template-1", name = "Besluit evenementenvergunning")) andThenThrows
                 epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
 
-            `when`("the mapping is read again") {
-                val templateMapping = service.readTemplateMapping(zaaktypeUuid)
+            `when`("the templates are listed again") {
+                val offeredTemplates = service.listOfferedTemplates(zaaktypeUuid)
 
                 then("the template is still listed by the name Epistola gave it last") {
-                    templateMapping shouldBe listOf(
-                        RestMappedEpistolaTemplateGroup(
-                            name = "Vergunningen",
-                            templates = listOf(mappedTemplate("fake-template-1", "Besluit evenementenvergunning"))
-                        )
-                    )
+                    offeredTemplates shouldBe listOf(offeredTemplate("fake-template-1", "Besluit evenementenvergunning"))
+                }
+            }
+        }
+
+        given("the names of two catalogs that were remembered, and Epistola then cannot be reached") {
+            val service = newEpistolaTemplatesService()
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog-1")
+            givenZaaktypeOffering(otherZaaktypeUuid, catalogId = "fake-catalog-2")
+            every { epistolaClientService.listTemplates("fake-catalog-1") } returns
+                listOf(createTemplateSummary(id = "fake-template-1", name = "Uit catalog 1")) andThenThrows
+                epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
+            every { epistolaClientService.listTemplates("fake-catalog-2") } returns
+                listOf(createTemplateSummary(id = "fake-template-2", name = "Uit catalog 2")) andThenThrows
+                epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
+            service.listOfferedTemplates(zaaktypeUuid)
+            service.listOfferedTemplates(otherZaaktypeUuid)
+
+            `when`("the templates of each zaaktype are listed") {
+                val offeredTemplates = service.listOfferedTemplates(zaaktypeUuid)
+                val otherOfferedTemplates = service.listOfferedTemplates(otherZaaktypeUuid)
+
+                then("each zaaktype lists only the templates remembered for its own catalog") {
+                    offeredTemplates shouldBe listOf(offeredTemplate("fake-template-1", "Uit catalog 1"))
+                    otherOfferedTemplates shouldBe listOf(offeredTemplate("fake-template-2", "Uit catalog 2"))
+                }
+            }
+        }
+
+        given("one catalog whose names were remembered, and a zaaktype of another catalog while Epistola cannot be reached") {
+            val service = newEpistolaTemplatesService()
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog-1")
+            givenZaaktypeOffering(otherZaaktypeUuid, catalogId = "fake-catalog-2")
+            every { epistolaClientService.listTemplates("fake-catalog-1") } returns
+                listOf(createTemplateSummary(id = "fake-template-1", name = "Uit catalog 1"))
+            every { epistolaClientService.listTemplates("fake-catalog-2") } throws
+                epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
+            service.listOfferedTemplates(zaaktypeUuid)
+
+            `when`("the templates of the zaaktype of the other catalog are listed") {
+                val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
+                    service.listOfferedTemplates(otherZaaktypeUuid)
+                }
+
+                then("the failure is passed on, rather than the templates of a catalog the zaaktype does not use") {
+                    epistolaRequestFailedException.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
                 }
             }
         }
 
         given("a template that was renamed in Epistola after its name was remembered") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } returns
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
                 listOf(createTemplateSummary(id = "fake-template-1", name = "Old name")) andThen
                 listOf(createTemplateSummary(id = "fake-template-1", name = "New name"))
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
 
-            `when`("the mapping is read while Epistola answers") {
-                val templateMapping = service.readTemplateMapping(zaaktypeUuid)
+            `when`("the templates are listed while Epistola answers") {
+                val offeredTemplates = service.listOfferedTemplates(zaaktypeUuid)
 
                 then("Epistola's live name replaces the remembered one") {
-                    templateMapping.single().templates shouldBe listOf(mappedTemplate("fake-template-1", "New name"))
+                    offeredTemplates shouldBe listOf(offeredTemplate("fake-template-1", "New name"))
                 }
             }
         }
 
         given("a template that was renamed, read live, and Epistola then cannot be reached") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } returns
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
                 listOf(createTemplateSummary(id = "fake-template-1", name = "Old name")) andThen
                 listOf(createTemplateSummary(id = "fake-template-1", name = "New name")) andThenThrows
                 epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
-            service.readTemplateMapping(zaaktypeUuid)
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
 
-            `when`("the mapping is read") {
-                val templateMapping = service.readTemplateMapping(zaaktypeUuid)
+            `when`("the templates are listed") {
+                val offeredTemplates = service.listOfferedTemplates(zaaktypeUuid)
 
                 then("the newest name is listed, not the first one that was remembered") {
-                    templateMapping.single().templates shouldBe listOf(mappedTemplate("fake-template-1", "New name"))
+                    offeredTemplates shouldBe listOf(offeredTemplate("fake-template-1", "New name"))
                 }
             }
         }
 
         given("a template that Epistola dropped from its catalog after its name was remembered") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1", "fake-template-2")
-            every { epistolaClientService.listTemplates() } returns
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
                 listOf(
                     createTemplateSummary(id = "fake-template-1", name = "Kept"),
                     createTemplateSummary(id = "fake-template-2", name = "Dropped")
                 ) andThen
                 listOf(createTemplateSummary(id = "fake-template-1", name = "Kept")) andThenThrows
                 epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
-            service.readTemplateMapping(zaaktypeUuid)
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
 
-            `when`("the mapping is read while Epistola cannot be reached") {
-                val templateMapping = service.readTemplateMapping(zaaktypeUuid)
+            `when`("the templates are listed while Epistola cannot be reached") {
+                val offeredTemplates = service.listOfferedTemplates(zaaktypeUuid)
 
                 then("the dropped template does not come back from the remembered names") {
-                    templateMapping.single().templates shouldBe listOf(mappedTemplate("fake-template-1", "Kept"))
+                    offeredTemplates shouldBe listOf(offeredTemplate("fake-template-1", "Kept"))
                 }
             }
         }
 
         given("Epistola cannot be reached and no name was read since ZAC started") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } throws epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } throws
+                epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
 
-            `when`("the mapping is read") {
+            `when`("the templates are listed") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    service.readTemplateMapping(zaaktypeUuid)
+                    service.listOfferedTemplates(zaaktypeUuid)
                 }
 
                 then("the failure is passed on, so the caller can tell the user why nothing is listed") {
@@ -173,15 +209,15 @@ class EpistolaTemplateNamesFallbackTest : BehaviorSpec({
 
         given("names that were remembered, and Epistola then refuses ZAC access") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } returns
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
                 listOf(createTemplateSummary(id = "fake-template-1", name = "Besluit evenementenvergunning")) andThenThrows
                 epistolaFailure(ERROR_CODE_EPISTOLA_ACCESS_DENIED)
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listOfferedTemplates(zaaktypeUuid)
 
-            `when`("the mapping is read") {
+            `when`("the templates are listed") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    service.readTemplateMapping(zaaktypeUuid)
+                    service.listOfferedTemplates(zaaktypeUuid)
                 }
 
                 then("the refusal is passed on, since only an unreachable Epistola falls back to remembered names") {
@@ -191,28 +227,28 @@ class EpistolaTemplateNamesFallbackTest : BehaviorSpec({
         }
     }
 
-    context("storing the template mapping while Epistola cannot be reached") {
+    context("storing a catalog mapping while Epistola cannot be reached") {
         given("names that were remembered, and Epistola then cannot be reached") {
             val service = newEpistolaTemplatesService()
-            givenStoredTemplates("fake-template-1")
-            every { epistolaClientService.listTemplates() } returns
-                listOf(createTemplateSummary(id = "fake-template-1", name = "Besluit evenementenvergunning")) andThenThrows
+            givenZaaktypeOffering(zaaktypeUuid, catalogId = "fake-catalog")
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
+                listOf(createTemplateSummary(id = "fake-template-1", name = "Besluit evenementenvergunning"))
+            every { zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid) } returns
+                createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            every { epistolaClientService.listCatalogs() } returns listOf(createCatalog(slug = "fake-catalog")) andThenThrows
                 epistolaFailure(ERROR_CODE_EPISTOLA_UNAVAILABLE)
-            service.readTemplateMapping(zaaktypeUuid)
+            service.listCatalogs()
+            service.listOfferedTemplates(zaaktypeUuid)
 
             `when`("a mapping is stored") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    service.storeTemplateMapping(
-                        zaaktypeUuid,
-                        listOf(
-                            createRestMappedEpistolaTemplateGroup(
-                                templates = listOf(createRestMappedEpistolaTemplate(id = "fake-template-1"))
-                            )
-                        )
+                    service.storeCatalogMapping(
+                        zaaktypeUuid = zaaktypeUuid,
+                        catalogMapping = createRestEpistolaCatalogMapping(catalogId = "fake-catalog")
                     )
                 }
 
-                then("it fails, since a save is checked against Epistola's live list and never the remembered names") {
+                then("it fails, since a save is checked against Epistola's live list of catalogs and never against memory") {
                     epistolaRequestFailedException.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
                 }
             }

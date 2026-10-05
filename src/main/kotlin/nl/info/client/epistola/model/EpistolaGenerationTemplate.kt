@@ -10,12 +10,12 @@ import app.epistola.client.jakarta.model.VariantSummaryDto
 
 /**
  * The variant attribute by which ZAC asks Epistola for a template's variant. A template author defines it in the
- * catalog ZAC uses, so a variant carries it as `<catalog>.kanaal`.
+ * template's own catalog, so a variant carries it as `<catalog>.kanaal`.
  */
 const val EPISTOLA_KANAAL_ATTRIBUTE = "kanaal"
 
 /** Epistola's own catalog, which every tenant has and which defines the locale attribute. */
-private const val SYSTEM_CATALOG = "system"
+const val SYSTEM_CATALOG = "system"
 private const val LOCALE_ATTRIBUTE = "locale"
 
 /**

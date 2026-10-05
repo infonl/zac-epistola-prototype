@@ -12,8 +12,8 @@ import jakarta.transaction.TransactionalException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
-import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
+import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
 import nl.info.client.zgw.util.extractUuid
@@ -85,14 +85,11 @@ class EpistolaDocumentCreationService @Inject constructor(
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
-            val informatieObjectType = ztcClientService.readInformatieobjecttype(
-                epistolaTemplatesService.readInformatieobjecttypeUuid(
-                    zaaktypeUuid = zaak.zaaktype.extractUuid(),
-                    templateId = templateId
-                )
-            )
+            val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            val informatieObjectType = ztcClientService.readInformatieobjecttype(offeredCatalog.informatieObjectTypeUuid)
             val generatedDocument = createDocument(
                 zaak = zaak,
+                catalogId = offeredCatalog.catalogId,
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
                 taskId = taskId,
@@ -113,6 +110,7 @@ class EpistolaDocumentCreationService @Inject constructor(
             ).also {
                 rememberGeneration(
                     informatieObjectUUID = it.informatieobject.extractUuid(),
+                    catalogId = offeredCatalog.catalogId,
                     templateId = templateId,
                     kanaal = generatedDocument.kanaal,
                     locale = generatedDocument.locale
@@ -135,6 +133,7 @@ class EpistolaDocumentCreationService @Inject constructor(
     @Suppress("LongParameterList")
     fun createDocument(
         zaak: Zaak,
+        catalogId: String,
         templateId: String,
         fileName: String,
         taskId: String? = null,
@@ -145,13 +144,18 @@ class EpistolaDocumentCreationService @Inject constructor(
         try {
             readGenerationInput(
                 zaak = zaak,
+                catalogId = catalogId,
                 templateId = templateId,
                 taskId = taskId,
                 variant = variant,
                 taal = taal
             ).let { generationInput ->
-                LOG.fine { "Generating Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
+                LOG.fine {
+                    "Generating Epistola document from template '$templateId' of catalog '$catalogId' " +
+                        "for zaak '${zaak.identificatie}'"
+                }
                 epistolaClientService.generateDocument(
+                    catalogId = catalogId,
                     templateId = templateId,
                     data = generationInput.templateData,
                     fileName = fileName,
@@ -179,17 +183,22 @@ class EpistolaDocumentCreationService @Inject constructor(
         taskId: String? = null,
         variant: String? = null
     ): ByteArray {
-        epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
+        val catalogId = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).catalogId
         return try {
             readGenerationInput(
                 zaak = zaak,
+                catalogId = catalogId,
                 templateId = templateId,
                 taskId = taskId,
                 variant = variant,
                 taal = null
             ).let { generationInput ->
-                LOG.fine { "Previewing Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
+                LOG.fine {
+                    "Previewing Epistola document from template '$templateId' of catalog '$catalogId' " +
+                        "for zaak '${zaak.identificatie}'"
+                }
                 epistolaClientService.previewDocument(
+                    catalogId = catalogId,
                     templateId = templateId,
                     data = generationInput.templateData,
                     kanaal = generationInput.kanaal,
@@ -208,12 +217,13 @@ class EpistolaDocumentCreationService @Inject constructor(
 
     private fun readGenerationInput(
         zaak: Zaak,
+        catalogId: String,
         templateId: String,
         taskId: String?,
         variant: String?,
         taal: String?
     ): GenerationInput {
-        val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
+        val generationTemplate = epistolaClientService.readGenerationTemplate(catalogId = catalogId, templateId = templateId)
         val locale = generationTemplate.resolveLocale(requestedLocale = taal)
         return GenerationInput(
             templateData = documentCreationDataService.createEpistolaData(
@@ -233,11 +243,12 @@ class EpistolaDocumentCreationService @Inject constructor(
         )
     }
 
-    /** The template's variants, by kanaal and by language. */
-    fun readVarianten(zaak: Zaak, templateId: String): EpistolaGenerationTemplate {
-        epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
-        return epistolaClientService.readGenerationTemplate(templateId)
-    }
+    /** The template's variants, by kanaal and by language, read from the catalog the zaaktype offers. */
+    fun readVarianten(zaak: Zaak, templateId: String): EpistolaGenerationTemplate =
+        epistolaClientService.readGenerationTemplate(
+            catalogId = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).catalogId,
+            templateId = templateId
+        )
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
@@ -272,10 +283,17 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Not remembering the template only costs the document its "new version" action, so it does not fail a
      * document that is already in the zaak.
      */
-    private fun rememberGeneration(informatieObjectUUID: UUID, templateId: String, kanaal: String?, locale: String?) {
+    private fun rememberGeneration(
+        informatieObjectUUID: UUID,
+        catalogId: String,
+        templateId: String,
+        kanaal: String?,
+        locale: String?
+    ) {
         try {
             epistolaDocumentRepository.createEpistolaDocument(
                 informatieObjectUUID = informatieObjectUUID,
+                catalogId = catalogId,
                 templateId = templateId,
                 kanaal = kanaal,
                 locale = locale
