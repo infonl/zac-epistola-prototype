@@ -157,6 +157,7 @@ export class InformatieObjectCreateAttendedComponent
       Validators.maxLength(50),
     ]),
     taskId: this.formBuilder.control<string | null>(null),
+    taal: this.formBuilder.control<string | null>(null),
     variant: this.formBuilder.control<string | null>(null),
   });
 
@@ -166,10 +167,46 @@ export class InformatieObjectCreateAttendedComponent
 
   protected readonly varianten =
     signal<GeneratedType<"RestEpistolaVarianten"> | null>(null);
-  protected readonly variantOptions = computed(() => {
-    const varianten = this.varianten()?.varianten ?? [];
-    return varianten.length > 1 ? varianten : [];
+  private readonly chosenTaal = toSignal(this.form.controls.taal.valueChanges, {
+    initialValue: null,
   });
+  protected readonly taalOptions = computed(() => {
+    const talen = this.varianten()?.talen ?? [];
+    return talen.length > 1 ? talen.map(({ taal }) => taal) : [];
+  });
+  /**
+   * Named by the browser in the language ZAC is shown in, not by the labels of Epistola's code list `bcp-47`, which
+   * are in English only.
+   */
+  protected readonly taalLabel = (taal: string) => {
+    try {
+      return (
+        new Intl.DisplayNames([this.uiLanguage()], {
+          type: "language",
+          languageDisplay: "standard",
+        }).of(taal) ?? taal
+      );
+    } catch {
+      return taal;
+    }
+  };
+  /** Without a chosen language, the variants are those of the language ZAC asks Epistola for. */
+  private readonly variantenInTaal = computed(() => {
+    const varianten = this.varianten();
+    const taal = this.chosenTaal() ?? varianten?.voorgesteldeTaal;
+    return (
+      varianten?.talen.find((epistolaTaal) => epistolaTaal.taal === taal) ??
+      null
+    );
+  });
+  protected readonly isVariantChoiceOffered = computed(
+    () => (this.varianten()?.varianten.length ?? 0) > 1,
+  );
+  protected readonly variantOptions = computed(() =>
+    this.isVariantChoiceOffered()
+      ? (this.variantenInTaal()?.varianten ?? this.varianten()?.varianten ?? [])
+      : [],
+  );
   protected readonly variantLabel = (variant: string) =>
     VARIANT_LABELS[variant] ?? variant;
   private readonly chosenVariant = toSignal(
@@ -254,9 +291,11 @@ export class InformatieObjectCreateAttendedComponent
    * chosen template, and for a variant where the template asks for one.
    */
   protected get canPreviewEpistolaDocument() {
-    const { template, variant } = this.form.controls;
+    const { template, taal, variant } = this.form.controls;
     return (
       !!template.value &&
+      taal.enabled &&
+      taal.valid &&
       variant.enabled &&
       variant.valid &&
       !this.createEpistolaDocumentMutation.isPending() &&
@@ -371,6 +410,12 @@ export class InformatieObjectCreateAttendedComponent
           ),
         )
         .subscribe((varianten) => this.offerVarianten(varianten));
+
+      this.form.controls.taal.valueChanges
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(() => {
+          if (this.form.controls.taal.enabled) this.followTaal();
+        });
     }
 
     templateGroupsFetcher
@@ -397,7 +442,9 @@ export class InformatieObjectCreateAttendedComponent
 
   /** Hiding the picker until another template is chosen and its variants arrive would make the form below it jump. */
   private awaitVarianten() {
-    const { variant } = this.form.controls;
+    const { taal, variant } = this.form.controls;
+    taal.disable();
+    taal.setValue(null);
     variant.setValue(null);
     variant.disable();
   }
@@ -406,13 +453,46 @@ export class InformatieObjectCreateAttendedComponent
     varianten: GeneratedType<"RestEpistolaVarianten"> | null,
   ) {
     this.varianten.set(varianten);
-    const { variant } = this.form.controls;
-    const isChoiceOffered = this.variantOptions().length > 0;
-    variant.setValidators(isChoiceOffered ? Validators.required : null);
-    variant.setValue(
-      isChoiceOffered ? (varianten?.voorgesteldeVariant ?? null) : null,
+    const { taal, variant } = this.form.controls;
+    const isTaalChoiceOffered = this.taalOptions().length > 0;
+    taal.setValidators(isTaalChoiceOffered ? Validators.required : null);
+    taal.setValue(
+      isTaalChoiceOffered ? (varianten?.voorgesteldeTaal ?? null) : null,
     );
+    taal.enable({ emitEvent: false });
+    this.followTaal();
     variant.enable();
+  }
+
+  /**
+   * Only a variant the template has in the chosen language can be chosen, so that Epistola never falls back to its
+   * default variant. A variant the language does not have gives way to the one suggested in that language. The
+   * languages themselves are not narrowed by the variant: a behandelaar could then not reach a language whose variants
+   * share no kanaal with the chosen one.
+   */
+  private followTaal() {
+    const { variant } = this.form.controls;
+    const variantOptions = this.variantOptions();
+    variant.setValidators(variantOptions.length ? Validators.required : null);
+    if (variant.value && variantOptions.includes(variant.value)) {
+      variant.updateValueAndValidity();
+      return;
+    }
+    const variantenInTaal = this.variantenInTaal();
+    variant.setValue(
+      variantOptions.length
+        ? ((variantenInTaal ?? this.varianten())?.voorgesteldeVariant ?? null)
+        : null,
+    );
+  }
+
+  /** Dutch is ZAC's own default language. */
+  private uiLanguage() {
+    return (
+      this.translateService.getCurrentLang() ||
+      this.translateService.getFallbackLang() ||
+      "nl"
+    );
   }
 
   private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
@@ -452,6 +532,7 @@ export class InformatieObjectCreateAttendedComponent
         values.title!,
         values.description,
         values.variant,
+        values.taal,
       );
       return;
     }
@@ -483,7 +564,7 @@ export class InformatieObjectCreateAttendedComponent
   }
 
   protected previewEpistolaDocument() {
-    const { template, variant } = this.form.getRawValue();
+    const { template, variant, taal } = this.form.getRawValue();
     if (!template) return;
 
     this.previewEpistolaDocumentMutation.mutate(
@@ -492,6 +573,7 @@ export class InformatieObjectCreateAttendedComponent
         taskId: this.taak?.id,
         templateId: template.id,
         variant,
+        taal,
       },
       {
         onSuccess: (pdf) =>
@@ -512,6 +594,7 @@ export class InformatieObjectCreateAttendedComponent
     title: string,
     description?: string | null,
     variant?: string | null,
+    taal?: string | null,
   ) {
     this.generatingForZaakUuid.set(this.zaak.uuid);
     this.createEpistolaDocumentMutation.mutate(
@@ -522,6 +605,7 @@ export class InformatieObjectCreateAttendedComponent
         title,
         description,
         variant,
+        taal,
       },
       {
         onSuccess: () => {
