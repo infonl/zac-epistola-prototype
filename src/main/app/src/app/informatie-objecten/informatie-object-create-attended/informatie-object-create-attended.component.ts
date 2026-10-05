@@ -373,6 +373,10 @@ export class InformatieObjectCreateAttendedComponent
             return;
           }
         }
+
+        if (templateGroups.length === 1) {
+          this.form.controls.templateGroup.setValue(templateGroups[0]);
+        }
       });
   }
 
