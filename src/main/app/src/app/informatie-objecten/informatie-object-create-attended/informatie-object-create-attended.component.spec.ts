@@ -197,8 +197,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
   }
 
   async function fillInValidForm() {
-    await choose("sjabloonGroep", "Group One");
-    await choose("sjabloon", "Template One");
+    await choose("templategroep", "Group One");
+    await choose("template", "Template One");
     await user.type(field("titel"), "Aanvraag formulier");
   }
 
@@ -211,7 +211,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
   it("offers the template groups configured for the zaaktype", async () => {
     await setup();
 
-    await user.click(field("sjabloonGroep"));
+    await user.click(field("templategroep"));
 
     expect(screen.getByRole("option", { name: "Group One" })).toBeVisible();
     expect(screen.getByRole("option", { name: "Group Two" })).toBeVisible();
@@ -247,7 +247,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       .flush([informatieobjecttype]);
 
     // Deliberately not flushed yet: the SmartDocuments fetch for the template groups is still in flight.
-    await user.click(field("sjabloonGroep"));
+    await user.click(field("templategroep"));
 
     expect(
       screen.queryByRole("option", { name: "Group One" }),
@@ -266,15 +266,15 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
   it("leaves the template group to the user when the zaaktype offers more than one", async () => {
     await setup();
 
-    expect(field("sjabloonGroep")).toHaveValue("");
-    expect(field("sjabloon")).toBeDisabled();
+    expect(field("templategroep")).toHaveValue("");
+    expect(field("template")).toBeDisabled();
   });
 
   it("offers the templates of the chosen template group", async () => {
     await setup();
 
-    await choose("sjabloonGroep", "Group One");
-    await user.click(field("sjabloon"));
+    await choose("templategroep", "Group One");
+    await user.click(field("template"));
 
     expect(screen.getByRole("option", { name: "Template One" })).toBeVisible();
     expect(screen.getByRole("option", { name: "Template Two" })).toBeVisible();
@@ -283,18 +283,18 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
   it("chooses the only template of a group without asking", async () => {
     await setup();
 
-    await choose("sjabloonGroep", "Group Two");
+    await choose("templategroep", "Group Two");
 
-    expect(field("sjabloon")).toHaveValue("Template Three");
-    expect(field("sjabloon")).toBeDisabled();
+    expect(field("template")).toHaveValue("Template Three");
+    expect(field("template")).toBeDisabled();
   });
 
   it("locks the template group it was opened for", async () => {
     await setup({ smartDocumentsGroupId: "fakeGroupId1" });
 
-    expect(field("sjabloonGroep")).toHaveValue("Group One");
-    expect(field("sjabloonGroep")).toBeDisabled();
-    expect(field("sjabloon")).toHaveValue("");
+    expect(field("templategroep")).toHaveValue("Group One");
+    expect(field("templategroep")).toBeDisabled();
+    expect(field("template")).toHaveValue("");
   });
 
   it("locks the template it was opened for", async () => {
@@ -303,16 +303,16 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       smartDocumentsTemplateId: "fakeTemplateId1",
     });
 
-    expect(field("sjabloonGroep")).toHaveValue("Group One");
-    expect(field("sjabloon")).toHaveValue("Template One");
-    expect(field("sjabloon")).toBeDisabled();
+    expect(field("templategroep")).toHaveValue("Group One");
+    expect(field("template")).toHaveValue("Template One");
+    expect(field("template")).toBeDisabled();
   });
 
   it("fills in the informatieobjecttype and vertrouwelijkheid of the template", async () => {
     await setup();
 
-    await choose("sjabloonGroep", "Group One");
-    await choose("sjabloon", "Template One");
+    await choose("templategroep", "Group One");
+    await choose("template", "Template One");
 
     expect(field("informatieobjectType")).toHaveValue("Bijlage");
     expect(field("vertrouwelijkheidaanduiding")).toHaveValue(
@@ -489,8 +489,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     };
 
     async function chooseTemplateAndFillInTitle() {
-      await choose("sjabloonGroep", "Brieven");
-      await choose("sjabloon", "Standaardbrief");
+      await choose("templategroep", "Brieven");
+      await choose("template", "Standaardbrief");
       await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
     }
 
@@ -507,16 +507,16 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     it("chooses the template group when the zaaktype offers only one, and leaves the choice of template open", async () => {
       await setupEpistola();
 
-      expect(field("sjabloonGroep")).toHaveValue("Brieven");
-      expect(field("sjabloon")).toBeEnabled();
-      expect(field("sjabloon")).toHaveValue("");
+      expect(field("templategroep")).toHaveValue("Brieven");
+      expect(field("template")).toBeEnabled();
+      expect(field("template")).toHaveValue("");
     });
 
     it("offers the template groups the beheerder arranged for Epistola", async () => {
       await setupEpistola();
 
-      await choose("sjabloonGroep", "Brieven");
-      await user.click(field("sjabloon"));
+      await choose("templategroep", "Brieven");
+      await user.click(field("template"));
 
       expect(
         screen.getByRole("option", { name: "Standaardbrief" }),
@@ -529,8 +529,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     it("fills in the informatieobjecttype and vertrouwelijkheid of the template", async () => {
       await setupEpistola();
 
-      await choose("sjabloonGroep", "Brieven");
-      await choose("sjabloon", "Standaardbrief");
+      await choose("templategroep", "Brieven");
+      await choose("template", "Standaardbrief");
 
       expect(field("informatieobjectType")).toHaveValue("Bijlage");
       expect(field("vertrouwelijkheidaanduiding")).toHaveValue(
@@ -699,7 +699,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         await setupEpistola();
         await chooseTheTemplate();
 
-        await user.clear(field("sjabloon"));
+        await user.clear(field("template"));
         fixture.detectChanges();
 
         expect(kanaalPicker()).toHaveAttribute("aria-disabled", "true");
@@ -727,7 +727,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         await setupEpistola();
         await chooseTheTemplate();
 
-        await user.clear(field("sjabloon"));
+        await user.clear(field("template"));
         await user.click(
           screen.getByRole("option", { name: "Ontvangstbevestiging" }),
         );
@@ -752,7 +752,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         await chooseTheTemplate();
         expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.digitaal");
 
-        await user.clear(field("sjabloon"));
+        await user.clear(field("template"));
         await user.click(
           screen.getByRole("option", { name: "Ontvangstbevestiging" }),
         );
@@ -764,7 +764,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         });
         await sleep();
 
-        await user.clear(field("sjabloon"));
+        await user.clear(field("template"));
         await user.click(
           screen.getByRole("option", { name: "Standaardbrief" }),
         );
