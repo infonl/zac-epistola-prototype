@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de schermen 2, 3 en 4 naar wat #7, #8 en #30 hebben gebouwd (30 september). Scherm 3 heeft op 5 oktober de keuzelijst *Kanaal* van #47 gekregen |
+| Stand | Besproken met de stakeholders; bijgewerkt na het overleg van 21 september 2026, scherm 1 bij de bouw van #3 op 24 september, en de schermen 2, 3 en 4 naar wat #7, #8 en #30 hebben gebouwd (30 september). Scherm 3 heeft op 5 oktober de keuzelijst van #47 gekregen, met de naam *Variant* (#53) |
 | Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
@@ -110,14 +110,14 @@ verandert.
 > Component: dialoog vanuit de zaakdetailpagina
 
 Dezelfde velden als de bestaande SmartDocuments-dialoog, met één veld eruit en één veld
-niet-onderhandelbaar. *5 oktober:* en één veld erbij, *Kanaal*, maar alleen bij een template met varianten voor
+niet-onderhandelbaar. *5 oktober:* en één veld erbij, *Variant* (#53; eerst *Kanaal*), maar alleen bij een template met varianten voor
 twee of meer kanalen (#47).
 
 | Veld | Type | Verplicht | Herkomst |
 |---|---|---|---|
 | Templategroep | `mat-select` | Ja | De groepen die voor dit zaaktype zijn geconfigureerd |
 | Template | `mat-select` | Ja | Leeg tot er een groep is gekozen; toont alleen templates die aan dit zaaktype gekoppeld zijn |
-| Kanaal *(5 oktober, #47)* | `mat-select` met *Per post* en *Digitaal* | Ja, als het er staat | Alleen bij een template met varianten voor twee of meer kanalen. Voorgeselecteerd op het kanaal dat het communicatiekanaal van de zaak voorstelt, met de hint *Voorgesteld door het communicatiekanaal van de zaak: E-mail*. Stelt het communicatiekanaal niets voor, dan op het kanaal van de standaardvariant, met de hint *Bepaalt welke variant van de template Epistola maakt.* |
+| Variant *(5 oktober, #47 en #53)* | `mat-select` met *Per post* en *Digitaal* | Ja, als het er staat | Alleen bij een template met varianten voor twee of meer kanalen. Voorgeselecteerd op het kanaal dat het communicatiekanaal van de zaak voorstelt, met de hint *Voorgesteld door het communicatiekanaal van de zaak: E-mail*. Stelt het communicatiekanaal niets voor, dan op het kanaal van de standaardvariant, met de hint *Bepaalt welke variant van het template Epistola maakt.* |
 | Titel | tekstveld | Ja | Door de behandelaar in te vullen |
 | Toelichting | tekstveld | Nee | Door de behandelaar in te vullen |
 | Documenttype | read-only | — | Uit de beheermapping, zodra het template is gekozen |
