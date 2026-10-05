@@ -202,6 +202,12 @@ of the stakeholder review of this document.
 | Could have | #9 | New version of an Epistola document — the DoD itself marks it optional. *Built on 30 September (PR #43).* |
 | Won't have | — | BPMN support; batch generation; the collect-based background collector; ~~OAuth client credentials~~; ~~template caching~~; migration of existing SmartDocuments templates. All recorded as verbetervoorstellen in #20. *1 October: OAuth is experimental since contract 1.3.1 and no longer an alternative. Caching the template name was asked for at the meeting of 28 September and built in #30.* |
 
+*5 October: two extras were built beyond the DoD, and are not in the rows above because they are no requirement:
+#44, the progress of a generation shown as steps ([PR #46](https://github.com/infonl/zac-epistola-prototype/pull/46)),
+and #47, a template's variant chosen by kanaal ([PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)).
+By decision B25 of 1 October they get no test case in the test plan; their evidence is the unit and integration tests
+and the live checks in their PRs.*
+
 ~~Board totals: 22 issues, 70 estimate points across werkprocessen B1-K1-W1 through W5 and B1-K2-W1 through W3.~~
 *1 October: 30 items on the board. #30 and #31 came from the meeting of 28 September, and #35 to #40 from the
 improvement proposals (#20), as optional Backlog.*

@@ -297,6 +297,22 @@ code {
   margin-bottom: 11px;
 }
 
+.fieldhint {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* An annotation on the wireframe, not text the screen shows. */
+.fieldnote {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--new);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .grid2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

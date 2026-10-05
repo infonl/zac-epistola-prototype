@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6). Op 1 oktober bijgewerkt naar de variantkeuze per kanaal (#47, §5 en §6) |
+| Stand | 25 september 2026 — bijgewerkt naar wat #4 ([PR #24](https://github.com/infonl/zac-epistola-prototype/pull/24)), #3, #6 ([PR #27](https://github.com/infonl/zac-epistola-prototype/pull/27)) en #5 ([PR #29](https://github.com/infonl/zac-epistola-prototype/pull/29)) hebben gebouwd, en naar de review op #24: contract 1.3.1, en live nagegaan op de testtenant. Op 30 september bijgewerkt naar de foutafhandeling van #8 (§5), de besluiten van 28 september en wat #7 en #30 hebben gebouwd (§6), en naar contract en client 1.4.0 (§3), en met een nieuwe versie van een Epistola-document (#9, §1 en §6). De vraag over de herkomsttabel van #9 is daarna een vraag voor opname in ZAC geworden (§6). Op 1 oktober bijgewerkt naar de variantkeuze per kanaal (#47, §5 en §6), en op 5 oktober naar de keuzelijst *Kanaal* in de dialoog, het endpoint dat die vult en de regel voor het opgeslagen kanaal (#47, §1, §5 en §6) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -43,6 +43,12 @@ gebouwde versie noemen Epistola wel (§5).
    uitvoerformaat is statische tekst "PDF" in plaats van een keuzelijst met één optie; documenttype en
    vertrouwelijkheid zijn read-only en komen uit de beheermapping, zodat een behandelaar een document niet
    onder het verkeerde informatieobjecttype kan wegschrijven.
+   *5 oktober:* heeft het gekozen template varianten voor twee of meer kanalen, dan toont de dialoog ook een keuzelijst
+   **Kanaal** met *Per post* en *Digitaal* (#47). Die staat op het kanaal dat het communicatiekanaal van de zaak
+   voorstelt, en de hint noemt dat communicatiekanaal; stelt het niets voor, dan op het kanaal van de standaardvariant.
+   Het gekozen kanaal, ook het voorgeselecteerde, is het kanaal waar ZAC Epistola om vraagt. Heeft het template minder
+   dan twee kanalen, dan ontbreekt de keuzelijst en vraagt ZAC om het kanaal dat het communicatiekanaal voorstelt, of om
+   geen ([§5](#verzoek)).
 4. **Generatie** — ZAC leest de zaak uit Open Zaak en de initiator uit de BRP of KvK *op dat moment*, bouwt
    de payload ([§3](#3--datamapping)) en dient hem in bij Epistola. Generatie is **asynchroon**: het
    indienen levert een job op, ZAC pollt die tot hij klaar is en downloadt dan de PDF
@@ -51,7 +57,8 @@ gebouwde versie noemen Epistola wel (§5).
 5. **Opslag en koppeling** — de teruggekregen PDF wordt in de Documenten API van Open Zaak opgeslagen als
    `EnkelvoudigInformatieObject` en aan de zaak gekoppeld als `ZaakInformatieObject` — binnen hetzelfde
    geauthenticeerde verzoek ([§2](#2--provider-abstractie)). ZAC houdt geen documentregistratie bij. Het onthoudt alleen welk
-   template het document maakte, voor stap 7 ([datamodel](datamodel.md)).
+   template het document maakte, voor stap 7 ([datamodel](datamodel.md)). *5 oktober:* en het kanaal waar ZAC Epistola
+   om vroeg, of geen als het om geen vroeg (#47).
 6. **Preview** — Solr-herindexering en de WebSocket-notificatie laten het document verschijnen op het
    tabblad Documenten van de zaak, waar het met metadata en een in-browserpreview opent zoals elk ander
    document.
@@ -63,6 +70,12 @@ gebouwde versie noemen Epistola wel (§5).
    terechtkomen. De aanroeper heeft het recht nodig om voor die zaak documenten te maken én om aan het document een
    versie toe te voegen (`creeren_document` en `toevoegen_nieuwe_versie`), en het zaaktype moet het template nog
    aanbieden. De actie staat alleen bij een document waarvan ZAC het template kent, zolang Epistola de provider is.
+   *5 oktober:* de nieuwe versie vraagt om het kanaal dat bij het document is opgeslagen, zolang het template dat
+   kanaal nog heeft, en anders om het kanaal dat het communicatiekanaal nu voorstelt (#47). Is er bij het document geen
+   kanaal opgeslagen, omdat er bij stap 3 niets te vragen was, dan kreeg het de standaardvariant, en vraagt ook de
+   nieuwe versie om geen kanaal: ze krijgt dezelfde standaardvariant, zolang het communicatiekanaal niets voorstelt.
+   Om het kanaal van de standaardvariant vragen zou een andere variant van dat kanaal kunnen geven, bijvoorbeeld een
+   Nederlandse naast een Engelse standaardvariant.
 
 ---
 
@@ -403,7 +416,7 @@ dat contract gelezen en niet voorgesteld.
 | `DELETE /tenants/{tenantId}/documents/jobs/{requestId}` | Ja | `DOCUMENT_GENERATE` | Annuleert een job die de timeout overschrijdt. Een job die al klaar is, weigert dat met `409` |
 | `GET /tenants/{tenantId}/documents/{documentId}` | Ja | `DOCUMENT_VIEW` | Downloadt de PDF — `application/pdf` met een bestandsnaam en grootte |
 | `DELETE /tenants/{tenantId}/documents/{documentId}` | Ja, sinds #6 | `DOCUMENT_GENERATE` | Verwijdert de PDF bij Epistola zodra hij in Open Zaak staat, en ook als het opslaan mislukt (B20), in plaats van hem daar maanden te laten staan ([bewaartermijn](#bewaartermijn-bij-epistola)). Live nagegaan: `204`, daarna `404` |
-| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping) |
+| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping). *5 oktober:* in dezelfde aanroep ook de varianten met hun attributen, waaruit ZAC de kanalen van het template leest (#47) |
 | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` | Ja | `TEMPLATE_VIEW` | De templates die het beheerscherm per zaaktype aanbiedt (#3) |
 | `POST /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}/validate` | Nee | `TEMPLATE_VIEW` | Toetst data tegen het contract zonder te genereren. Waarom ZAC het niet vooraf aanroept, staat in [§3](#ontbrekende-optionele-velden) |
 | `POST /tenants/{tenantId}/documents/preview` | Nee | `DOCUMENT_GENERATE` | Synchroon, maar alleen preview: geen PDF/A, rate-limited, niet bewaard |
@@ -420,6 +433,24 @@ de eerste poll een `403`. ZAC annuleert de job dan ([§5](#foutafhandeling)), ma
 de drie rechten via twee rollen: `DOCUMENT_GENERATOR` geeft `DOCUMENT_GENERATE`, en `CONTENT_VIEWER` geeft onder
 meer `TEMPLATE_VIEW` en `DOCUMENT_VIEW`. Die twee rollen staan ook bij de sleutel in `.env.example` en in de
 Helm-chart.
+
+*5 oktober:* **ZAC's eigen endpoint voor de keuzelijst *Kanaal*** (#47). Zodra de behandelaar in *Document maken* een
+template kiest, vraagt de dialoog
+`GET /rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/kanalen`. Het antwoord heeft
+drie velden:
+
+| Veld | Inhoud |
+|---|---|
+| `kanalen` | De kanalen waarvoor de varianten van het template gemaakt zijn, uit het attribuut `kanaal` in ZAC's catalogus, elk één keer. Leeg voor een template zonder varianten per kanaal |
+| `voorgesteldKanaal` | Het kanaal dat het communicatiekanaal van de zaak voorstelt, en anders dat van de standaardvariant. De keuzelijst staat erop |
+| `communicatiekanaal` | De naam van het communicatiekanaal van de zaak, alleen als dat het voorstel deed. De hint noemt het |
+
+Het endpoint toetst dezelfde policy als het genereren, `creeren_document` op de zaak ([§4](#4--autorisatiemodel)), en
+weigert een template dat het zaaktype niet aanbiedt, allebei vóór het Epistola iets vraagt. Daarna leest het het
+template met de aanroep `GET …/templates/{templateId}` uit de tabel. Het antwoord wordt niet bewaard, omdat het
+communicatiekanaal van de zaak kan veranderen terwijl de pagina openstaat. Mislukt de aanroep, dan meldt de frontend
+niets: de keuzelijst blijft weg, en bij het genereren vraagt ZAC om het kanaal dat het communicatiekanaal voorstelt,
+of om geen.
 
 ### Authenticatie
 
@@ -452,7 +483,10 @@ catalogus dragen (`post` of `digitaal`), stuurt ZAC `attributes`: het kanaal als
 als voorkeur, zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen (#47). Het
 kanaal kiest de behandelaar in *Document maken*, voorgesteld door het communicatiekanaal van de zaak; een nieuwe
 versie krijgt het kanaal van het document. Zonder kanaal, en voor elk ander template, stuurt ZAC geen van beide en
-kiest Epistola de standaardvariant. Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
+kiest Epistola de standaardvariant. *5 oktober:* ZAC slaat bij het document het kanaal op waar het om vroeg, ook het
+kanaal van de standaardvariant als de behandelaar dat in de keuzelijst liet staan. Vroeg het om geen kanaal, omdat de
+behandelaar er geen kon kiezen en het communicatiekanaal er geen voorstelde, dan slaat het geen kanaal op, en vraagt
+ook een nieuwe versie om geen ([§1](#1--functioneel-ontwerp), stap 7). Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
 een `correlationId`, die ZAC op de **UUID** van de zaak zet. Epistola echoot die terug en bewaart hem, dus
 de waarde belandt in het audittrail van een derde partij en in elke supportuitwisseling. Beide
 identificeren de zaak vanuit ZAC even goed en terugzoeken kost in geen van beide gevallen extra, maar de
@@ -562,7 +596,8 @@ Er zijn drie, elk voor iets anders:
   Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
   Een document van vóór `V101` heeft geen rij en dus geen actie. Of de tabel mag blijven, staat onder *Nog open*.
   Sinds #47 staat er ook het kanaal van de variant in (`V102`), zodat een nieuwe versie in hetzelfde kanaal komt, ook
-  als de behandelaar dat kanaal tegen het communicatiekanaal in koos.
+  als de behandelaar dat kanaal tegen het communicatiekanaal in koos. *5 oktober:* het kanaal waar ZAC Epistola om
+  vroeg, en geen als het om geen vroeg ([§1](#1--functioneel-ontwerp), stap 7).
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
   hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
 
