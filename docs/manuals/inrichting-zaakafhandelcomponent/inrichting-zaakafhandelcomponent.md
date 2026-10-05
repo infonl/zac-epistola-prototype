@@ -612,6 +612,14 @@ Epistola is de andere documentcreatieapplicatie die ZAC kan gebruiken. ZAC gebru
 
 **LET OP: met Epistola kan alleen een document worden gemaakt bij zaken van een CMMN-zaaktype.** Een BPMN-zaaktype heeft geen Epistola-instellingen. In een zaak die door een BPMN-proces wordt gestuurd staat *Document maken* uitgeschakeld, met een toelichting bij het menu-item.
 
+De templates worden in Epistola gemaakt en daar ingedeeld in catalogs. Per zaaktype kies je één catalog, en het zaaktype biedt elk template in die catalog aan. Een template dat in Epistola aan de catalog wordt toegevoegd, is daarna meteen te kiezen bij *Document maken*, zonder dat er in ZAC iets hoeft te veranderen.
+
+- Documenten maken met Epistola aanzetten voor het huidige zaaktype
+- Catalog kiezen: de catalog in Epistola waaruit het zaaktype zijn templates haalt. Daaronder staan de templates die de catalog nu heeft. Zolang er voor het zaaktype geen catalog is gekozen, staat de catalog uit de installatie-instellingen (`EPISTOLA_CATALOG_ID`) geselecteerd
+- Documenttype kiezen: het documenttype waaronder elk document dat met Epistola voor dit zaaktype wordt gemaakt, in Open Zaak wordt opgeslagen. De vertrouwelijkheidaanduiding volgt uit het documenttype
+
+Staat Epistola aan, dan zijn de catalog en het documenttype verplicht. Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren.
+
 # Inrichting in OpenZaak - voor functionaliteiten in ZAC
 
 ## Procestermijnen
