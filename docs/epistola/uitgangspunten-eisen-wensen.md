@@ -7,7 +7,7 @@
 | Opdrachtgever | Team Geneva · Hanneke van de Horst |
 | Periode | 9 september – 9 oktober 2026 |
 | Bronnen | Examenafspraken v5 (getekend) · projectbeschrijving *PRJ-Epistola integration in ZAC* |
-| Stand | Afgestemd met de stakeholders op 21 september 2026 en de feedback verwerkt. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/5xw7jszczk9b3DDAYQfVAH`, dat niet meer wordt bijgewerkt |
+| Stand | Afgestemd met de stakeholders op 21 september 2026 en de feedback verwerkt. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/5xw7jszczk9b3DDAYQfVAH`, dat niet meer wordt bijgewerkt. Op 5 oktober bijgewerkt naar het besluit van die dag: een Epistola-catalog per zaaktype in plaats van templategroepen in ZAC (#51) |
 
 > **Over deze versie.** De tekst is die van het document dat de stakeholders op 21 september zagen, in het Engels
 > zoals het toen geschreven is. Wat sindsdien is veranderd, staat er met een datum bij: doorgehaald waar een
@@ -36,8 +36,9 @@ system. §5 records what that distinction costs.
 
 ### Afbakening
 
-**Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of the available Epistola
-templates and template groups; generation, storage in Open Zaak and linking to the zaak; the admin and behandelaar
+**Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of ~~the available Epistola
+templates and template groups~~ *5 October:* the Epistola catalog whose templates the zaaktype offers, and the document
+type they are stored under (#51); generation, storage in Open Zaak and linking to the zaak; the admin and behandelaar
 frontends; authorisation; error handling; test execution and knowledge transfer.
 
 **Buiten scope:** BPMN zaken; output formats other than PDF; batch generation; migrating existing SmartDocuments
@@ -66,17 +67,24 @@ the template-groups requirement into the per-zaaktype one.
 | 6 | ZAC stores the generated PDF in Open Zaak and shows a clear error message when storage fails. | #6, #8 | Backlog | Done |
 | 7 | ZAC links the stored document to the zaak; the zaakdetailpagina shows metadata and a preview. | #6 | Backlog | Done |
 | 8 | The agreed test cases — configuratie, autorisatie, creatie, datamapping, Open Zaak-opslag, zaakkoppeling, preview, foutafhandeling — are executed and recorded, including known limitations. | #18, #19 | Backlog | #18 Done; #19 In review (test report in [PR #41](https://github.com/infonl/zac-epistola-prototype/pull/41)) |
-| 9 | The beheerder can set the available Epistola **templategroepen and templates** per zaaktype. The groups are ZAC's own; Epistola keeps templates flat. | #3 | Ready | Done |
+| 9 | The beheerder can set the available Epistola **templategroepen and templates** per zaaktype. ~~The groups are ZAC's own; Epistola keeps templates flat.~~ *5 October: see the note below.* | #3 | Ready | Done |
 | 10 | Main lessons learned, recommendations and follow-up steps documented on the Confluence wiki page. | #10 | Backlog | In review (the page exists; the final demo is still to come) |
 | 11 | *Optional:* a new version of a document previously created through Epistola can be created and displayed per the document-detail requirements. | #9 | Optioneel | In review (built in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)) |
 
 > **Besluit op DoD-item 9 — 21 september.** "Templategroepen" assumes a group structure, and Epistola has none. Its
 > published contract models templates as flat within a tenant, with *variants* selected by *attributes* — the same
-> letter in another form — and *catalogs* as installable packages. Neither is a grouping a beheerder would recognise.
+> letter in another form — and *catalogs* as installable packages. ~~Neither is a grouping a beheerder would recognise.~~
 >
-> **The groups therefore live in ZAC.** The beheerder creates them and hangs flat Epistola templates underneath,
+> ~~**The groups therefore live in ZAC.** The beheerder creates them and hangs flat Epistola templates underneath,
 > which costs one column on the per-zaaktype table that already exists. The requirement is met on ZAC's side rather
-> than mapped onto a concept the provider does not have, and #3 is unblocked.
+> than mapped onto a concept the provider does not have, and #3 is unblocked.~~
+
+> *5 October 2026: the stakeholders reversed this decision at the overleg of 5 October (#51): the catalog is the
+> grouping. ZAC keeps no template groups for Epistola any more: each zaaktype chooses one Epistola catalog, and offers
+> every template in it. For
+> **DoD 9**, the catalog takes the place of the template group, and the templates are those in the catalog. For
+> **DoD 3**, the templates available for a zaaktype are those of its catalog; the beheerder chooses the catalog, not the
+> templates. The document type moves from one per template to one per zaaktype, chosen next to the catalog.*
 
 ## 3. Doelen
 
@@ -248,8 +256,11 @@ The two criteria on #13 that writing alone could not meet have both been met. Th
 presented at the overleg of 21 September, with their intent, scope and acceptance criteria, and this document was
 reviewed with the stakeholders and their feedback processed.
 
-Where the overleg changed the plan, the outcome sits where it applies: the template groups live in ZAC (§2), and the
+Where the overleg changed the plan, the outcome sits where it applies: ~~the template groups live in ZAC (§2), and~~ the
 board priorities of #7 and #8 stay as they are (§6). All decisions of that overleg are kept together on #21.
+
+*5 October: the overleg of 5 October reversed the template groups of 21 September: ZAC keeps none for Epistola, and
+each zaaktype chooses an Epistola catalog instead (#51, the note under §2).*
 
 ---
 
