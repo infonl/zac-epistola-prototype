@@ -41,7 +41,7 @@ const INFORMATIEOBJECTTYPES_URL =
   "/rest/informatieobjecten/informatieobjecttypes/fakeZaaktypeUuid";
 const EPISTOLA_CREATE_URL = "/rest/document-creation/epistola/create-document";
 const EPISTOLA_TEMPLATES_URL =
-  "/rest/zaakafhandelparameters/fakeZaaktypeUuid/epistola-templates-mapping";
+  "/rest/zaakafhandelparameters/fakeZaaktypeUuid/epistola-templates";
 const EPISTOLA_STATUS_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/status";
 const EPISTOLA_VARIANTEN_URL =
@@ -95,23 +95,18 @@ const epistolaZaak = fromPartial<GeneratedType<"RestZaak">>({
   },
 });
 
-const epistolaTemplateGroup = fromPartial<
-  GeneratedType<"RestMappedEpistolaTemplateGroup">
->({
-  name: "Brieven",
-  templates: [
-    {
-      id: "fake-epistola-template-1",
-      name: "Standaardbrief",
-      informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
-    },
-    {
-      id: "fake-epistola-template-2",
-      name: "Ontvangstbevestiging",
-      informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
-    },
-  ],
-});
+const epistolaTemplates: GeneratedType<"RestOfferedEpistolaTemplate">[] = [
+  {
+    id: "fake-epistola-template-1",
+    name: "Standaardbrief",
+    informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
+  },
+  {
+    id: "fake-epistola-template-2",
+    name: "Ontvangstbevestiging",
+    informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
+  },
+];
 
 const loggedInUser = fromPartial<GeneratedType<"RestUser">>({
   id: "fakeUserId1",
@@ -428,8 +423,8 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
 
     async function setupEpistola(
       inputs: { taak?: GeneratedType<"RestTask"> } = {},
-      answerTemplateGroups: (request: TestRequest) => void = (request) =>
-        request.flush([epistolaTemplateGroup]),
+      answerTemplates: (request: TestRequest) => void = (request) =>
+        request.flush(epistolaTemplates),
     ) {
       testQueryClient.setQueryData(
         ["/rest/identity/loggedInUser"],
@@ -471,9 +466,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       httpTestingController
         .expectOne(INFORMATIEOBJECTTYPES_URL)
         .flush([informatieobjecttype]);
-      answerTemplateGroups(
-        httpTestingController.expectOne(EPISTOLA_TEMPLATES_URL),
-      );
+      answerTemplates(httpTestingController.expectOne(EPISTOLA_TEMPLATES_URL));
       await sleep();
       fixture.detectChanges();
     }
@@ -493,23 +486,21 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     }
 
     async function fillInValidEpistolaForm() {
-      await choose("templategroep", "Brieven");
       await choose("template", "Standaardbrief");
       await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
     }
 
-    it("chooses the template group when the zaaktype offers only one, and leaves the choice of template open", async () => {
+    it("asks for no template group, since Epistola offers the templates of the zaaktype's catalog directly", async () => {
       await setupEpistola();
 
-      expect(field("templategroep")).toHaveValue("Brieven");
+      expect(screen.queryByLabelText("templategroep")).not.toBeInTheDocument();
       expect(field("template")).toBeEnabled();
       expect(field("template")).toHaveValue("");
     });
 
-    it("offers the template groups the beheerder arranged for Epistola", async () => {
+    it("offers every template of the zaaktype's catalog", async () => {
       await setupEpistola();
 
-      await choose("templategroep", "Brieven");
       await user.click(field("template"));
 
       expect(
@@ -520,10 +511,24 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       ).toBeVisible();
     });
 
+    it("chooses the template without asking when the catalog holds only one", async () => {
+      await setupEpistola({}, (request) =>
+        request.flush([epistolaTemplates[0]]),
+      );
+      await sleep();
+      httpTestingController.expectOne(EPISTOLA_VARIANTEN_URL).flush({
+        varianten: [],
+      });
+      await sleep();
+      fixture.detectChanges();
+
+      expect(field("template")).toHaveValue("Standaardbrief");
+      expect(field("template")).toBeDisabled();
+    });
+
     it("fills in the informatieobjecttype and vertrouwelijkheid of the template", async () => {
       await setupEpistola();
 
-      await choose("templategroep", "Brieven");
       await choose("template", "Standaardbrief");
 
       expect(field("informatieobjectType")).toHaveValue("Bijlage");
@@ -931,7 +936,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
     });
 
-    it("says why there are no template groups when they cannot be loaded", async () => {
+    it("says why there are no templates when they cannot be loaded", async () => {
       await setupEpistola({}, async (request) => {
         const unavailable = { message: "msg.error.epistola.unavailable" };
         const serverError = { status: 500, statusText: "Server Error" };
@@ -1025,20 +1030,9 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(previewButton()).toBeEnabled();
       });
 
-      it("is possible without touching the form when the zaaktype offers only one template, once its variants are known", async () => {
+      it("is possible without touching the form when the zaaktype's catalog holds only one template, once its variants are known", async () => {
         await setupEpistola({}, (request) =>
-          request.flush([
-            fromPartial<GeneratedType<"RestMappedEpistolaTemplateGroup">>({
-              name: "Brieven",
-              templates: [
-                {
-                  id: "fake-epistola-template-1",
-                  name: "Standaardbrief",
-                  informatieObjectTypeUUID: "fakeInformatieobjectTypeUuid",
-                },
-              ],
-            }),
-          ]),
+          request.flush([epistolaTemplates[0]]),
         );
         expect(field("template")).toHaveValue("Standaardbrief");
         expect(previewButton()).toBeDisabled();

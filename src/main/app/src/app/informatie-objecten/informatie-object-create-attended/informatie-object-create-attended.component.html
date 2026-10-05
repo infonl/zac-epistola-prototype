@@ -19,26 +19,29 @@
   class="mt-2"
 >
   <fieldset>
-    @if (templateGroupsError(); as templateGroupsError) {
+    @if (templatesError(); as templatesError) {
       <p role="alert" class="mx-3">
         {{ "msg.document.templates.niet-geladen" | translate }}
-        {{ templateGroupsError | translate }}
+        {{ templatesError | translate }}
       </p>
     }
     <section class="row">
-      <zac-auto-complete
-        [form]="form"
-        key="templateGroup"
-        class="col-12 col-md-6"
-        [options]="templateGroups"
-        optionDisplayValue="name"
-      >
-        <mat-label>{{ "templategroep" | translate }}</mat-label>
-      </zac-auto-complete>
+      @if (!usesEpistola) {
+        <zac-auto-complete
+          [form]="form"
+          key="templateGroup"
+          class="col-12 col-md-6"
+          [options]="templateGroups"
+          optionDisplayValue="name"
+        >
+          <mat-label>{{ "templategroep" | translate }}</mat-label>
+        </zac-auto-complete>
+      }
       <zac-auto-complete
         [form]="form"
         key="template"
-        class="col-12 col-md-6"
+        class="col-12"
+        [class.col-md-6]="!usesEpistola"
         [options]="templates"
         optionDisplayValue="name"
       >
