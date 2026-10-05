@@ -129,13 +129,28 @@ class EpistolaGenerationItemsTest : BehaviorSpec({
                     epistolaException.shouldBeInstanceOf<EpistolaTemplateDataRejectedException>()
                 }
 
-                and("the behandelaar learns which field the template misses") {
-                    epistolaException.detail shouldBe ": required property 'aanvrager' not found"
+                and("the behandelaar learns which field the template misses, without the colon that an empty path leaves in front") {
+                    epistolaException.detail shouldBe "required property 'aanvrager' not found"
                 }
 
                 and("the field stays out of the message that is logged") {
                     epistolaException.message shouldContain "fakeGenerationRequest"
                     epistolaException.message shouldNotContain "aanvrager"
+                }
+            }
+        }
+
+        given("a job whose data breaks the template's contract in a field that has a path") {
+            val item = createDocumentGenerationItem(
+                status = FAILED,
+                errorMessage = "Data validation failed: /zaak/identificatie: is required"
+            )
+
+            `when`("the failure is read") {
+                val epistolaException = item.toGenerationFailure(generationRequest = "fakeGenerationRequest")
+
+                then("the path stays in front of Epistola's reason, with its own colon") {
+                    epistolaException.detail shouldBe "/zaak/identificatie: is required"
                 }
             }
         }
