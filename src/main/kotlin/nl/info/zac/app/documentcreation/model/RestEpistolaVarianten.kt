@@ -11,19 +11,19 @@ import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 
 /**
- * No [kanalen] for a template whose variants are not made for a kanaal, and a [communicatiekanaal] only when it is what
- * suggests [voorgesteldKanaal].
+ * Each variant is named by the kanaal it is made for. No [varianten] for a template whose variants are not made for a
+ * kanaal, and a [communicatiekanaal] only when it is what suggests [voorgesteldeVariant].
  */
 @AllOpen
 @NoArgConstructor
-data class RestEpistolaKanalen(
-    val kanalen: List<String>,
-    val voorgesteldKanaal: String?,
+data class RestEpistolaVarianten(
+    val varianten: List<String>,
+    val voorgesteldeVariant: String?,
     val communicatiekanaal: String?
 )
 
-fun EpistolaKanalen.toRestEpistolaKanalen(communicatiekanaal: String?) = RestEpistolaKanalen(
-    kanalen = kanalen,
-    voorgesteldKanaal = suggestFor(communicatiekanaal),
+fun EpistolaKanalen.toRestEpistolaVarianten(communicatiekanaal: String?) = RestEpistolaVarianten(
+    varianten = kanalen,
+    voorgesteldeVariant = suggestFor(communicatiekanaal),
     communicatiekanaal = communicatiekanaal.takeIf { kanaalSuggestedBy(it) != null }
 )

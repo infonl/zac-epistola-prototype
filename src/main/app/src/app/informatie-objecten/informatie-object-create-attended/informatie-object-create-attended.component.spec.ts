@@ -44,12 +44,12 @@ const EPISTOLA_TEMPLATES_URL =
   "/rest/zaakafhandelparameters/fakeZaaktypeUuid/epistola-templates-mapping";
 const EPISTOLA_STATUS_URL =
   "/rest/document-creation/epistola/create-document/fakeZaakUuid/status";
-const EPISTOLA_KANALEN_URL =
-  "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-1/kanalen";
+const EPISTOLA_VARIANTEN_URL =
+  "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-1/varianten";
 const EPISTOLA_PREVIEW_URL =
   "/rest/document-creation/epistola/preview-document";
-const EPISTOLA_OTHER_KANALEN_URL =
-  "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-2/kanalen";
+const EPISTOLA_OTHER_VARIANTEN_URL =
+  "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-epistola-template-2/varianten";
 
 const zaak = fromPartial<GeneratedType<"RestZaak">>({
   uuid: "fakeZaakUuid",
@@ -567,7 +567,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         templateId: "fake-epistola-template-1",
         title: "Ontvangstbevestiging aanvraag",
         description: null,
-        kanaal: null,
+        variant: null,
       });
       request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
       await sleep(EPISTOLA_GENERATION_FINISHED_DISPLAY_MS + 50);
@@ -616,22 +616,24 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     });
 
     describe("given a template with a variant by post and a digital one", () => {
-      const postAndDigitaal: GeneratedType<"RestEpistolaKanalen"> = {
-        kanalen: ["post", "digitaal"],
-        voorgesteldKanaal: "digitaal",
+      const postAndDigitaal: GeneratedType<"RestEpistolaVarianten"> = {
+        varianten: ["post", "digitaal"],
+        voorgesteldeVariant: "digitaal",
         communicatiekanaal: "E-mail",
       };
 
-      function kanaalPicker() {
-        return screen.getByRole("combobox", { name: "epistola.kanaal" });
+      function variantPicker() {
+        return screen.getByRole("combobox", { name: "epistola.variant" });
       }
 
       async function chooseTheTemplate(
-        kanalen: GeneratedType<"RestEpistolaKanalen"> = postAndDigitaal,
+        varianten: GeneratedType<"RestEpistolaVarianten"> = postAndDigitaal,
       ) {
         await fillInValidEpistolaForm();
         await sleep();
-        httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush(kanalen);
+        httpTestingController
+          .expectOne(EPISTOLA_VARIANTEN_URL)
+          .flush(varianten);
         await sleep();
         fixture.detectChanges();
         // zac-select sets its options only after it has rendered
@@ -639,101 +641,101 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         fixture.detectChanges();
       }
 
-      it("offers the kanaal the zaak's communicatiekanaal suggests, and names that communicatiekanaal", async () => {
+      it("offers the variant the zaak's communicatiekanaal suggests, and names that communicatiekanaal", async () => {
         await setupEpistola();
         await chooseTheTemplate();
 
-        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.digitaal");
+        expect(variantPicker()).toHaveTextContent("epistola.variant.digitaal");
         expect(
-          screen.getByText("epistola.kanaal.hint.communicatiekanaal"),
+          screen.getByText("epistola.variant.hint.communicatiekanaal"),
         ).toBeVisible();
       });
 
-      it("explains the kanaal without naming a communicatiekanaal when the zaak has none", async () => {
+      it("explains the variant without naming a communicatiekanaal when the zaak has none", async () => {
         await setupEpistola();
         await chooseTheTemplate({
-          kanalen: ["post", "digitaal"],
-          voorgesteldKanaal: "post",
+          varianten: ["post", "digitaal"],
+          voorgesteldeVariant: "post",
           communicatiekanaal: null,
         });
 
-        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
-        expect(screen.getByText("epistola.kanaal.hint")).toBeVisible();
+        expect(variantPicker()).toHaveTextContent("epistola.variant.post");
+        expect(screen.getByText("epistola.variant.hint")).toBeVisible();
       });
 
-      it("generates the document in the kanaal the behandelaar chose instead", async () => {
+      it("generates the document in the variant the behandelaar chose instead", async () => {
         await setupEpistola();
         await chooseTheTemplate();
 
-        await choose("epistola.kanaal", "epistola.kanaal.post");
+        await choose("epistola.variant", "epistola.variant.post");
         await user.click(generateButton());
         await sleep();
 
         const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
-        expect(request.request.body).toMatchObject({ kanaal: "post" });
+        expect(request.request.body).toMatchObject({ variant: "post" });
         request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
       });
 
-      it("stops saying the kanaal was suggested once another one is chosen, and keeps the hint's line so nothing below it moves", async () => {
+      it("stops saying the variant was suggested once another one is chosen, and keeps the hint's line so nothing below it moves", async () => {
         await setupEpistola();
         await chooseTheTemplate();
         const hint = screen.getByText(
-          "epistola.kanaal.hint.communicatiekanaal",
+          "epistola.variant.hint.communicatiekanaal",
         );
 
-        await choose("epistola.kanaal", "epistola.kanaal.post");
+        await choose("epistola.variant", "epistola.variant.post");
         fixture.detectChanges();
 
         expect(hint).toBeInTheDocument();
         expect(hint).not.toBeVisible();
 
-        await choose("epistola.kanaal", "epistola.kanaal.digitaal");
+        await choose("epistola.variant", "epistola.variant.digitaal");
         fixture.detectChanges();
 
         expect(hint).toBeVisible();
       });
 
-      it("keeps the picker in place, without a kanaal, until another template is chosen and its kanalen arrive", async () => {
+      it("keeps the picker in place, without a variant, until another template is chosen and its variants arrive", async () => {
         await setupEpistola();
         await chooseTheTemplate();
 
         await user.clear(field("template"));
         fixture.detectChanges();
 
-        expect(kanaalPicker()).toHaveAttribute("aria-disabled", "true");
-        expect(kanaalPicker()).not.toHaveTextContent(
-          "epistola.kanaal.digitaal",
+        expect(variantPicker()).toHaveAttribute("aria-disabled", "true");
+        expect(variantPicker()).not.toHaveTextContent(
+          "epistola.variant.digitaal",
         );
 
         await user.click(
           screen.getByRole("option", { name: "Ontvangstbevestiging" }),
         );
         await sleep();
-        httpTestingController.expectOne(EPISTOLA_OTHER_KANALEN_URL).flush({
-          kanalen: ["post", "digitaal"],
-          voorgesteldKanaal: "post",
+        httpTestingController.expectOne(EPISTOLA_OTHER_VARIANTEN_URL).flush({
+          varianten: ["post", "digitaal"],
+          voorgesteldeVariant: "post",
           communicatiekanaal: "Post",
         });
         await sleep();
         fixture.detectChanges();
 
-        expect(kanaalPicker()).toHaveAttribute("aria-disabled", "false");
-        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
+        expect(variantPicker()).toHaveAttribute("aria-disabled", "false");
+        expect(variantPicker()).toHaveTextContent("epistola.variant.post");
       });
 
-      it("suggests the kanaal of the zaak's communicatiekanaal as it is now, when the same template is chosen again after the communicatiekanaal was edited", async () => {
+      it("suggests the variant for the zaak's communicatiekanaal as it is now, when the same template is chosen again after the communicatiekanaal was edited", async () => {
         await setupEpistola();
         await chooseTheTemplate();
-        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.digitaal");
+        expect(variantPicker()).toHaveTextContent("epistola.variant.digitaal");
 
         await user.clear(field("template"));
         await user.click(
           screen.getByRole("option", { name: "Ontvangstbevestiging" }),
         );
         await sleep();
-        httpTestingController.expectOne(EPISTOLA_OTHER_KANALEN_URL).flush({
-          kanalen: ["post", "digitaal"],
-          voorgesteldKanaal: "digitaal",
+        httpTestingController.expectOne(EPISTOLA_OTHER_VARIANTEN_URL).flush({
+          varianten: ["post", "digitaal"],
+          voorgesteldeVariant: "digitaal",
           communicatiekanaal: "E-mail",
         });
         await sleep();
@@ -743,9 +745,9 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           screen.getByRole("option", { name: "Standaardbrief" }),
         );
         await sleep();
-        httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush({
-          kanalen: ["post", "digitaal"],
-          voorgesteldKanaal: "post",
+        httpTestingController.expectOne(EPISTOLA_VARIANTEN_URL).flush({
+          varianten: ["post", "digitaal"],
+          voorgesteldeVariant: "post",
           communicatiekanaal: "Balie",
         });
         await sleep();
@@ -753,58 +755,58 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         await sleep();
         fixture.detectChanges();
 
-        expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
+        expect(variantPicker()).toHaveTextContent("epistola.variant.post");
         expect(
-          screen.getByText("epistola.kanaal.hint.communicatiekanaal"),
+          screen.getByText("epistola.variant.hint.communicatiekanaal"),
         ).toBeVisible();
       });
 
-      it("shows a kanaal it has no label for as Epistola names it", async () => {
+      it("shows a variant it has no label for by its kanaal, as Epistola names it", async () => {
         await setupEpistola();
         await chooseTheTemplate({
-          kanalen: ["post", "fakeKanaal"],
-          voorgesteldKanaal: "fakeKanaal",
+          varianten: ["post", "fakeKanaal"],
+          voorgesteldeVariant: "fakeKanaal",
           communicatiekanaal: null,
         });
 
-        expect(kanaalPicker()).toHaveTextContent("fakeKanaal");
+        expect(variantPicker()).toHaveTextContent("fakeKanaal");
       });
     });
 
-    it("offers no kanaal for a template whose variants are made for one kanaal at most", async () => {
+    it("offers no choice of variant for a template whose variants are made for one kanaal at most", async () => {
       await setupEpistola();
       await fillInValidEpistolaForm();
       await sleep();
-      httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush({
-        kanalen: ["post"],
-        voorgesteldKanaal: "post",
+      httpTestingController.expectOne(EPISTOLA_VARIANTEN_URL).flush({
+        varianten: ["post"],
+        voorgesteldeVariant: "post",
         communicatiekanaal: "Post",
       });
       await sleep();
       fixture.detectChanges();
 
       expect(
-        screen.queryByRole("combobox", { name: "epistola.kanaal" }),
+        screen.queryByRole("combobox", { name: "epistola.variant" }),
       ).not.toBeInTheDocument();
       await user.click(generateButton());
       await sleep();
       const request = httpTestingController.expectOne(EPISTOLA_CREATE_URL);
-      expect(request.request.body).toMatchObject({ kanaal: null });
+      expect(request.request.body).toMatchObject({ variant: null });
       request.flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
     });
 
-    it("offers no kanaal, and still generates, when the template's kanalen cannot be read", async () => {
+    it("offers no choice of variant, and still generates, when the template's variants cannot be read", async () => {
       await setupEpistola();
       await fillInValidEpistolaForm();
       await sleep();
       httpTestingController
-        .expectOne(EPISTOLA_KANALEN_URL)
+        .expectOne(EPISTOLA_VARIANTEN_URL)
         .flush(null, { status: 500, statusText: "fakeStatusText" });
       await sleep();
       fixture.detectChanges();
 
       expect(
-        screen.queryByRole("combobox", { name: "epistola.kanaal" }),
+        screen.queryByRole("combobox", { name: "epistola.variant" }),
       ).not.toBeInTheDocument();
       await user.click(generateButton());
       await sleep();
@@ -969,9 +971,9 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       const createObjectURL = jest.fn().mockReturnValue("blob:fakeObjectUrl");
       const originalCreateObjectURL = URL.createObjectURL;
       const originalRevokeObjectURL = URL.revokeObjectURL;
-      const postAndDigitaal: GeneratedType<"RestEpistolaKanalen"> = {
-        kanalen: ["post", "digitaal"],
-        voorgesteldKanaal: "digitaal",
+      const postAndDigitaal: GeneratedType<"RestEpistolaVarianten"> = {
+        varianten: ["post", "digitaal"],
+        voorgesteldeVariant: "digitaal",
         communicatiekanaal: "E-mail",
       };
 
@@ -990,11 +992,13 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       }
 
       async function chooseTheTemplate(
-        kanalen: GeneratedType<"RestEpistolaKanalen"> = postAndDigitaal,
+        varianten: GeneratedType<"RestEpistolaVarianten"> = postAndDigitaal,
       ) {
         await fillInValidEpistolaForm();
         await sleep();
-        httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush(kanalen);
+        httpTestingController
+          .expectOne(EPISTOLA_VARIANTEN_URL)
+          .flush(varianten);
         await sleep();
         fixture.detectChanges();
         // zac-select sets its options only after it has rendered
@@ -1002,7 +1006,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         fixture.detectChanges();
       }
 
-      it("is not possible until a template is chosen, and its kanalen are known", async () => {
+      it("is not possible until a template is chosen, and its variants are known", async () => {
         await setupEpistola();
         expect(previewButton()).toBeDisabled();
 
@@ -1011,7 +1015,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(previewButton()).toBeDisabled();
 
         httpTestingController
-          .expectOne(EPISTOLA_KANALEN_URL)
+          .expectOne(EPISTOLA_VARIANTEN_URL)
           .flush(postAndDigitaal);
         await sleep();
         fixture.detectChanges();
@@ -1021,7 +1025,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(previewButton()).toBeEnabled();
       });
 
-      it("is possible without touching the form when the zaaktype offers only one template, once its kanalen are known", async () => {
+      it("is possible without touching the form when the zaaktype offers only one template, once its variants are known", async () => {
         await setupEpistola({}, (request) =>
           request.flush([
             fromPartial<GeneratedType<"RestMappedEpistolaTemplateGroup">>({
@@ -1040,7 +1044,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(previewButton()).toBeDisabled();
 
         const kanalenRequest = await waitFor(() =>
-          httpTestingController.expectOne(EPISTOLA_KANALEN_URL),
+          httpTestingController.expectOne(EPISTOLA_VARIANTEN_URL),
         );
         kanalenRequest.flush(postAndDigitaal);
         await waitFor(() => {
@@ -1055,15 +1059,15 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         );
         expect(previewRequest.request.body).toMatchObject({
           templateId: "fake-epistola-template-1",
-          kanaal: "digitaal",
+          variant: "digitaal",
         });
         previewRequest.flush(new Blob(["fakePdfContent"]));
       });
 
-      it("asks Epistola for the template in the chosen kanaal, and shows what it renders, without generating anything", async () => {
+      it("asks Epistola for the template in the chosen variant, and shows what it renders, without generating anything", async () => {
         await setupEpistola();
         await chooseTheTemplate();
-        await choose("epistola.kanaal", "epistola.kanaal.post");
+        await choose("epistola.variant", "epistola.variant.post");
 
         await user.click(previewButton());
         await sleep();
@@ -1075,7 +1079,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
           zaakUuid: "fakeZaakUuid",
           taskId: undefined,
           templateId: "fake-epistola-template-1",
-          kanaal: "post",
+          variant: "post",
         });
         const pdf = new Blob(["fakePdfContent"], { type: "application/pdf" });
         request.flush(pdf);
@@ -1094,11 +1098,11 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(documentCreated).not.toHaveBeenCalled();
       });
 
-      it("previews a template without a choice of kanaal, with no kanaal", async () => {
+      it("previews a template without a choice of variant, with no variant", async () => {
         await setupEpistola();
         await chooseTheTemplate({
-          kanalen: ["post"],
-          voorgesteldKanaal: "post",
+          varianten: ["post"],
+          voorgesteldeVariant: "post",
           communicatiekanaal: "Post",
         });
 
@@ -1106,7 +1110,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         await sleep();
 
         const request = httpTestingController.expectOne(EPISTOLA_PREVIEW_URL);
-        expect(request.request.body).toMatchObject({ kanaal: null });
+        expect(request.request.body).toMatchObject({ variant: null });
         request.flush(new Blob(["fakePdfContent"]));
       });
 

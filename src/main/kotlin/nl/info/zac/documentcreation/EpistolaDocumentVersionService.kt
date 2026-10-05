@@ -90,7 +90,7 @@ class EpistolaDocumentVersionService @Inject constructor(
                 zaak = zaak,
                 templateId = templateId,
                 fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
-                kanaal = epistolaDocument.kanaal
+                variant = epistolaDocument.kanaal
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(

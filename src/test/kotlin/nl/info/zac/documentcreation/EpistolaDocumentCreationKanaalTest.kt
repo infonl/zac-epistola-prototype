@@ -166,7 +166,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                 templateId = FAKE_TEMPLATE_ID,
                 title = FAKE_TITLE,
                 description = null,
-                kanaal = kanaal
+                variant = kanaal
             )
             epistolaDocumentVersionService.createNewVersion(
                 zaak = zaak,
@@ -181,7 +181,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
         given("a template with a post and a digital variant, and a zaak whose communicatiekanaal is e-mail") {
             val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
 
-            `when`("a document is created without choosing a kanaal") {
+            `when`("a document is created without choosing a variant") {
                 val askedKanalen = givenATemplate(zaak, postAndDigitaal)
 
                 epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
@@ -198,22 +198,22 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
-                    kanaal = "post"
+                    variant = "post"
                 )
 
-                then("the chosen kanaal wins over the communicatiekanaal") {
+                then("the chosen variant wins over the communicatiekanaal") {
                     askedKanalen.single() shouldBe "post"
                 }
             }
 
-            `when`("a document is created for a kanaal the template has no variant for") {
+            `when`("a document is created in a variant the template does not have") {
                 val askedKanalen = givenATemplate(zaak, postAndDigitaal)
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
-                    kanaal = "fakeKanaal"
+                    variant = "fakeKanaal"
                 )
 
                 then("the communicatiekanaal decides instead") {
@@ -225,7 +225,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
         given("a template with a post and a digital variant, and a zaak whose communicatiekanaal suggests neither") {
             val zaak = createZaak().apply { communicatiekanaalNaam = "Intern" }
 
-            `when`("a document is created without choosing a kanaal") {
+            `when`("a document is created without choosing a variant") {
                 val askedKanalen = givenATemplate(zaak, postAndDigitaal)
 
                 epistolaDocumentCreationService.createDocument(
@@ -327,7 +327,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
-                    kanaal = "post"
+                    variant = "post"
                 )
 
                 then("no kanaal is asked for, so Epistola renders the template as before") {

@@ -19,6 +19,9 @@ data class RestEpistolaDocumentPreviewData(
     @field:NotBlank
     var templateId: String,
 
-    /** Without one, the zaak's communicatiekanaal decides which of the template's variants is used. */
-    var kanaal: String? = null
+    /**
+     * The chosen variant, named by its kanaal. Without one, the zaak's communicatiekanaal decides which of the
+     * template's variants is used.
+     */
+    var variant: String? = null
 )

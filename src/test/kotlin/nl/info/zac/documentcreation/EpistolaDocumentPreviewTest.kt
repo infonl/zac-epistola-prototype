@@ -121,7 +121,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, "fakeTaskId") } returns createData()
 
-            `when`("a preview is made without choosing a kanaal") {
+            `when`("a preview is made without choosing a variant") {
                 givenATemplateThatIsOffered(zaak.zaaktype.extractUuid(), postAndDigitaal)
                 every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal") } returns FAKE_PREVIEW
 
@@ -131,7 +131,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     taskId = "fakeTaskId"
                 )
 
-                then("the task's data is read and the kanaal the communicatiekanaal suggests is previewed") {
+                then("the task's data is read and the variant the communicatiekanaal suggests is previewed") {
                     verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal") }
                 }
             }
@@ -144,10 +144,10 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
                     taskId = "fakeTaskId",
-                    kanaal = "post"
+                    variant = "post"
                 )
 
-                then("the chosen kanaal wins, as when the document is generated") {
+                then("the chosen variant wins, as when the document is generated") {
                     verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post") }
                 }
             }
