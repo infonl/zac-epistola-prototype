@@ -114,7 +114,27 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
             }
         }
 
-        given("data that breaks the template's data contract") {
+        given("data that breaks the template's data contract in a field at the top of the data") {
+            every { generationApi.previewDocument(FAKE_TENANT_ID, any()) } throws createApiException(
+                status = 400,
+                body = """
+                    {"title":"Template Data Invalid","detail":"Data validation failed: : required property 'aanvrager' not found"}
+                """.trimIndent()
+            )
+
+            `when`("a preview is made") {
+                val epistolaTemplateDataRejectedException = shouldThrow<EpistolaTemplateDataRejectedException> {
+                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                }
+
+                then("the behandelaar learns which field the template misses, without the colon that an empty path leaves in front") {
+                    epistolaTemplateDataRejectedException.errorCode shouldBe ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
+                    epistolaTemplateDataRejectedException.detail shouldBe "required property 'aanvrager' not found"
+                }
+            }
+        }
+
+        given("data that breaks the template's data contract in a field that has a path") {
             every { generationApi.previewDocument(FAKE_TENANT_ID, any()) } throws createApiException(
                 status = 400,
                 body = """{"title":"Template Data Invalid","detail":"Data validation failed: /aanvrager: is required"}"""
@@ -127,6 +147,9 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
                 then("the behandelaar gets the rejection that a failed generation would have given, at once") {
                     epistolaTemplateDataRejectedException.errorCode shouldBe ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
+                }
+
+                and("the path stays in front of Epistola's reason, with its own colon") {
                     epistolaTemplateDataRejectedException.detail shouldBe "/aanvrager: is required"
                 }
 
