@@ -33,8 +33,8 @@ import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationStatus
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentPreviewData
-import nl.info.zac.app.documentcreation.model.RestEpistolaKanalen
-import nl.info.zac.app.documentcreation.model.toRestEpistolaKanalen
+import nl.info.zac.app.documentcreation.model.RestEpistolaVarianten
+import nl.info.zac.app.documentcreation.model.toRestEpistolaVarianten
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.runAsLoggedInUser
 import nl.info.zac.authentication.runAsSystemUser
@@ -115,7 +115,7 @@ class DocumentCreationRestService @Inject constructor(
                 title = restEpistolaDocumentCreationData.title,
                 description = restEpistolaDocumentCreationData.description,
                 taskId = restEpistolaDocumentCreationData.taskId,
-                kanaal = restEpistolaDocumentCreationData.kanaal
+                variant = restEpistolaDocumentCreationData.variant
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
 
@@ -138,22 +138,22 @@ class DocumentCreationRestService @Inject constructor(
                 zaak = zaak,
                 templateId = restEpistolaDocumentPreviewData.templateId,
                 taskId = restEpistolaDocumentPreviewData.taskId,
-                kanaal = restEpistolaDocumentPreviewData.kanaal
+                variant = restEpistolaDocumentPreviewData.variant
             )
         }
 
-    /** The kanalen a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
+    /** The variants a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
     @GET
-    @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/kanalen")
-    fun readEpistolaKanalen(
+    @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/varianten")
+    fun readEpistolaVarianten(
         @PathParam("zaakUuid") zaakUuid: UUID,
         @PathParam("templateId") templateId: String
-    ): RestEpistolaKanalen =
+    ): RestEpistolaVarianten =
         zrcClientService.readZaak(zaakUuid).also { zaak ->
             assertDocumentCreationAllowed(zaak = zaak, taskId = null)
         }.let { zaak ->
             epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = templateId)
-                .toRestEpistolaKanalen(zaak.communicatiekanaalNaam)
+                .toRestEpistolaVarianten(zaak.communicatiekanaalNaam)
         }
 
     /**

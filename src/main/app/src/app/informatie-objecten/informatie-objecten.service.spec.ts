@@ -36,17 +36,17 @@ describe(InformatieObjectenService.name, () => {
     informatieObjectenService = TestBed.inject(InformatieObjectenService);
   });
 
-  describe("readEpistolaKanalenQuery", () => {
-    const KANALEN_URL =
-      "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-template/kanalen";
-    const emailKanalen: GeneratedType<"RestEpistolaKanalen"> = {
-      kanalen: ["post", "digitaal"],
-      voorgesteldKanaal: "digitaal",
+  describe("readEpistolaVariantenQuery", () => {
+    const VARIANTEN_URL =
+      "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-template/varianten";
+    const emailVarianten: GeneratedType<"RestEpistolaVarianten"> = {
+      varianten: ["post", "digitaal"],
+      voorgesteldeVariant: "digitaal",
       communicatiekanaal: "E-mail",
     };
-    const balieKanalen: GeneratedType<"RestEpistolaKanalen"> = {
-      kanalen: ["post", "digitaal"],
-      voorgesteldKanaal: "post",
+    const balieVarianten: GeneratedType<"RestEpistolaVarianten"> = {
+      varianten: ["post", "digitaal"],
+      voorgesteldeVariant: "post",
       communicatiekanaal: "Balie",
     };
 
@@ -55,19 +55,19 @@ describe(InformatieObjectenService.name, () => {
       const httpTestingController = TestBed.inject(HttpTestingController);
       const read = () =>
         queryClient.query(
-          informatieObjectenService.readEpistolaKanalenQuery(
+          informatieObjectenService.readEpistolaVariantenQuery(
             "fakeZaakUuid",
             "fake-template",
           ),
         );
 
       const first = read();
-      httpTestingController.expectOne(KANALEN_URL).flush(emailKanalen);
-      expect(await first).toEqual(emailKanalen);
+      httpTestingController.expectOne(VARIANTEN_URL).flush(emailVarianten);
+      expect(await first).toEqual(emailVarianten);
 
       const second = read();
-      httpTestingController.expectOne(KANALEN_URL).flush(balieKanalen);
-      expect(await second).toEqual(balieKanalen);
+      httpTestingController.expectOne(VARIANTEN_URL).flush(balieVarianten);
+      expect(await second).toEqual(balieVarianten);
     });
   });
 
