@@ -127,8 +127,8 @@ toevoegde, is daar al een eerste stap naar.
 **VV-06 · Een Epistola-stand-in in de integratietests** · S–M · ZAC-team
 *Aanleiding.* De integratietests draaien met SmartDocuments en kunnen de Epistola-routes niet aanroepen; die zijn
 alleen met unittests, de live-check en de hand getest.
-*Voorstel.* Gebruik de WireMock-mappings die er al zijn (`scripts/docker-compose/imports/epistola-wiremock/`, zeven
-stuks, gestart met `-W`) voor een tweede integratietestrun met Epistola als provider. Dan lopen het endpoint en de
+*Voorstel.* Gebruik de WireMock-mappings die er al zijn (`scripts/docker-compose/imports/epistola-wiremock/`, ~~zeven~~
+negen stuks sinds het voorbeeld (#54) en de catalogs (#51), gestart met `-W`) voor een tweede integratietestrun met Epistola als provider. Dan lopen het endpoint en de
 dialoog ook in de pipeline, en hangen de tests niet meer af van een testtenant die dagelijks wordt gereset.
 
 **VV-07 · Een controle bij het opstarten op bereikbaarheid en tenant** (R8) · S · ZAC-team
@@ -267,6 +267,6 @@ Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cach
 `ZaaktypeConfiguration`)~~ *5 oktober:* `ZaaktypeConfiguration.kt` (draagt sinds #51 de catalog en het
 informatieobjecttype; `EpistolaTemplateGroup.kt` is weg) en `EpistolaTemplatesService.kt` (biedt alleen bij een
 CMMN-zaaktype templates aan), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),
-`scripts/docker-compose/imports/epistola-wiremock/mappings/` (zeven mappings), en de chart-README en `.env.example`
+`scripts/docker-compose/imports/epistola-wiremock/mappings/` (~~zeven~~ negen mappings sinds #54 en #51), en de chart-README en `.env.example`
 (geen rotatie- of verstrijktekst). De Epistola-kant komt uit de reviews op #24 (contract 1.3.1, Epistola Suite
 `3c92193`) en uit de toets van de wachtrij op 28 september (Epistola Suite `e2484c7`, contract `257770d`).
