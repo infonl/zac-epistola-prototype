@@ -38,8 +38,10 @@ import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.documents.model.createEpistolaDocument
+import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import java.util.UUID
 
+private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 
@@ -96,10 +98,11 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             val askedVariant = AskedVariant()
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal, locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = FAKE_FILE_NAME,
@@ -122,7 +125,12 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             `when`("a document is created") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
-                epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME
+                )
 
                 then("Dutch is asked for, in the variant the communicatiekanaal suggests, as the behandelaar chooses no language") {
                     askedVariant.locales.single() shouldBe "nl-NL"
@@ -135,6 +143,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "en-GB"
@@ -151,6 +160,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     variant = "digitaal",
@@ -168,6 +178,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "fr-FR"
@@ -187,6 +198,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "en-GB"
@@ -217,15 +229,16 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
-                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } returns informatieObjectTypeUuid
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns "123443210"
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen(), locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = "fakeTitle.pdf",
@@ -270,6 +283,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
                             kanaal = null,
                             locale = "en-GB"
@@ -300,6 +314,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
                             kanaal = null,
                             locale = null
@@ -315,13 +330,13 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             val informatieObjectTypeUuid = UUID.randomUUID()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
             every {
-                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } returns informatieObjectTypeUuid
-            every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } just runs
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns "123443210"
+            val loggedInUser = createLoggedInUser()
+            every { loggedInUserInstance.get() } returns loggedInUser
+            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
             every {
                 enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
                     zaak = zaak,
@@ -339,7 +354,6 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         }
 
         fun createDocumentAndThenANewVersion(zaak: Zaak, locales: EpistolaLocales): Pair<AskedVariant, List<String?>> {
-            val loggedInUser = createLoggedInUser()
             val askedVariant = AskedVariant()
             val storedKanalen = mutableListOf<String?>()
             val storedLocales = mutableListOf<String?>()
@@ -351,12 +365,11 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                 content = "fakePdfContent".toByteArray()
             )
             givenTheZaaksDossier(zaak, zaakInformatieObject)
-            every { loggedInUserInstance.get() } returns loggedInUser
-            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal, locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = "fakeTitle.pdf",
@@ -369,14 +382,16 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             every {
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     kanaal = captureNullable(storedKanalen),
                     locale = captureNullable(storedLocales)
                 )
-            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, templateId = FAKE_TEMPLATE_ID)
+            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, catalogId = FAKE_CATALOG_ID)
             every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
                 createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     kanaal = storedKanalen.single(),
                     locale = storedLocales.single()

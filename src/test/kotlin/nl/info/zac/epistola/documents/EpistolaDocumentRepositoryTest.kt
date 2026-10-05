@@ -57,7 +57,7 @@ class EpistolaDocumentRepositoryTest : BehaviorSpec({
     }
 
     context("storing the template of a document") {
-        given("an informatieobject, the template that generated it and the kanaal and language ZAC asked Epistola for") {
+        given("an informatieobject, the catalog and template that generated it and the kanaal and language asked for") {
             val informatieObjectUUID = UUID.randomUUID()
             val persistedSlot = slot<EpistolaDocument>()
             every { entityManager.persist(capture(persistedSlot)) } just runs
@@ -66,14 +66,19 @@ class EpistolaDocumentRepositoryTest : BehaviorSpec({
                 val before = ZonedDateTime.now()
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
+                    catalogId = "fake-catalog-id",
                     templateId = "fake-template-id",
                     kanaal = "post",
                     locale = "en-GB"
                 )
 
-                then("a row with the UUID, the template, the kanaal, the language and the moment of storing is persisted") {
+                then(
+                    "a row with the UUID, the catalog, the template, the kanaal, the language and the moment of storing " +
+                        "is persisted"
+                ) {
                     with(persistedSlot.captured) {
                         this.informatieObjectUUID shouldBe informatieObjectUUID
+                        catalogId shouldBe "fake-catalog-id"
                         templateId shouldBe "fake-template-id"
                         kanaal shouldBe "post"
                         locale shouldBe "en-GB"

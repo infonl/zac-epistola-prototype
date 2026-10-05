@@ -27,9 +27,16 @@ class EpistolaDocumentRepository @Inject constructor(
         entityManager.find(EpistolaDocument::class.java, informatieObjectUUID)
 
     @Transactional(REQUIRED)
-    fun createEpistolaDocument(informatieObjectUUID: UUID, templateId: String, kanaal: String?, locale: String?) =
+    fun createEpistolaDocument(
+        informatieObjectUUID: UUID,
+        catalogId: String,
+        templateId: String,
+        kanaal: String?,
+        locale: String?
+    ) =
         EpistolaDocument().apply {
             this.informatieObjectUUID = informatieObjectUUID
+            this.catalogId = catalogId
             this.templateId = templateId
             this.kanaal = kanaal
             this.locale = locale

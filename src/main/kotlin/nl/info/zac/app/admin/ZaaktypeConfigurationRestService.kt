@@ -44,8 +44,10 @@ import nl.info.zac.app.zaak.model.RestResultaattype
 import nl.info.zac.app.zaak.model.toRestResultaatTypes
 import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.epistola.EpistolaTemplatesService
+import nl.info.zac.epistola.rest.RestEpistolaCatalog
+import nl.info.zac.epistola.rest.RestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
+import nl.info.zac.epistola.rest.RestOfferedEpistolaTemplate
 import nl.info.zac.exception.InputValidationFailedException
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.policy.PolicyService
@@ -339,10 +341,37 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     }
 
     @GET
-    @Path("epistola-templates")
-    fun listEpistolaTemplates(): List<RestEpistolaTemplate> {
+    @Path("epistola-catalogs")
+    fun listEpistolaCatalogs(): List<RestEpistolaCatalog> {
         assertPolicy(policyService.readOverigeRechten().beheren)
-        return epistolaTemplatesService.listTemplates()
+        return epistolaTemplatesService.listCatalogs()
+    }
+
+    @GET
+    @Path("epistola-catalogs/{catalogId}/templates")
+    fun listEpistolaTemplates(@PathParam("catalogId") catalogId: String): List<RestEpistolaTemplate> {
+        assertPolicy(policyService.readOverigeRechten().beheren)
+        return epistolaTemplatesService.listTemplates(catalogId)
+    }
+
+    @GET
+    @Path("{zaaktypeUuid}/epistola-catalog-mapping")
+    fun readEpistolaCatalogMapping(@PathParam("zaaktypeUuid") zaaktypeUuid: UUID): RestEpistolaCatalogMapping {
+        assertPolicy(policyService.readOverigeRechten().beheren)
+        return epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
+    }
+
+    @POST
+    @Path("{zaaktypeUuid}/epistola-catalog-mapping")
+    fun storeEpistolaCatalogMapping(
+        @PathParam("zaaktypeUuid") zaaktypeUuid: UUID,
+        restEpistolaCatalogMapping: RestEpistolaCatalogMapping
+    ) {
+        assertPolicy(policyService.readOverigeRechten().beheren)
+        epistolaTemplatesService.storeCatalogMapping(
+            zaaktypeUuid = zaaktypeUuid,
+            catalogMapping = restEpistolaCatalogMapping
+        )
     }
 
     /**
@@ -350,24 +379,11 @@ class ZaaktypeConfigurationRestService @Inject constructor(
      * offers, as it does for SmartDocuments.
      */
     @GET
-    @Path("{zaaktypeUuid}/epistola-templates-mapping")
-    fun getEpistolaTemplatesMapping(
+    @Path("{zaaktypeUuid}/epistola-templates")
+    fun listOfferedEpistolaTemplates(
         @PathParam("zaaktypeUuid") zaaktypeUuid: UUID
-    ): List<RestMappedEpistolaTemplateGroup> =
-        epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
-
-    @POST
-    @Path("{zaaktypeUuid}/epistola-templates-mapping")
-    fun storeEpistolaTemplatesMapping(
-        @PathParam("zaaktypeUuid") zaaktypeUuid: UUID,
-        restMappedEpistolaTemplateGroups: List<RestMappedEpistolaTemplateGroup>
-    ) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
-        epistolaTemplatesService.storeTemplateMapping(
-            zaaktypeUuid = zaaktypeUuid,
-            templateGroups = restMappedEpistolaTemplateGroups
-        )
-    }
+    ): List<RestOfferedEpistolaTemplate> =
+        epistolaTemplatesService.listOfferedTemplates(zaaktypeUuid)
 
     private fun createHardcodedZaakTerminationReasons() =
         listOf(

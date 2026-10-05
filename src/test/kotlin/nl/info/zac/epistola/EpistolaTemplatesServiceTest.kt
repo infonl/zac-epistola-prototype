@@ -4,6 +4,7 @@
  */
 package nl.info.zac.epistola
 
+import app.epistola.client.jakarta.model.CatalogDto
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -15,40 +16,37 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import nl.info.client.epistola.EpistolaClientService
+import nl.info.client.epistola.model.createCatalog
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createZaakType
+import nl.info.zac.admin.ZaaktypeCmmnConfigurationBeheerService
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.admin.exception.ZaaktypeConfigurationNotFoundException
-import nl.info.zac.admin.model.createZaaktypeBpmnConfiguration
+import nl.info.zac.admin.model.ZaaktypeCmmnConfiguration
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
-import nl.info.zac.epistola.exception.EpistolaCmmnOnlyException
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
-import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.rest.RestEpistolaCatalog
+import nl.info.zac.epistola.rest.RestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplate
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
-import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplate
-import nl.info.zac.epistola.rest.createRestMappedEpistolaTemplateGroup
-import nl.info.zac.epistola.templates.EpistolaTemplateGroupRepository
-import nl.info.zac.epistola.templates.model.EpistolaTemplateGroup
-import nl.info.zac.epistola.templates.model.createEpistolaTemplateGroup
-import nl.info.zac.exception.ErrorCode
+import nl.info.zac.epistola.rest.createRestEpistolaCatalogMapping
 import java.net.URI
 import java.util.UUID
 
+private const val FAKE_DEFAULT_CATALOG_ID = "fake-default-catalog"
+
 class EpistolaTemplatesServiceTest : BehaviorSpec({
     val epistolaClientService = mockk<EpistolaClientService>()
-    val epistolaTemplateGroupRepository = mockk<EpistolaTemplateGroupRepository>()
     val zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>()
+    val zaaktypeCmmnConfigurationBeheerService = mockk<ZaaktypeCmmnConfigurationBeheerService>()
     val ztcClientService = mockk<ZtcClientService>()
     val documentCreationProviderConfiguration = mockk<DocumentCreationProviderConfiguration>()
     val epistolaTemplatesService = EpistolaTemplatesService(
         epistolaClientService = epistolaClientService,
-        epistolaTemplateGroupRepository = epistolaTemplateGroupRepository,
         zaaktypeConfigurationService = zaaktypeConfigurationService,
+        zaaktypeCmmnConfigurationBeheerService = zaaktypeCmmnConfigurationBeheerService,
         ztcClientService = ztcClientService,
         documentCreationProviderConfiguration = documentCreationProviderConfiguration
     )
@@ -59,17 +57,81 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         every { documentCreationProviderConfiguration.activeProvider } returns documentCreationProvider
     }
 
-    context("listing templates") {
-        given("Epistola is the active provider and its catalog holds three templates") {
+    fun offeringZaaktypeConfiguration(
+        zaaktypeUuid: UUID,
+        catalogId: String?,
+        informatieObjectTypeUuid: UUID?,
+        isEpistolaEnabled: Boolean = true
+    ) = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply {
+        this.isEpistolaEnabled = isEpistolaEnabled
+        epistolaCatalogId = catalogId
+        epistolaInformatieobjecttypeUuid = informatieObjectTypeUuid
+    }
+
+    context("listing catalogs") {
+        given("Epistola is the active provider and the tenant has two catalogs of its own and Epistola's") {
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { epistolaClientService.listTemplates() } returns listOf(
+            every { epistolaClientService.listCatalogs() } returns listOf(
+                createCatalog(slug = "vergunningen", name = "vergunningen"),
+                createCatalog(slug = "system", name = "System", type = CatalogDto.TypeEnum.SUBSCRIBED),
+                createCatalog(slug = "brieven", name = "Brieven", type = CatalogDto.TypeEnum.SUBSCRIBED)
+            )
+
+            `when`("the catalogs are listed") {
+                val catalogs = epistolaTemplatesService.listCatalogs()
+
+                then(
+                    "the tenant's own and subscribed catalogs are returned ordered by name ignoring case, " +
+                        "without Epistola's, which holds no templates"
+                ) {
+                    catalogs shouldBe listOf(
+                        RestEpistolaCatalog(id = "brieven", name = "Brieven"),
+                        RestEpistolaCatalog(id = "vergunningen", name = "vergunningen")
+                    )
+                }
+            }
+        }
+
+        given("an Epistola server from before contract 1.3.0, which sends only a catalog's id") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listCatalogs() } returns listOf(
+                createCatalog(slug = null, id = "fake-catalog-id", name = "fakeCatalogName")
+            )
+
+            `when`("the catalogs are listed") {
+                val catalogs = epistolaTemplatesService.listCatalogs()
+
+                then("the catalog is identified by its id") {
+                    catalogs shouldBe listOf(RestEpistolaCatalog(id = "fake-catalog-id", name = "fakeCatalogName"))
+                }
+            }
+        }
+
+        given("SmartDocuments is the active provider") {
+            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
+
+            `when`("the catalogs are listed") {
+                val catalogs = epistolaTemplatesService.listCatalogs()
+
+                then("none are returned and Epistola is not called, because its settings are not validated") {
+                    catalogs.shouldBeEmpty()
+                    verify(exactly = 0) { epistolaClientService.listCatalogs() }
+                }
+            }
+        }
+    }
+
+    context("listing the templates of a catalog") {
+        given("Epistola is the active provider and the catalog holds three templates") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
                 createTemplateSummary(id = "fake-template-1", name = "verlenging beslistermijn"),
                 createTemplateSummary(id = "fake-template-2", name = "Besluit evenementenvergunning"),
                 createTemplateSummary(id = "fake-template-3", name = "Ontvangstbevestiging")
             )
 
             `when`("the templates are listed") {
-                val templates = epistolaTemplatesService.listTemplates()
+                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
                 then("all three are returned, ordered by name ignoring case") {
                     templates shouldBe listOf(
@@ -83,12 +145,12 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
 
         given("an Epistola server that sends a template's slug next to its deprecated id") {
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { epistolaClientService.listTemplates() } returns listOf(
+            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
                 createTemplateSummary(id = "fake-deprecated-id", slug = "fake-template-slug", name = "fakeName")
             )
 
             `when`("the templates are listed") {
-                val templates = epistolaTemplatesService.listTemplates()
+                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
                 then("the template is identified by its slug") {
                     templates shouldBe listOf(RestEpistolaTemplate(id = "fake-template-slug", name = "fakeName"))
@@ -98,12 +160,12 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
 
         given("an Epistola server from before contract 1.3.0, which sends only a template's id") {
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { epistolaClientService.listTemplates() } returns listOf(
+            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
                 createTemplateSummary(id = "fake-template-id", slug = null, name = "fakeName")
             )
 
             `when`("the templates are listed") {
-                val templates = epistolaTemplatesService.listTemplates()
+                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
                 then("the template is identified by its id") {
                     templates shouldBe listOf(RestEpistolaTemplate(id = "fake-template-id", name = "fakeName"))
@@ -115,90 +177,60 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
 
             `when`("the templates are listed") {
-                val templates = epistolaTemplatesService.listTemplates()
+                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
                 then("none are returned and Epistola is not called, because its settings are not validated") {
                     templates.shouldBeEmpty()
-                    verify(exactly = 0) { epistolaClientService.listTemplates() }
+                    verify(exactly = 0) { epistolaClientService.listTemplates(any()) }
                 }
             }
         }
     }
 
-    context("reading the template mapping of a zaaktype") {
-        given("a zaaktype with a stored group holding one template Epistola has and one it no longer has") {
+    context("reading the catalog mapping of a zaaktype") {
+        given("a zaaktype for which the beheerder chose a catalog and an informatieobjecttype") {
             val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
             val informatieObjectTypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(
-                    name = "Vergunningen",
-                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
-                    templateIdsToInformatieObjectTypeUuids = mapOf(
-                        "fake-template-1" to informatieObjectTypeUuid,
-                        "fake-removed-template" to UUID.randomUUID()
-                    )
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
+                offeringZaaktypeConfiguration(
+                    zaaktypeUuid = zaaktypeUuid,
+                    catalogId = "fake-catalog",
+                    informatieObjectTypeUuid = informatieObjectTypeUuid
                 )
-            )
-            every { epistolaClientService.listTemplates() } returns listOf(
-                createTemplateSummary(id = "fake-template-1", name = "Besluit evenementenvergunning")
-            )
 
             `when`("the mapping is read") {
-                val templateMapping = epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
+                val catalogMapping = epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
 
-                then("the group is returned with the template's current Epistola name, and without the removed one") {
-                    templateMapping shouldBe listOf(
-                        RestMappedEpistolaTemplateGroup(
-                            name = "Vergunningen",
-                            templates = listOf(
-                                RestMappedEpistolaTemplate(
-                                    id = "fake-template-1",
-                                    name = "Besluit evenementenvergunning",
-                                    informatieObjectTypeUUID = informatieObjectTypeUuid
-                                )
-                            )
-                        )
+                then("both are returned") {
+                    catalogMapping shouldBe RestEpistolaCatalogMapping(
+                        catalogId = "fake-catalog",
+                        informatieObjectTypeUUID = informatieObjectTypeUuid
                     )
                 }
             }
         }
 
-        given("a zaaktype with two stored groups") {
+        given("a zaaktype for which the beheerder has not chosen a catalog") {
             val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            val informatieObjectTypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(name = "vergunningen", templateIdsToInformatieObjectTypeUuids = emptyMap()),
-                createEpistolaTemplateGroup(name = "Handhaving", templateIdsToInformatieObjectTypeUuids = emptyMap())
-            )
-            every { epistolaClientService.listTemplates() } returns emptyList()
+            every { epistolaClientService.defaultCatalogId } returns FAKE_DEFAULT_CATALOG_ID
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
+                offeringZaaktypeConfiguration(
+                    zaaktypeUuid = zaaktypeUuid,
+                    catalogId = null,
+                    informatieObjectTypeUuid = informatieObjectTypeUuid
+                )
 
             `when`("the mapping is read") {
-                val templateMapping = epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
+                val catalogMapping = epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
 
-                then("the groups are ordered by name ignoring case") {
-                    templateMapping.map { it.name } shouldBe listOf("Handhaving", "vergunningen")
-                }
-            }
-        }
-
-        given("a zaaktype configuration without stored groups") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns emptyList()
-
-            `when`("the mapping is read") {
-                val templateMapping = epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
-
-                then("it is empty and Epistola is not asked for template names") {
-                    templateMapping.shouldBeEmpty()
-                    verify(exactly = 0) { epistolaClientService.listTemplates() }
+                then("the catalog is the one of ZAC's settings, which its templates come from") {
+                    catalogMapping shouldBe RestEpistolaCatalogMapping(
+                        catalogId = FAKE_DEFAULT_CATALOG_ID,
+                        informatieObjectTypeUUID = informatieObjectTypeUuid
+                    )
                 }
             }
         }
@@ -206,13 +238,17 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         given("a zaaktype that has never been configured") {
             val zaaktypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.defaultCatalogId } returns FAKE_DEFAULT_CATALOG_ID
             every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns null
 
             `when`("the mapping is read") {
-                val templateMapping = epistolaTemplatesService.readTemplateMapping(zaaktypeUuid)
+                val catalogMapping = epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
 
-                then("it is empty, because a zaaktype configuration is only stored on its first save") {
-                    templateMapping.shouldBeEmpty()
+                then("it names the catalog of ZAC's settings and no informatieobjecttype") {
+                    catalogMapping shouldBe RestEpistolaCatalogMapping(
+                        catalogId = FAKE_DEFAULT_CATALOG_ID,
+                        informatieObjectTypeUUID = null
+                    )
                 }
             }
         }
@@ -221,113 +257,162 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
 
             `when`("the mapping is read") {
-                val templateMapping = epistolaTemplatesService.readTemplateMapping(UUID.randomUUID())
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    epistolaTemplatesService.readCatalogMapping(UUID.randomUUID())
+                }
 
-                then("it is empty, without reading the database or Epistola") {
-                    templateMapping.shouldBeEmpty()
-                    verify(exactly = 0) {
-                        zaaktypeConfigurationService.readZaaktypeConfiguration(any())
-                        epistolaClientService.listTemplates()
-                    }
+                then("it is refused, since there is no catalog of ZAC's settings to name") {
+                    epistolaTemplateMappingException.message shouldBe "Epistola is not the active document creation provider."
                 }
             }
         }
     }
 
-    context("storing the template mapping of a zaaktype") {
-        given("a valid mapping for a configured zaaktype") {
+    context("storing the catalog mapping of a zaaktype") {
+        given("a catalog Epistola has and an informatieobjecttype of the zaaktype") {
             val zaaktypeUuid = UUID.randomUUID()
             val informatieObjectTypeUuid = UUID.randomUUID()
             val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-            val templateGroupsSlot = slot<List<EpistolaTemplateGroup>>()
+            val storedConfigurationSlot = slot<ZaaktypeCmmnConfiguration>()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaClientService.listTemplates() } returns listOf(createTemplateSummary(id = "fake-template-1"))
+            every {
+                zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid)
+            } returns zaaktypeCmmnConfiguration
+            every { epistolaClientService.listCatalogs() } returns listOf(createCatalog(slug = "fake-catalog"))
             every { ztcClientService.readZaaktype(zaaktypeUuid) } returns createZaakType(
                 informatieObjectTypen = listOf(URI("https://example.com/informatieobjecttypen/$informatieObjectTypeUuid"))
             )
             every {
-                epistolaTemplateGroupRepository.replaceTemplateGroups(zaaktypeCmmnConfiguration, capture(templateGroupsSlot))
-            } returns Unit
+                zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(capture(storedConfigurationSlot))
+            } returns zaaktypeCmmnConfiguration
 
             `when`("the mapping is stored") {
-                epistolaTemplatesService.storeTemplateMapping(
+                epistolaTemplatesService.storeCatalogMapping(
                     zaaktypeUuid = zaaktypeUuid,
-                    templateGroups = listOf(
-                        createRestMappedEpistolaTemplateGroup(
-                            name = "Vergunningen",
-                            templates = listOf(
-                                createRestMappedEpistolaTemplate(
-                                    id = "fake-template-1",
-                                    informatieObjectTypeUUID = informatieObjectTypeUuid
-                                )
-                            )
-                        )
+                    catalogMapping = createRestEpistolaCatalogMapping(
+                        catalogId = "fake-catalog",
+                        informatieObjectTypeUUID = informatieObjectTypeUuid
                     )
                 )
 
-                then("it replaces the stored groups of that zaaktype configuration") {
-                    with(templateGroupsSlot.captured.single()) {
-                        name shouldBe "Vergunningen"
-                        zaaktypeConfiguration shouldBeSameInstanceAs zaaktypeCmmnConfiguration
-                        templates.single().epistolaId shouldBe "fake-template-1"
-                        templates.single().informatieObjectTypeUUID shouldBe informatieObjectTypeUuid
+                then("the zaaktype configuration is stored with the catalog and the informatieobjecttype") {
+                    with(storedConfigurationSlot.captured) {
+                        this shouldBeSameInstanceAs zaaktypeCmmnConfiguration
+                        epistolaCatalogId shouldBe "fake-catalog"
+                        epistolaInformatieobjecttypeUuid shouldBe informatieObjectTypeUuid
                     }
                 }
             }
         }
 
-        given("a mapping with a template that Epistola does not have") {
+        given("a catalog Epistola does not have") {
             val zaaktypeUuid = UUID.randomUUID()
             val informatieObjectTypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
             every {
-                zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
+                zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid)
             } returns createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-            every { epistolaClientService.listTemplates() } returns emptyList()
+            every { epistolaClientService.listCatalogs() } returns listOf(createCatalog(slug = "fake-catalog"))
             every { ztcClientService.readZaaktype(zaaktypeUuid) } returns createZaakType(
                 informatieObjectTypen = listOf(URI("https://example.com/informatieobjecttypen/$informatieObjectTypeUuid"))
             )
 
             `when`("the mapping is stored") {
-                val exception = shouldThrow<EpistolaTemplateMappingException> {
-                    epistolaTemplatesService.storeTemplateMapping(
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    epistolaTemplatesService.storeCatalogMapping(
                         zaaktypeUuid = zaaktypeUuid,
-                        templateGroups = listOf(
-                            createRestMappedEpistolaTemplateGroup(
-                                templates = listOf(
-                                    createRestMappedEpistolaTemplate(
-                                        id = "fake-unknown-template",
-                                        informatieObjectTypeUUID = informatieObjectTypeUuid
-                                    )
-                                )
-                            )
+                        catalogMapping = createRestEpistolaCatalogMapping(
+                            catalogId = "fake-unknown-catalog",
+                            informatieObjectTypeUUID = informatieObjectTypeUuid
                         )
                     )
                 }
 
                 then("it is rejected and the stored mapping is left alone") {
-                    exception.message shouldBe "Unknown Epistola templates: [fake-unknown-template]"
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.replaceTemplateGroups(any(), any()) }
+                    epistolaTemplateMappingException.message shouldBe "Unknown Epistola catalog: 'fake-unknown-catalog'"
+                    verify(exactly = 0) { zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(any()) }
                 }
             }
         }
 
-        given("a zaaktype that has never been configured") {
+        given("Epistola's own catalog") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val informatieObjectTypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every {
+                zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid)
+            } returns createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            every { epistolaClientService.listCatalogs() } returns listOf(
+                createCatalog(slug = "system", type = CatalogDto.TypeEnum.SUBSCRIBED)
+            )
+            every { ztcClientService.readZaaktype(zaaktypeUuid) } returns createZaakType(
+                informatieObjectTypen = listOf(URI("https://example.com/informatieobjecttypen/$informatieObjectTypeUuid"))
+            )
+
+            `when`("it is stored as the catalog of a zaaktype") {
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    epistolaTemplatesService.storeCatalogMapping(
+                        zaaktypeUuid = zaaktypeUuid,
+                        catalogMapping = createRestEpistolaCatalogMapping(
+                            catalogId = "system",
+                            informatieObjectTypeUUID = informatieObjectTypeUuid
+                        )
+                    )
+                }
+
+                then("it is rejected, as ZAC does not offer it") {
+                    epistolaTemplateMappingException.message shouldBe "Unknown Epistola catalog: 'system'"
+                }
+            }
+        }
+
+        given("an informatieobjecttype that is not one of the zaaktype's") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val otherInformatieObjectTypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every {
+                zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid)
+            } returns createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
+            every { epistolaClientService.listCatalogs() } returns listOf(createCatalog(slug = "fake-catalog"))
+            every { ztcClientService.readZaaktype(zaaktypeUuid) } returns createZaakType(
+                informatieObjectTypen = listOf(URI("https://example.com/informatieobjecttypen/${UUID.randomUUID()}"))
+            )
+
+            `when`("the mapping is stored") {
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    epistolaTemplatesService.storeCatalogMapping(
+                        zaaktypeUuid = zaaktypeUuid,
+                        catalogMapping = createRestEpistolaCatalogMapping(
+                            catalogId = "fake-catalog",
+                            informatieObjectTypeUUID = otherInformatieObjectTypeUuid
+                        )
+                    )
+                }
+
+                then("it is rejected and the stored mapping is left alone") {
+                    epistolaTemplateMappingException.message shouldBe
+                        "Informatieobjecttype '$otherInformatieObjectTypeUuid' is not one of the zaaktype's."
+                    verify(exactly = 0) { zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(any()) }
+                }
+            }
+        }
+
+        given("a zaaktype that has no CMMN configuration") {
             val zaaktypeUuid = UUID.randomUUID()
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns null
+            every { zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid) } returns null
 
             `when`("a mapping is stored") {
-                val exception = shouldThrow<ZaaktypeConfigurationNotFoundException> {
-                    epistolaTemplatesService.storeTemplateMapping(
+                val zaaktypeConfigurationNotFoundException = shouldThrow<ZaaktypeConfigurationNotFoundException> {
+                    epistolaTemplatesService.storeCatalogMapping(
                         zaaktypeUuid = zaaktypeUuid,
-                        templateGroups = listOf(createRestMappedEpistolaTemplateGroup())
+                        catalogMapping = createRestEpistolaCatalogMapping()
                     )
                 }
 
                 then("it is rejected, because the mapping needs the zaaktype configuration to belong to") {
-                    exception.message shouldBe "No zaaktype configuration found for zaaktype UUID '$zaaktypeUuid'"
+                    zaaktypeConfigurationNotFoundException.message shouldBe
+                        "No CMMN zaaktype configuration found for zaaktype UUID '$zaaktypeUuid'"
                 }
             }
         }
@@ -336,274 +421,16 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
             givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
 
             `when`("a mapping is stored") {
-                val exception = shouldThrow<EpistolaTemplateMappingException> {
-                    epistolaTemplatesService.storeTemplateMapping(
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    epistolaTemplatesService.storeCatalogMapping(
                         zaaktypeUuid = UUID.randomUUID(),
-                        templateGroups = emptyList()
+                        catalogMapping = createRestEpistolaCatalogMapping()
                     )
                 }
 
-                then("it is rejected, so an empty list cannot wipe a mapping kept for a later switch to Epistola") {
-                    exception.message shouldBe "Epistola is not the active document creation provider."
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.replaceTemplateGroups(any(), any()) }
-                }
-            }
-        }
-    }
-
-    context("copying the template mapping to a new version of a zaaktype") {
-        given("a previous version of the zaaktype with a stored group") {
-            val previousZaaktypeUuid = UUID.randomUUID()
-            val newZaaktypeUuid = UUID.randomUUID()
-            val previousZaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(
-                id = 1L,
-                zaaktypeUUID = previousZaaktypeUuid
-            )
-            val newZaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(id = 2L, zaaktypeUUID = newZaaktypeUuid)
-            val informatieObjectTypeUuid = UUID.randomUUID()
-            val templateGroupsSlot = slot<List<EpistolaTemplateGroup>>()
-            every {
-                zaaktypeConfigurationService.readZaaktypeConfiguration(previousZaaktypeUuid)
-            } returns previousZaaktypeCmmnConfiguration
-            every {
-                zaaktypeConfigurationService.readZaaktypeConfiguration(newZaaktypeUuid)
-            } returns newZaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(previousZaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(
-                    name = "Vergunningen",
-                    zaaktypeConfiguration = previousZaaktypeCmmnConfiguration,
-                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-template-1" to informatieObjectTypeUuid)
-                )
-            )
-            every {
-                epistolaTemplateGroupRepository.replaceTemplateGroups(newZaaktypeCmmnConfiguration, capture(templateGroupsSlot))
-            } returns Unit
-
-            `when`("the mapping is copied") {
-                epistolaTemplatesService.copyTemplateMapping(
-                    previousZaaktypeUuid = previousZaaktypeUuid,
-                    newZaaktypeUuid = newZaaktypeUuid
-                )
-
-                then("the new version gets the same group and template, without consulting the active provider or Epistola") {
-                    with(templateGroupsSlot.captured.single()) {
-                        name shouldBe "Vergunningen"
-                        zaaktypeConfiguration shouldBeSameInstanceAs newZaaktypeCmmnConfiguration
-                        templates.single().epistolaId shouldBe "fake-template-1"
-                        templates.single().informatieObjectTypeUUID shouldBe informatieObjectTypeUuid
-                    }
-                    verify(exactly = 0) {
-                        documentCreationProviderConfiguration.activeProvider
-                        epistolaClientService.listTemplates()
-                    }
-                }
-            }
-        }
-
-        given("a previous version without stored groups") {
-            val previousZaaktypeUuid = UUID.randomUUID()
-            val previousZaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = previousZaaktypeUuid)
-            every {
-                zaaktypeConfigurationService.readZaaktypeConfiguration(previousZaaktypeUuid)
-            } returns previousZaaktypeCmmnConfiguration
-            every {
-                epistolaTemplateGroupRepository.listTemplateGroups(previousZaaktypeCmmnConfiguration)
-            } returns emptyList()
-
-            `when`("the mapping is copied") {
-                epistolaTemplatesService.copyTemplateMapping(
-                    previousZaaktypeUuid = previousZaaktypeUuid,
-                    newZaaktypeUuid = UUID.randomUUID()
-                )
-
-                then("nothing is stored for the new version") {
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.replaceTemplateGroups(any(), any()) }
-                }
-            }
-        }
-    }
-
-    context("reading the informatieobjecttype a template is filed under") {
-        given("a zaaktype whose group offers the template under an informatieobjecttype") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-                .apply { isEpistolaEnabled = true }
-            val informatieObjectTypeUuid = UUID.randomUUID()
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(
-                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
-                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-other-template" to UUID.randomUUID())
-                ),
-                createEpistolaTemplateGroup(
-                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
-                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-template-1" to informatieObjectTypeUuid)
-                )
-            )
-
-            `when`("the informatieobjecttype of that template is read") {
-                val readInformatieObjectTypeUuid = epistolaTemplatesService.readInformatieobjecttypeUuid(
-                    zaaktypeUuid = zaaktypeUuid,
-                    templateId = "fake-template-1"
-                )
-
-                then("the one configured with it is returned, whichever group holds it") {
-                    readInformatieObjectTypeUuid shouldBe informatieObjectTypeUuid
-                }
-            }
-        }
-
-        given("a zaaktype whose groups do not offer the template") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-                .apply { isEpistolaEnabled = true }
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(zaaktypeConfiguration = zaaktypeCmmnConfiguration)
-            )
-
-            `when`("the informatieobjecttype of an unoffered template is read") {
-                val epistolaTemplateNotConfiguredException = shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaTemplatesService.readInformatieobjecttypeUuid(
-                        zaaktypeUuid = zaaktypeUuid,
-                        templateId = "fake-unoffered-template"
-                    )
-                }
-
-                then("it is refused, so a behandelaar can only generate what the beheerder offers") {
-                    epistolaTemplateNotConfiguredException.message shouldBe
-                        "Epistola template 'fake-unoffered-template' is not configured for zaaktype '$zaaktypeUuid'."
-                }
-            }
-        }
-
-        given("a zaaktype whose group offers the template, but for which the beheerder switched Epistola off") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-                .apply { isEpistolaEnabled = false }
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-
-            `when`("the informatieobjecttype of that template is read") {
-                shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaTemplatesService.readInformatieobjecttypeUuid(
-                        zaaktypeUuid = zaaktypeUuid,
-                        templateId = "fake-template-id"
-                    )
-                }
-
-                then("it is refused, while the stored mapping is kept for when Epistola is switched on again") {
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
-                }
-            }
-        }
-
-        given("a BPMN zaaktype, while Epistola is the active provider") {
-            val zaaktypeUuid = UUID.randomUUID()
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
-                createZaaktypeBpmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply { isEpistolaEnabled = true }
-
-            `when`("the informatieobjecttype of a template is read") {
-                val epistolaCmmnOnlyException = shouldThrow<EpistolaCmmnOnlyException> {
-                    epistolaTemplatesService.readInformatieobjecttypeUuid(
-                        zaaktypeUuid = zaaktypeUuid,
-                        templateId = "fake-template-1"
-                    )
-                }
-
-                then("it is refused with a message that says Epistola is limited to CMMN, before any mapping is read") {
-                    epistolaCmmnOnlyException.errorCode shouldBe ErrorCode.ERROR_CODE_EPISTOLA_CMMN_ONLY
-                    epistolaCmmnOnlyException.message shouldBe
-                        "Creating a document with Epistola is limited to zaken with a CMMN zaaktype; " +
-                        "zaaktype '$zaaktypeUuid' is not a CMMN zaaktype."
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
-                }
-            }
-        }
-
-        given("a BPMN zaaktype, while SmartDocuments is the active provider") {
-            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(any()) } returns
-                createZaaktypeBpmnConfiguration()
-
-            `when`("the informatieobjecttype of a template is read") {
-                shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaTemplatesService.readInformatieobjecttypeUuid(
-                        zaaktypeUuid = UUID.randomUUID(),
-                        templateId = "fake-template-1"
-                    )
-                }
-
-                then("it is refused as not configured, since the CMMN limit is Epistola's and Epistola is not in use") {
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
-                }
-            }
-        }
-
-        given("SmartDocuments is the active provider") {
-            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(any()) } returns
-                createZaaktypeCmmnConfiguration().apply { isEpistolaEnabled = true }
-
-            `when`("the informatieobjecttype of a template is read") {
-                shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaTemplatesService.readInformatieobjecttypeUuid(
-                        zaaktypeUuid = UUID.randomUUID(),
-                        templateId = "fake-template-1"
-                    )
-                }
-
-                then("it is refused without reading any stored mapping") {
-                    verify(exactly = 0) { epistolaTemplateGroupRepository.listTemplateGroups(any()) }
-                }
-            }
-        }
-    }
-    context("checking that a zaaktype still offers a template") {
-        given("a zaaktype whose group offers the template") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-                .apply { isEpistolaEnabled = true }
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns listOf(
-                createEpistolaTemplateGroup(
-                    zaaktypeConfiguration = zaaktypeCmmnConfiguration,
-                    templateIdsToInformatieObjectTypeUuids = mapOf("fake-template-1" to UUID.randomUUID())
-                )
-            )
-
-            `when`("it is checked") {
-                epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaaktypeUuid, templateId = "fake-template-1")
-
-                then("nothing is refused") {
-                    verify(exactly = 1) { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) }
-                }
-            }
-        }
-
-        given("a zaaktype whose groups no longer offer the template") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val zaaktypeCmmnConfiguration = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid)
-                .apply { isEpistolaEnabled = true }
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns zaaktypeCmmnConfiguration
-            every { epistolaTemplateGroupRepository.listTemplateGroups(zaaktypeCmmnConfiguration) } returns emptyList()
-
-            `when`("it is checked") {
-                val epistolaTemplateNotConfiguredException = shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaTemplatesService.assertTemplateIsOffered(
-                        zaaktypeUuid = zaaktypeUuid,
-                        templateId = "fake-template-1"
-                    )
-                }
-
-                then("it is refused, so a document is not generated again from a template the beheerder took away") {
-                    epistolaTemplateNotConfiguredException.message shouldBe
-                        "Epistola template 'fake-template-1' is not configured for zaaktype '$zaaktypeUuid'."
+                then("it is rejected, so a mapping kept for a later switch to Epistola is left alone") {
+                    epistolaTemplateMappingException.message shouldBe "Epistola is not the active document creation provider."
+                    verify(exactly = 0) { zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(any()) }
                 }
             }
         }

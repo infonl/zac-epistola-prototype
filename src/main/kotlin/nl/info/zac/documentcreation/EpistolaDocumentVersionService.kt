@@ -23,6 +23,7 @@ import nl.info.zac.documentcreation.model.toInformatieobjectTaal
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.exception.EpistolaNewVersionNotPossibleException
+import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.identity.model.getFullName
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -60,15 +61,16 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) != null
 
     /**
-     * Generates the document again from the template that produced it, asking for the kanaal and the language stored
-     * with it while the template still offers them, with the zaak's data as it is now, and stores it as the next version
-     * of the same informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored
-     * the current one is left as it was.
+     * Generates the document again from the template that produced it, read from the catalog it came from also after the
+     * zaaktype has moved to another one, asking for the kanaal and the language stored with it while the template still
+     * offers them, with the zaak's data as it is now, and stores it as the next version of the same informatieobject. The
+     * versions before it stay in Open Zaak, and when the new version cannot be stored the current one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
      * Epistola's copy is deleted.
      *
      * @throws EpistolaNewVersionNotPossibleException when the document was not generated with Epistola
+     * @throws EpistolaTemplateNotConfiguredException when the zaaktype no longer offers Epistola templates
      * @throws EpistolaDocumentNotStoredException when Open Zaak does not accept the new version
      */
     fun createNewVersion(
@@ -82,13 +84,11 @@ class EpistolaDocumentVersionService @Inject constructor(
                 "Document '$informatieObjectUUID' was not generated with Epistola, so it has no template to use."
             )
         val templateId = epistolaDocument.templateId
-        epistolaTemplatesService.assertTemplateIsOffered(
-            zaaktypeUuid = zaak.zaaktype.extractUuid(),
-            templateId = templateId
-        )
+        epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
         try {
             val generatedDocument = epistolaDocumentCreationService.createDocument(
                 zaak = zaak,
+                catalogId = epistolaDocument.catalogId ?: epistolaClientService.defaultCatalogId,
                 templateId = templateId,
                 fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
                 variant = epistolaDocument.kanaal,

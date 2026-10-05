@@ -4,6 +4,8 @@
  */
 package nl.info.client.epistola.model
 
+import app.epistola.client.jakarta.model.CatalogDto
+import app.epistola.client.jakarta.model.CatalogListResponse
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.GenerationJobDetail
 import app.epistola.client.jakarta.model.GenerationJobResponse
@@ -98,3 +100,22 @@ fun createGenerationTemplate(
     kanalen: EpistolaKanalen = EpistolaKanalen(),
     locales: EpistolaLocales = EpistolaLocales()
 ) = EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
+
+fun createCatalog(
+    slug: String? = "fake-catalog",
+    id: String = slug ?: "fake-catalog",
+    name: String = "fakeCatalogName",
+    type: CatalogDto.TypeEnum = CatalogDto.TypeEnum.AUTHORED
+): CatalogDto = CatalogDto()
+    .slug(slug)
+    .id(id)
+    .name(name)
+    .type(type)
+
+fun createCatalogListResponse(
+    items: List<CatalogDto> = listOf(createCatalog()),
+    pageNumber: Int = 0,
+    totalPages: Int? = 1
+): CatalogListResponse = CatalogListResponse()
+    .items(items)
+    .page(PageMeta().number(pageNumber).totalPages(totalPages))

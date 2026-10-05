@@ -74,6 +74,13 @@ abstract class ZaaktypeConfiguration {
     @Column(name = "epistola_ingeschakeld")
     var isEpistolaEnabled: Boolean = false
 
+    /** Null until the beheerder chooses a catalog, and then ZAC uses the one of `EPISTOLA_CATALOG_ID`. */
+    @Column(name = "epistola_catalog_id")
+    var epistolaCatalogId: String? = null
+
+    @Column(name = "epistola_informatie_object_type_uuid")
+    var epistolaInformatieobjecttypeUuid: UUID? = null
+
     @field:NotNull
     @Column(name = "creatiedatum", nullable = false)
     var creatiedatum: ZonedDateTime? = null

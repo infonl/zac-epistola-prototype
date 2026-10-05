@@ -37,7 +37,6 @@ import nl.info.zac.admin.model.ZaaktypeBetrokkeneParameters
 import nl.info.zac.admin.model.ZaaktypeCmmnConfiguration
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZAAKTYPE_UUID_VARIABLE_NAME
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
-import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.smartdocuments.SmartDocumentsTemplatesService
 import java.net.URI
 import java.time.ZonedDateTime
@@ -59,14 +58,12 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
     val expressionString = mockk<Expression<String>>()
     val zaaktypeCmmnConfigurationService = mockk<ZaaktypeCmmnConfigurationService>()
     val smartDocumentsTemplatesService = mockk<SmartDocumentsTemplatesService>()
-    val epistolaTemplatesService = mockk<EpistolaTemplatesService>()
 
     val zaaktypeCmmnConfigurationBeheerService = ZaaktypeCmmnConfigurationBeheerService(
         entityManager = entityManager,
         ztcClientService = ztcClientService,
         zaaktypeCmmnConfigurationService = zaaktypeCmmnConfigurationService,
         smartDocumentsTemplatesService = smartDocumentsTemplatesService,
-        epistolaTemplatesService = epistolaTemplatesService,
         zaaktypeHelperService = ZaaktypeHelperService(ztcClientService)
     )
 
@@ -255,7 +252,12 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
         }
 
         originalZaaktypeCmmnConfiguration.zaaktypeBetrokkeneParameters = betrokkeneKoppelingen
-        originalZaaktypeCmmnConfiguration.isEpistolaEnabled = true
+        val epistolaInformatieobjecttypeUuid = UUID.randomUUID()
+        originalZaaktypeCmmnConfiguration.apply {
+            isEpistolaEnabled = true
+            epistolaCatalogId = "fake-catalog"
+            this.epistolaInformatieobjecttypeUuid = epistolaInformatieobjecttypeUuid
+        }
 
         val slotPersistZaaktypeCmmnConfiguration = slot<ZaaktypeCmmnConfiguration>()
 
@@ -298,7 +300,6 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
             }
 
             every { smartDocumentsTemplatesService.copySmartDocumentsTemplateMappings(any(), any()) } just runs
-            every { epistolaTemplatesService.copyTemplateMapping(any(), any()) } just runs
 
             zaaktypeCmmnConfigurationBeheerService.upsertZaaktypeCmmnConfiguration(zaakType)
 
@@ -424,13 +425,11 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                 }
             }
 
-            and("the Epistola setting and template mapping are copied to the new zaaktype") {
-                slotPersistZaaktypeCmmnConfiguration.captured.isEpistolaEnabled shouldBe true
-                verify(exactly = 1) {
-                    epistolaTemplatesService.copyTemplateMapping(
-                        previousZaaktypeUuid = originalZaaktypeCmmnConfiguration.zaaktypeUuid,
-                        newZaaktypeUuid = zaakType.url.extractUuid()
-                    )
+            and("the Epistola setting, catalog and informatieobjecttype are copied to the new zaaktype") {
+                with(slotPersistZaaktypeCmmnConfiguration.captured) {
+                    isEpistolaEnabled shouldBe true
+                    epistolaCatalogId shouldBe "fake-catalog"
+                    this.epistolaInformatieobjecttypeUuid shouldBe epistolaInformatieobjecttypeUuid
                 }
             }
 

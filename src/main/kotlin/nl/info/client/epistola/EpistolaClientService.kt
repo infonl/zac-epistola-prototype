@@ -5,8 +5,10 @@
 package nl.info.client.epistola
 
 import app.epistola.client.jakarta.api.ApiException
+import app.epistola.client.jakarta.api.CatalogsApi
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
+import app.epistola.client.jakarta.model.CatalogDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.COMPLETED
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
@@ -50,6 +52,9 @@ class EpistolaClientService @Inject constructor(
     @EpistolaClient
     private val templatesApi: TemplatesApi,
 
+    @EpistolaClient
+    private val catalogsApi: CatalogsApi,
+
     private val epistolaSettings: EpistolaSettings
 ) {
     companion object {
@@ -62,11 +67,12 @@ class EpistolaClientService @Inject constructor(
         private val MAXIMUM_POLL_DELAY: Duration = Duration.ofSeconds(1)
         private const val POLL_DELAY_FACTOR = 2L
 
-        /** The largest page size Epistola's contract allows. */
-        private const val TEMPLATE_PAGE_SIZE = 100
-
         private val LOG = Logger.getLogger(EpistolaClientService::class.java.name)
     }
+
+    /** The catalog of a zaaktype that has none chosen, and of a document generated before ZAC remembered its catalog. */
+    val defaultCatalogId: String
+        get() = epistolaSettings.catalogId
 
     /**
      * Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak.
@@ -75,6 +81,7 @@ class EpistolaClientService @Inject constructor(
      */
     @Suppress("LongParameterList")
     fun generateDocument(
+        catalogId: String,
         templateId: String,
         data: Map<String, Any>,
         fileName: String,
@@ -85,21 +92,22 @@ class EpistolaClientService @Inject constructor(
     ): EpistolaGeneratedDocument {
         val tenant = epistolaSettings.tenantId
         val requestId = requestEpistola(
-            request = "a generation request for template '$templateId' (correlation id '$correlationId')",
+            request = "a generation request for template '$templateId' of catalog '$catalogId' " +
+                "(correlation id '$correlationId')",
             isTemplateRequest = true
         ) {
             generationApi.generateDocument(
                 tenant,
                 GenerateDocumentRequest()
-                    .catalogId(epistolaSettings.catalogId)
+                    .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = epistolaSettings.catalogId))
+                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
                     .data(data)
                     .filename(fileName)
                     .correlationId(correlationId)
             )
         }.requestId
-        val generationRequest = "generation request '$requestId' for template '$templateId' " +
+        val generationRequest = "generation request '$requestId' for template '$templateId' of catalog '$catalogId' " +
             "(correlation id '$correlationId'${describeVariant(kanaal, locale)?.let { ", $it" }.orEmpty()})"
         LOG.fine { "Epistola accepted $generationRequest" }
 
@@ -121,19 +129,21 @@ class EpistolaClientService @Inject constructor(
      * breaks the template's contract.
      */
     fun previewDocument(
+        catalogId: String,
         templateId: String,
         data: Map<String, Any>,
         kanaal: String? = null,
         locale: String? = null
     ): ByteArray {
-        val previewRequest = "a preview of template '$templateId'${describeVariant(kanaal, locale)?.let { " ($it)" }.orEmpty()}"
+        val previewRequest = "a preview of template '$templateId' of catalog '$catalogId'" +
+            describeVariant(kanaal, locale)?.let { " ($it)" }.orEmpty()
         val previewFile = requestEpistola(request = previewRequest, isTemplateRequest = true) {
             generationApi.previewDocument(
                 epistolaSettings.tenantId,
                 PreviewDocumentRequest()
-                    .catalogId(epistolaSettings.catalogId)
+                    .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = epistolaSettings.catalogId))
+                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
                     .data(data)
             )
         }
@@ -146,29 +156,28 @@ class EpistolaClientService @Inject constructor(
         }
     }
 
-    /** Epistola returns at most [TEMPLATE_PAGE_SIZE] templates per request, so a larger catalog is read page by page. */
-    fun listTemplates(): List<TemplateSummaryDto> {
-        val templates = mutableListOf<TemplateSummaryDto>()
-        var pageNumber = 0
-        do {
-            val templateListResponse = requestEpistola(
-                request = "listing the templates of catalog '${epistolaSettings.catalogId}'"
-            ) {
+    /** The catalogs the tenant authored and those it subscribed to, Epistola's own among them. */
+    fun listCatalogs(): List<CatalogDto> =
+        readEveryPage { pageNumber ->
+            requestEpistola(request = "listing the catalogs") {
+                catalogsApi.listCatalogs(epistolaSettings.tenantId, pageNumber, EPISTOLA_PAGE_SIZE, null, null)
+            }.let { it.items to it.page }
+        }
+
+    fun listTemplates(catalogId: String): List<TemplateSummaryDto> =
+        readEveryPage { pageNumber ->
+            requestEpistola(request = "listing the templates of catalog '$catalogId'") {
                 templatesApi.listTemplates(
                     epistolaSettings.tenantId,
-                    epistolaSettings.catalogId,
+                    catalogId,
                     null,
                     pageNumber,
-                    TEMPLATE_PAGE_SIZE,
+                    EPISTOLA_PAGE_SIZE,
                     null,
                     null
                 )
-            }
-            templates += templateListResponse.items.orEmpty()
-            pageNumber++
-        } while (pageNumber < (templateListResponse.page?.totalPages ?: 0))
-        return templates
-    }
+            }.let { it.items to it.page }
+        }
 
     /**
      * Epistola otherwise keeps the document until its own retention removes it, months later. A failure is
@@ -184,19 +193,18 @@ class EpistolaClientService @Inject constructor(
         }
     }
 
-    fun readGenerationTemplate(templateId: String) =
-        readTemplate(templateId).let {
+    fun readGenerationTemplate(catalogId: String, templateId: String) =
+        readTemplate(catalogId = catalogId, templateId = templateId).let {
             EpistolaGenerationTemplate(
                 dataContract = it.dataModel ?: it.schema,
-                kanalen = it.toEpistolaKanalen(epistolaSettings.catalogId),
-                locales = it.toEpistolaLocales(epistolaSettings.catalogId)
+                kanalen = it.toEpistolaKanalen(catalogId),
+                locales = it.toEpistolaLocales(catalogId)
             )
         }
 
-    /** ZAC uses exactly one catalog, so it comes from configuration rather than from the caller. */
-    fun readTemplate(templateId: String) =
-        requestEpistola(request = "reading template '$templateId'", isTemplateRequest = true) {
-            templatesApi.getTemplate(epistolaSettings.tenantId, epistolaSettings.catalogId, templateId)
+    fun readTemplate(catalogId: String, templateId: String) =
+        requestEpistola(request = "reading template '$templateId' of catalog '$catalogId'", isTemplateRequest = true) {
+            templatesApi.getTemplate(epistolaSettings.tenantId, catalogId, templateId)
         }
 
     private fun <T> requestEpistola(request: String, isTemplateRequest: Boolean = false, call: () -> T): T =
@@ -238,7 +246,7 @@ class EpistolaClientService @Inject constructor(
                     lastJobStatus = lastJobStatus
                 )
             }
-            sleep(minOf(pollDelay, remainingTime))
+            sleepBeforeNextPoll(minOf(pollDelay, remainingTime))
             pollDelay = minOf(pollDelay.multipliedBy(POLL_DELAY_FACTOR), MAXIMUM_POLL_DELAY)
         }
     }
@@ -285,17 +293,6 @@ class EpistolaClientService @Inject constructor(
             }
         }
     }
-
-    private fun sleep(duration: Duration) =
-        try {
-            Thread.sleep(duration)
-        } catch (interruptedException: InterruptedException) {
-            Thread.currentThread().interrupt()
-            throw EpistolaDocumentGenerationTimeoutException(
-                message = "Waiting for Epistola was interrupted: ${interruptedException.message}",
-                lastJobStatus = null
-            )
-        }
 }
 
 private fun describeVariant(kanaal: String?, locale: String?) =

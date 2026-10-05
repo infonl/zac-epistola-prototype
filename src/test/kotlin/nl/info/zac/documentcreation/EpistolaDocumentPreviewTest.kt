@@ -37,10 +37,12 @@ import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_RATE_LIMITED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
 import java.util.UUID
 
+private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private val FAKE_PREVIEW = "fakePreviewPdfContent".toByteArray()
 
@@ -79,8 +81,9 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
         dataContract: Any? = TEMPLATE_SCHEMA,
         locales: EpistolaLocales = EpistolaLocales()
     ) {
-        every { epistolaTemplatesService.assertTemplateIsOffered(zaakUuid, FAKE_TEMPLATE_ID) } just runs
-        every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+        every { epistolaTemplatesService.readOfferedCatalog(zaakUuid) } returns
+            OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
+        every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
             EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
     }
 
@@ -95,7 +98,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
             every {
-                epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, capture(templateDataSlot), null)
+                epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, capture(templateDataSlot), null)
             } returns FAKE_PREVIEW
 
             `when`("a preview is made") {
@@ -116,7 +119,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 and("no document is generated, so nothing is created at Epistola or stored in the zaak") {
                     verify(exactly = 0) {
-                        epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any(), any())
+                        epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any(), any(), any())
                     }
                 }
             }
@@ -130,7 +133,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
             `when`("a preview is made without choosing a variant") {
                 givenATemplateThatIsOffered(zaak.zaaktype.extractUuid(), postAndDigitaal)
-                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal") } returns FAKE_PREVIEW
+                every { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal") } returns FAKE_PREVIEW
 
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
@@ -139,13 +142,13 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 )
 
                 then("the task's data is read and the variant the communicatiekanaal suggests is previewed") {
-                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal") }
+                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal") }
                 }
             }
 
             `when`("a preview is made by post") {
                 givenATemplateThatIsOffered(zaak.zaaktype.extractUuid(), postAndDigitaal)
-                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post") } returns FAKE_PREVIEW
+                every { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "post") } returns FAKE_PREVIEW
 
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
@@ -155,7 +158,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 )
 
                 then("the chosen variant wins, as when the document is generated") {
-                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post") }
+                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "post") }
                 }
             }
 
@@ -165,7 +168,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     kanalen = postAndDigitaal,
                     locales = createDutchAndEnglishLocales()
                 )
-                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") } returns FAKE_PREVIEW
+                every { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") } returns FAKE_PREVIEW
 
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
@@ -174,15 +177,15 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 )
 
                 then("the Dutch variant the communicatiekanaal suggests is previewed, as it would be generated") {
-                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
+                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
                 }
             }
         }
 
-        given("a template the zaak's zaaktype does not offer") {
+        given("a zaaktype that offers no Epistola templates") {
             val zaak = createZaak()
             every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
             } throws EpistolaTemplateNotConfiguredException("fakeNotConfigured")
 
             `when`("a preview is made") {
@@ -192,7 +195,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 then("it is refused before any zaak data reaches Epistola") {
                     epistolaTemplateNotConfiguredException.message shouldBe "fakeNotConfigured"
-                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any(), any()) }
                 }
             }
         }
@@ -211,7 +214,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 then("no zaak data is sent to Epistola") {
                     epistolaTemplateSchemaMissingException.message shouldContain FAKE_TEMPLATE_ID
-                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any(), any()) }
                 }
             }
         }
@@ -227,7 +230,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 detail = "/aanvrager: is required"
             )
             every {
-                epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), null)
+                epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), null)
             } throws epistolaTemplateDataRejectedException
 
             `when`("a preview is made") {
@@ -257,7 +260,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
             every {
-                epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), null)
+                epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), null)
             } throws EpistolaRequestFailedException(
                 errorCode = ERROR_CODE_EPISTOLA_RATE_LIMITED,
                 message = "fakeRateLimited",

@@ -14,8 +14,8 @@ import java.time.ZonedDateTime
 import java.util.UUID
 
 /**
- * The Epistola template that produced a document in Open Zaak, and the kanaal and the language ZAC asked Epistola for.
- * The document itself is only stored there.
+ * The Epistola template that produced a document in Open Zaak, the catalog it came from, and the kanaal and the
+ * language ZAC asked Epistola for. The document itself is only stored there.
  */
 @Entity
 @Table(schema = FlywayIntegrator.SCHEMA, name = "epistola_document")
@@ -24,6 +24,10 @@ class EpistolaDocument {
     @Id
     @Column(name = "informatieobject_uuid")
     lateinit var informatieObjectUUID: UUID
+
+    /** Null for a document generated before ZAC remembered the catalog, which came from that of `EPISTOLA_CATALOG_ID`. */
+    @Column(name = "catalog_id")
+    var catalogId: String? = null
 
     @Column(name = "template_id", nullable = false)
     lateinit var templateId: String

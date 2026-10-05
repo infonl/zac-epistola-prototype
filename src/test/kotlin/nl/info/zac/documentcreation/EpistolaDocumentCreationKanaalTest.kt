@@ -5,25 +5,24 @@
 package nl.info.zac.documentcreation
 
 import io.kotest.assertions.throwables.shouldThrow
-import io.mockk.just
-import io.mockk.runs
-import io.mockk.verify
-import nl.info.client.zgw.util.extractUuid
-import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.checkUnnecessaryStub
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
+import io.mockk.verify
 import jakarta.enterprise.inject.Instance
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
-import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
+import nl.info.client.zgw.util.extractUuid
+import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createInformatieObjectType
 import nl.info.zac.app.informatieobjecten.EnkelvoudigInformatieObjectUpdateService
@@ -34,8 +33,11 @@ import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.documents.model.createEpistolaDocument
+import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import java.util.UUID
 
+private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_TITLE = "fakeTitle"
 private const val FAKE_FILE_NAME = "$FAKE_TITLE.pdf"
@@ -98,10 +100,11 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             val askedKanalen = mutableListOf<String?>()
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = kanalen)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = FAKE_FILE_NAME,
@@ -124,8 +127,8 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             val zaakInformatieObject = createZaakInformatieobjectForReads()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
             every {
-                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } returns informatieObjectTypeUuid
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns FAKE_BRONORGANISATIE
             every {
@@ -138,21 +141,20 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             every {
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     kanaal = captureNullable(storedKanalen),
                     locale = null
                 )
-            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, templateId = FAKE_TEMPLATE_ID)
+            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, catalogId = FAKE_CATALOG_ID)
             every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
                 createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     kanaal = storedKanalen.single()
                 )
             }
-            every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } just runs
             every {
                 enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
                     enkelvoudigInformatieObjectUUID = informatieObjectUUID,
@@ -185,7 +187,12 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             `when`("a document is created without choosing a variant") {
                 val askedKanalen = givenATemplate(zaak, postAndDigitaal)
 
-                epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME
+                )
 
                 then("the digital variant is asked for") {
                     askedKanalen.single() shouldBe "digitaal"
@@ -197,6 +204,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     variant = "post"
@@ -212,6 +220,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     variant = "fakeKanaal"
@@ -231,6 +240,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME
                 )
@@ -284,13 +294,13 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             }
         }
 
-        given("a template the zaak's zaaktype offers, with a post and a digital variant") {
+        given("a template with a post and a digital variant, in the catalog the zaak's zaaktype offers") {
             val zaak = createZaak()
             val generationTemplate = EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal)
             every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } just runs
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns generationTemplate
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns generationTemplate
 
             `when`("its variants are read") {
                 val varianten = epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
@@ -301,10 +311,10 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             }
         }
 
-        given("a template the zaak's zaaktype does not offer") {
+        given("a zaaktype that offers no Epistola templates") {
             val zaak = createZaak()
             every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
             } throws EpistolaTemplateNotConfiguredException("fakeMessage")
 
             `when`("its variants are read") {
@@ -314,7 +324,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 then("the refusal is passed on, and Epistola is not asked about it") {
                     exception.message shouldBe "fakeMessage"
-                    verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any()) }
+                    verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any(), any()) }
                 }
             }
         }
@@ -327,6 +337,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
                 val document = epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     variant = "post"

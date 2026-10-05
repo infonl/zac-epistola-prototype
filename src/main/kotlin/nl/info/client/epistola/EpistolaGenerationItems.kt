@@ -8,6 +8,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.IN_PROGRESS
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.PENDING
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
+import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaJobStatus
@@ -47,6 +48,17 @@ internal fun DocumentGenerationItemDto.toEpistolaJobStatus(waited: Duration, hel
             if (waited.minus(waitedInQueue) > heldUpAfter) HELD_UP_IN_RENDERING else RENDERING
         }
         else -> null
+    }
+
+internal fun sleepBeforeNextPoll(duration: Duration) =
+    try {
+        Thread.sleep(duration)
+    } catch (interruptedException: InterruptedException) {
+        Thread.currentThread().interrupt()
+        throw EpistolaDocumentGenerationTimeoutException(
+            message = "Waiting for Epistola was interrupted: ${interruptedException.message}",
+            lastJobStatus = null
+        )
     }
 
 internal fun DocumentGenerationItemDto.toGenerationFailure(generationRequest: String): EpistolaException =
