@@ -263,6 +263,13 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     expect(screen.getByRole("option", { name: "Group One" })).toBeVisible();
   });
 
+  it("leaves the template group to the user when the zaaktype offers more than one", async () => {
+    await setup();
+
+    expect(field("sjabloonGroep")).toHaveValue("");
+    expect(field("sjabloon")).toBeDisabled();
+  });
+
   it("offers the templates of the chosen template group", async () => {
     await setup();
 
@@ -480,6 +487,14 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       await choose("sjabloon", "Standaardbrief");
       await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
     }
+
+    it("chooses the template group when the zaaktype offers only one, and leaves the choice of template open", async () => {
+      await setupEpistola();
+
+      expect(field("sjabloonGroep")).toHaveValue("Brieven");
+      expect(field("sjabloon")).toBeEnabled();
+      expect(field("sjabloon")).toHaveValue("");
+    });
 
     it("offers the template groups the beheerder arranged for Epistola", async () => {
       await setupEpistola();
