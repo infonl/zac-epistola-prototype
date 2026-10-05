@@ -5,6 +5,7 @@
 
 package nl.info.zac.app.documentcreation
 
+import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
@@ -358,7 +359,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         }
     }
 
-    given("an Epistola document requested for a zaak by post") {
+    given("an Epistola document requested for a zaak by post, in English") {
         val zaak = createZaak()
         val loggedInUser = createLoggedInUser()
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
@@ -371,7 +372,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 title = "fakeTitle",
                 description = null,
                 taskId = null,
-                variant = "post"
+                variant = "post",
+                taal = "en-GB"
             )
         } returns createZaakInformatieobjectForReads()
 
@@ -381,11 +383,12 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                     zaakUuid = zaak.uuid,
                     templateId = "fake-template",
                     title = "fakeTitle",
-                    variant = "post"
+                    variant = "post",
+                    taal = "en-GB"
                 )
             )
 
-            then("the document is generated in that variant") {
+            then("the document is generated in that variant and that language") {
                 verify(exactly = 1) {
                     epistolaDocumentCreationService.createAndStoreDocument(
                         zaak = zaak,
@@ -393,7 +396,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                         title = "fakeTitle",
                         description = null,
                         taskId = null,
-                        variant = "post"
+                        variant = "post",
+                        taal = "en-GB"
                     )
                 }
             }
@@ -410,16 +414,18 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
                 creerenDocument = true
             )
-            every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
-                EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+            every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
+                createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"))
 
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
 
-            then("both variants are offered, with the digital one suggested by the communicatiekanaal it names") {
+            then("both variants are offered, with the digital one suggested by the communicatiekanaal it names, and no language") {
                 restEpistolaVarianten shouldBe RestEpistolaVarianten(
                     varianten = listOf("post", "digitaal"),
                     voorgesteldeVariant = "digitaal",
-                    communicatiekanaal = "E-mail"
+                    communicatiekanaal = "E-mail",
+                    talen = emptyList(),
+                    voorgesteldeTaal = null
                 )
             }
         }
@@ -432,7 +438,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before Epistola is asked") {
-                verify(exactly = 0) { epistolaDocumentCreationService.readKanalen(any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.readVarianten(any(), any()) }
             }
         }
     }
@@ -443,8 +449,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { loggedInUserInstance.get() } returns loggedInUser
         every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
-        every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
-            EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
+        every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
+            createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"))
 
         `when`("its variants are read") {
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
@@ -453,7 +459,9 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 restEpistolaVarianten shouldBe RestEpistolaVarianten(
                     varianten = listOf("post"),
                     voorgesteldeVariant = "post",
-                    communicatiekanaal = null
+                    communicatiekanaal = null,
+                    talen = emptyList(),
+                    voorgesteldeTaal = null
                 )
             }
         }

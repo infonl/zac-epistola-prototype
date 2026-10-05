@@ -115,7 +115,8 @@ class DocumentCreationRestService @Inject constructor(
                 title = restEpistolaDocumentCreationData.title,
                 description = restEpistolaDocumentCreationData.description,
                 taskId = restEpistolaDocumentCreationData.taskId,
-                variant = restEpistolaDocumentCreationData.variant
+                variant = restEpistolaDocumentCreationData.variant,
+                taal = restEpistolaDocumentCreationData.taal
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
 
@@ -138,11 +139,15 @@ class DocumentCreationRestService @Inject constructor(
                 zaak = zaak,
                 templateId = restEpistolaDocumentPreviewData.templateId,
                 taskId = restEpistolaDocumentPreviewData.taskId,
-                variant = restEpistolaDocumentPreviewData.variant
+                variant = restEpistolaDocumentPreviewData.variant,
+                taal = restEpistolaDocumentPreviewData.taal
             )
         }
 
-    /** The variants a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
+    /**
+     * The variants and languages a behandelaar can choose between, the variant the zaak's communicatiekanaal suggests,
+     * and the language that is preselected.
+     */
     @GET
     @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/varianten")
     fun readEpistolaVarianten(
@@ -152,7 +157,7 @@ class DocumentCreationRestService @Inject constructor(
         zrcClientService.readZaak(zaakUuid).also { zaak ->
             assertDocumentCreationAllowed(zaak = zaak, taskId = null)
         }.let { zaak ->
-            epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = templateId)
+            epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = templateId)
                 .toRestEpistolaVarianten(zaak.communicatiekanaalNaam)
         }
 

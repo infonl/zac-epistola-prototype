@@ -84,3 +84,17 @@ fun createTemplateListResponse(
 ): TemplateListResponse = TemplateListResponse()
     .items(items)
     .page(PageMeta().number(pageNumber).totalPages(totalPages))
+
+fun createDutchAndEnglishLocales() = EpistolaLocales(
+    kanalenByLocale = mapOf(
+        "nl-NL" to EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"),
+        "en-GB" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
+    ),
+    defaultLocale = "nl-NL"
+)
+
+fun createGenerationTemplate(
+    dataContract: Any? = null,
+    kanalen: EpistolaKanalen = EpistolaKanalen(),
+    locales: EpistolaLocales = EpistolaLocales()
+) = EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
