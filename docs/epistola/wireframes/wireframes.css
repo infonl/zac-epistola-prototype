@@ -539,6 +539,34 @@ code {
   margin: 0;
 }
 
+.acc-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.acc-variants li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.acc-variants .tag {
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.acc-variants .tag-default {
+  background: var(--accent-soft);
+}
+
 .acc-settings {
   display: flex;
   flex-wrap: wrap;

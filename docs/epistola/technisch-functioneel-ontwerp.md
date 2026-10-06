@@ -46,7 +46,12 @@ gebouwde versie noemen Epistola wel (§5).
    waar het template dat heeft ([§5](#verzoek)).
    *6 oktober:* de kaart toont elk template van de catalog als item van een accordeon (#51). Het kopje noemt de naam en
    welk documenttype geldt; het item toont het id, de talen en de varianten, zoals Epistola ze geeft, en laat per template
-   een eigen documenttype kiezen en het template uitzetten. Het documenttype van het zaaktype blijft de standaard en
+   een eigen documenttype kiezen en het template uitzetten. *Later op 6 oktober:* het item toont *alle* varianten van
+   het template, elk met de titel zoals Epistola die geeft, een markering voor de standaardvariant en zijn attributen
+   (de taal bij naam, het kanaal als *Per post* of *Digitaal*, andere attributen zoals ze komen, bijvoorbeeld
+   `weergave: groot`). ~~Eerst stonden daar alleen de kanalen van de varianten.~~ Verschillen varianten van een template
+   in meer dan taal en kanaal, dan kan ZAC daar niet tussen kiezen (#50): Epistola weigert dan een verzoek dat niet op één
+   variant uitkomt. Het documenttype van het zaaktype blijft de standaard en
    blijft verplicht; een template zonder eigen documenttype gebruikt die. Een template dat uit staat, blijft in Epistola
    en in de kaart staan, maar *Document maken* biedt het niet meer aan.
 2. **Actie** — op een CMMN-zaak gebruikt de behandelaar de bestaande actie *Document maken*
@@ -481,7 +486,7 @@ open voor elke gebruiker.
 | Endpoint | Wat het doet |
 |---|---|
 | `GET epistola-catalogs` | De catalogs van de tenant, zonder `system`, op naam |
-| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart. *6 oktober:* elk met de talen (BCP-47-tags uit `system.locale`) en de kanalen van zijn varianten, uit één leesverzoek per template. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30) en ontbreken talen en kanalen |
+| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart. *6 oktober:* elk met de talen (BCP-47-tags uit `system.locale`) en de kanalen van zijn varianten, uit één leesverzoek per template. *Later op 6 oktober:* en `variants`: alle varianten van het template, elk met `id`, `title`, `isDefault` en `attributes`, een lijst van `key`/`value`-paren in vaste volgorde (`locale`, dan `kanaal`, dan de rest op alfabet; de catalog valt van de sleutel af, dus `system.locale` is `locale` en `default.weergave` is `weergave`). Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30) en ontbreken talen, kanalen en varianten (`variants` is dan `null`; een template zonder varianten geeft een lege lijst) |
 | ~~`GET epistola-catalogs/{catalogId}/locales`~~ | *6 oktober:* vervallen. De keuzelijst *Taal* rekent de gedeelde talen in de kaart zelf uit de talen van de templates die aanstaan |
 | `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog, ~~en~~ het informatieobjecttype *6 oktober:* en de taal van het zaaktype, en de instellingen per template (`templateSettings`: `templateId`, `informatieObjectTypeUUID`, `isEnabled`). Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID`, en zonder gekozen taal leeg |
 | `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ~~beide~~ *6 oktober:* alle drie op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, een informatieobjecttype dat niet bij het zaaktype hoort, en een taal die geen taalcode is. Een lege taal wist de keuze. *6 oktober:* de lijst `templateSettings` vervangt wat er stond (de beheerkaart stuurt hem elke keer geheel); een informatieobjecttype per template toetst ze zoals dat van het zaaktype, en de instelling van een template dat niet in de gekozen catalog staat, laat ze vallen. Een template dat aanstaat en geen eigen documenttype heeft, krijgt geen rij |
