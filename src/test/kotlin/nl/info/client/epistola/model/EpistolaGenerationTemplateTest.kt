@@ -113,6 +113,99 @@ class EpistolaGenerationTemplateTest : BehaviorSpec({
         }
     }
 
+    context("reading the variants of a template") {
+        given("variants that carry a language, a kanaal and other attributes of the catalog, listed in a mixed order") {
+            val template = createTemplate(
+                variants = listOf(
+                    createVariantSummary(
+                        id = "fake-large-print",
+                        title = "Groot lettertype",
+                        attributes = mapOf(
+                            "$FAKE_CATALOG_ID.weergave" to "groot",
+                            "$FAKE_CATALOG_ID.kanaal" to "post",
+                            "system.locale" to "nl-NL"
+                        )
+                    ),
+                    createVariantSummary(
+                        id = "fake-simple",
+                        title = "Eenvoudig",
+                        isDefault = true,
+                        attributes = mapOf(
+                            "$FAKE_CATALOG_ID.taalniveau" to "eenvoudig",
+                            "$FAKE_CATALOG_ID.weergave" to "normaal",
+                            "$FAKE_CATALOG_ID.kanaal" to "digitaal",
+                            "system.locale" to "nl-NL"
+                        )
+                    )
+                )
+            )
+
+            `when`("the variants are read") {
+                val variants = template.toEpistolaVariants(FAKE_CATALOG_ID)
+
+                then("each variant has its title and default flag, and attributes without the catalog's prefix") {
+                    variants shouldBe listOf(
+                        createEpistolaVariant(
+                            id = "fake-large-print",
+                            title = "Groot lettertype",
+                            isDefault = false,
+                            attributes = mapOf("locale" to "nl-NL", "kanaal" to "post", "weergave" to "groot")
+                        ),
+                        createEpistolaVariant(
+                            id = "fake-simple",
+                            title = "Eenvoudig",
+                            isDefault = true,
+                            attributes = mapOf(
+                                "locale" to "nl-NL",
+                                "kanaal" to "digitaal",
+                                "taalniveau" to "eenvoudig",
+                                "weergave" to "normaal"
+                            )
+                        )
+                    )
+                }
+
+                and("the attributes are in the order language, kanaal, then the others alphabetically") {
+                    variants.last().attributes.keys.toList() shouldBe listOf("locale", "kanaal", "taalniveau", "weergave")
+                }
+            }
+        }
+
+        given("a variant without attributes, one with null attributes and no default flag, and one of another catalog") {
+            val template = createTemplate(
+                variants = listOf(
+                    createVariantSummary(id = "fake-plain", attributes = emptyMap()),
+                    createVariantSummary(id = "fake-unknown", isDefault = null, attributes = null),
+                    createVariantSummary(id = "fake-other", attributes = mapOf("fake-other-catalog.kanaal" to "post"))
+                )
+            )
+
+            `when`("the variants are read") {
+                val variants = template.toEpistolaVariants(FAKE_CATALOG_ID)
+
+                then("the first two have no attributes, a missing default flag is false, and a foreign attribute keeps its key") {
+                    variants shouldBe listOf(
+                        createEpistolaVariant(id = "fake-plain"),
+                        createEpistolaVariant(id = "fake-unknown"),
+                        createEpistolaVariant(id = "fake-other", attributes = mapOf("fake-other-catalog.kanaal" to "post"))
+                    )
+                }
+            }
+        }
+
+        given("a template with an empty list of variants, and one that has none") {
+            `when`("the variants are read") {
+                val variantsOfEmptyList = createTemplate(variants = emptyList()).toEpistolaVariants(FAKE_CATALOG_ID)
+                val variantsOfNull = createTemplate(variants = null).toEpistolaVariants(FAKE_CATALOG_ID)
+
+                then("there are none") {
+                    variantsOfEmptyList shouldBe emptyList()
+                    variantsOfNull shouldBe emptyList()
+                }
+            }
+        }
+    }
+
     context("choosing the attributes by which Epistola selects a variant") {
         given("a kanaal and a language") {
             `when`("the attributes are chosen") {

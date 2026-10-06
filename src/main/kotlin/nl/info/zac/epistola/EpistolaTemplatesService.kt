@@ -35,6 +35,7 @@ import nl.info.zac.epistola.rest.RestEpistolaTemplateSetting
 import nl.info.zac.epistola.rest.RestOfferedEpistolaTemplate
 import nl.info.zac.epistola.rest.toRestEpistolaCatalog
 import nl.info.zac.epistola.rest.toRestEpistolaTemplate
+import nl.info.zac.epistola.rest.toRestEpistolaVariant
 import nl.info.zac.epistola.rest.validate
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 import nl.info.zac.util.AllOpen
@@ -91,8 +92,8 @@ class EpistolaTemplatesService @Inject constructor(
     /**
      * Empty when Epistola is not the active provider, as [listCatalogs] is.
      *
-     * Each template carries its languages and kanalen, read from Epistola with one request per template. While Epistola
-     * cannot be reached the templates come by the names of the last listing, and without languages and kanalen.
+     * Each template carries its languages, kanalen and variants, read from Epistola with one request per template. While
+     * Epistola cannot be reached the templates come by the names of the last listing, and without those details.
      */
     fun listTemplates(catalogId: String): List<RestEpistolaTemplate> =
         if (isEpistolaActive()) {
@@ -107,7 +108,8 @@ class EpistolaTemplatesService @Inject constructor(
                     id = id,
                     name = name,
                     locales = generationTemplates[id]?.locales?.locales?.sorted(),
-                    kanalen = generationTemplates[id]?.kanalen?.kanalen
+                    kanalen = generationTemplates[id]?.kanalen?.kanalen,
+                    variants = generationTemplates[id]?.variants?.map { it.toRestEpistolaVariant() }
                 )
             }
         } else {

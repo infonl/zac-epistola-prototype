@@ -184,7 +184,16 @@ export class EpistolaTemplatesFormComponent {
           .map((locale) => this.languageName(locale))
           .sort((a, b) => a.localeCompare(b))
           .join(", "),
-        kanalen: template.kanalen ?? [],
+        variants: (template.variants ?? []).map((variant) => ({
+          id: variant.id,
+          title: variant.title,
+          isDefault: variant.isDefault ?? false,
+          attributes: variant.attributes.map(({ key, value }) => ({
+            key,
+            value,
+            languageName: key === "locale" ? this.languageName(value) : "",
+          })),
+        })),
       };
     });
   });

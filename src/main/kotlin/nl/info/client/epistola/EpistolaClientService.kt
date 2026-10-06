@@ -28,6 +28,7 @@ import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.selectVariantFor
 import nl.info.client.epistola.model.toEpistolaKanalen
 import nl.info.client.epistola.model.toEpistolaLocales
+import nl.info.client.epistola.model.toEpistolaVariants
 import nl.info.zac.configuration.EpistolaSettings
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -198,7 +199,8 @@ class EpistolaClientService @Inject constructor(
             EpistolaGenerationTemplate(
                 dataContract = it.dataModel ?: it.schema,
                 kanalen = it.toEpistolaKanalen(catalogId),
-                locales = it.toEpistolaLocales(catalogId)
+                locales = it.toEpistolaLocales(catalogId),
+                variants = it.toEpistolaVariants(catalogId)
             )
         }
 

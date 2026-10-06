@@ -60,12 +60,13 @@ fun createTemplate(
 
 fun createVariantSummary(
     id: String = "fake-variant-id",
-    isDefault: Boolean = false,
+    title: String = "fakeVariantTitle",
+    isDefault: Boolean? = false,
     attributes: Map<String, String>? = emptyMap()
 ): VariantSummaryDto = VariantSummaryDto()
     .id(id)
     .slug(id)
-    .title("fakeVariantTitle")
+    .title(title)
     .isDefault(isDefault)
     .attributes(attributes)
 
@@ -98,8 +99,16 @@ fun createDutchAndEnglishLocales() = EpistolaLocales(
 fun createGenerationTemplate(
     dataContract: Any? = null,
     kanalen: EpistolaKanalen = EpistolaKanalen(),
-    locales: EpistolaLocales = EpistolaLocales()
-) = EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
+    locales: EpistolaLocales = EpistolaLocales(),
+    variants: List<EpistolaVariant> = emptyList()
+) = EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales, variants = variants)
+
+fun createEpistolaVariant(
+    id: String = "fake-variant-id",
+    title: String = "fakeVariantTitle",
+    isDefault: Boolean = false,
+    attributes: Map<String, String> = emptyMap()
+) = EpistolaVariant(id = id, title = title, isDefault = isDefault, attributes = attributes)
 
 fun createCatalog(
     slug: String? = "fake-catalog",

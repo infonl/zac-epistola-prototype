@@ -17,11 +17,14 @@ import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
+import nl.info.client.epistola.model.createEpistolaVariant
 import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
 import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
+import nl.info.zac.epistola.rest.RestEpistolaVariantAttribute
+import nl.info.zac.epistola.rest.createRestEpistolaVariant
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 
@@ -73,20 +76,79 @@ class EpistolaTemplateListingTest : BehaviorSpec({
                             id = "fake-template-2",
                             name = "Besluit evenementenvergunning",
                             locales = listOf("nl-NL"),
-                            kanalen = listOf("post")
+                            kanalen = listOf("post"),
+                            variants = emptyList()
                         ),
                         RestEpistolaTemplate(
                             id = "fake-template-3",
                             name = "Ontvangstbevestiging",
                             locales = emptyList(),
-                            kanalen = emptyList()
+                            kanalen = emptyList(),
+                            variants = emptyList()
                         ),
                         RestEpistolaTemplate(
                             id = "fake-template-1",
                             name = "verlenging beslistermijn",
                             locales = listOf("en-GB", "nl-NL"),
-                            kanalen = listOf("post", "digitaal")
+                            kanalen = listOf("post", "digitaal"),
+                            variants = emptyList()
                         )
+                    )
+                }
+            }
+        }
+
+        given("a template with two variants, and one without") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
+                createTemplateSummary(id = "fake-template-1", name = "Aanvullende informatie"),
+                createTemplateSummary(id = "fake-template-2", name = "Zonder varianten")
+            )
+            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-1") } returns
+                createGenerationTemplate(
+                    variants = listOf(
+                        createEpistolaVariant(
+                            id = "fake-initial",
+                            title = "Initial",
+                            isDefault = true,
+                            attributes = mapOf("locale" to "nl-NL", "kanaal" to "post")
+                        ),
+                        createEpistolaVariant(
+                            id = "fake-large-print",
+                            title = "Groot lettertype",
+                            attributes = mapOf("locale" to "nl-NL", "kanaal" to "post", "weergave" to "groot")
+                        )
+                    )
+                )
+            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-2") } returns
+                createGenerationTemplate()
+
+            `when`("the templates are listed") {
+                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
+
+                then("each variant is listed with its title, default flag and attributes in order, and the other has an empty list") {
+                    templates.map { it.id to it.variants } shouldBe listOf(
+                        "fake-template-1" to listOf(
+                            createRestEpistolaVariant(
+                                id = "fake-initial",
+                                title = "Initial",
+                                isDefault = true,
+                                attributes = listOf(
+                                    RestEpistolaVariantAttribute(key = "locale", value = "nl-NL"),
+                                    RestEpistolaVariantAttribute(key = "kanaal", value = "post")
+                                )
+                            ),
+                            createRestEpistolaVariant(
+                                id = "fake-large-print",
+                                title = "Groot lettertype",
+                                attributes = listOf(
+                                    RestEpistolaVariantAttribute(key = "locale", value = "nl-NL"),
+                                    RestEpistolaVariantAttribute(key = "kanaal", value = "post"),
+                                    RestEpistolaVariantAttribute(key = "weergave", value = "groot")
+                                )
+                            )
+                        ),
+                        "fake-template-2" to emptyList()
                     )
                 }
             }
@@ -109,7 +171,8 @@ class EpistolaTemplateListingTest : BehaviorSpec({
                             id = "fake-template-slug",
                             name = "fakeName",
                             locales = listOf("nl-NL"),
-                            kanalen = emptyList()
+                            kanalen = emptyList(),
+                            variants = emptyList()
                         )
                     )
                 }
@@ -133,7 +196,8 @@ class EpistolaTemplateListingTest : BehaviorSpec({
                             id = "fake-template-id",
                             name = "fakeName",
                             locales = emptyList(),
-                            kanalen = emptyList()
+                            kanalen = emptyList(),
+                            variants = emptyList()
                         )
                     )
                 }
@@ -174,7 +238,13 @@ class EpistolaTemplateListingTest : BehaviorSpec({
 
                 then("every template is still listed by name, those not read have no details, and the rest are not asked for") {
                     templates shouldBe listOf(
-                        RestEpistolaTemplate(id = "fake-template-3", name = "Derde", locales = listOf("nl-NL"), kanalen = emptyList()),
+                        RestEpistolaTemplate(
+                            id = "fake-template-3",
+                            name = "Derde",
+                            locales = listOf("nl-NL"),
+                            kanalen = emptyList(),
+                            variants = emptyList()
+                        ),
                         RestEpistolaTemplate(id = "fake-template-1", name = "Eerste"),
                         RestEpistolaTemplate(id = "fake-template-2", name = "Tweede")
                     )
