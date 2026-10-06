@@ -595,9 +595,9 @@ Er zijn drie, elk voor iets anders:
   gebruiker kan wijzigen. Dit wijkt af van de formulering van 21 september dat ZAC geen documentregistratie bijhoudt.
   Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
   Een document van vóór `V101` heeft geen rij en dus geen actie. Of de tabel mag blijven, staat onder *Nog open*.
-  Sinds #47 staat er ook het kanaal van de variant in (`V102`), zodat een nieuwe versie in hetzelfde kanaal komt, ook
-  als de behandelaar dat kanaal tegen het communicatiekanaal in koos. *5 oktober:* het kanaal waar ZAC Epistola om
-  vroeg, en geen als het om geen vroeg ([§1](#1--functioneel-ontwerp), stap 7).
+  Sinds #47 staat er ook het kanaal in waar ZAC Epistola om vroeg (`V102`), en geen als het om geen vroeg
+  ([§1](#1--functioneel-ontwerp), stap 7), zodat een nieuwe versie in hetzelfde kanaal komt, ook als de behandelaar
+  dat kanaal tegen het communicatiekanaal in koos.
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
   hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
 

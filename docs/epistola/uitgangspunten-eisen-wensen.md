@@ -137,8 +137,8 @@ new one is missing.
 - Zaakdata is read from Open Zaak at generation time; no copy is kept in ZAC.
 - The generated PDF lives in the registry, not in ZAC's database.
   *1 October: for a new version of a document (#9), ZAC remembers which template made each Epistola document, in the
-  table `epistola_document` (migration `V101`), and since #47 the kanaal of its variant (`V102`). It holds no content, title, status or zaak; see the
-  [datamodel](datamodel.md).*
+  table `epistola_document` (migration `V101`), and since #47 the kanaal ZAC asked Epistola for (`V102`). It holds no
+  content, title, status or zaak; see the [datamodel](datamodel.md).*
 - The integration is API-first and the provider is replaceable by configuration.
 
 ### Kwaliteit
@@ -205,8 +205,8 @@ of the stakeholder review of this document.
 *5 October: two extras were built beyond the DoD, and are not in the rows above because they are no requirement:
 #44, the progress of a generation shown as steps ([PR #46](https://github.com/infonl/zac-epistola-prototype/pull/46)),
 and #47, a template's variant chosen by kanaal ([PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)).
-By decision B25 of 1 October they get no test case in the test plan; their evidence is the unit and integration tests
-and the live checks in their PRs.*
+By decision B25 of 1 October they get no test case in [the test plan](testplan.md#versie); their evidence is the unit
+and integration tests and the live checks in their PRs.*
 
 ~~Board totals: 22 issues, 70 estimate points across werkprocessen B1-K1-W1 through W5 and B1-K2-W1 through W3.~~
 *1 October: 30 items on the board. #30 and #31 came from the meeting of 28 September, and #35 to #40 from the

@@ -57,7 +57,7 @@ class EpistolaDocumentRepositoryTest : BehaviorSpec({
     }
 
     context("storing the template of a document") {
-        given("an informatieobject, the template that generated it and the kanaal of its variant") {
+        given("an informatieobject, the template that generated it and the kanaal ZAC asked Epistola for") {
             val informatieObjectUUID = UUID.randomUUID()
             val persistedSlot = slot<EpistolaDocument>()
             every { entityManager.persist(capture(persistedSlot)) } just runs

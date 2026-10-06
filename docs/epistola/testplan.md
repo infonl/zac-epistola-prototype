@@ -45,6 +45,11 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De testcases die 
 | 1.3 | 30 september 2026 | Uitgebreid met het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9): **TS-36 t/m TS-43**, in een eigen blok onder *Nieuwe versie*. De bestaande testcases zijn niet gewijzigd. Dit blok is niet door de stakeholders goedgekeurd |
 | 1.4 | 1 oktober 2026 | De **gebruikerstest (UAT) is vervallen**: Team Geneva heeft er naast het werk aan ZAC geen ruimte voor. Dat het prototype voor gebruikers werkt, wordt getoond op de einddemo van 12 oktober, waar Symon het demonstreert en laat zien hoe je het gebruikt. De acceptatietest met de stakeholders blijft ([§9](#9-testplanning)). Bij **TS-31** staat nu dat een poging direct na het herstel nog kan mislukken, en dat het na ongeveer een halve minuut lukt, zoals bij TS-40 gezien. Geen testcase toegevoegd of geschrapt. Niet aan de stakeholders voorgelegd |
 
+De extra's buiten de Definition of Done, de voortgang van een generatie als stappen (#44, [PR #46](https://github.com/infonl/zac-epistola-prototype/pull/46))
+en de variant per kanaal (#47, [PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)), hebben bewust geen testcase
+en dus geen nieuwe versie van dit plan (B25 van 1 oktober 2026). Hun bewijs zijn de unit- en integratietests en de live-checks in
+hun pull requests. Het plan dekt de DoD, en dat blijft zo.
+
 ## 2. Testdoelstellingen
 
 - [x] **Functionaliteit** — werkt elke functie zoals de user stories (#2–#11) en de DoD het beschrijven?
@@ -69,7 +74,7 @@ eerste uitvoering op 25 september, en er hoefde niets opnieuw. De testcases die 
 | Datamapping: zaakdata in het document, de allow-list, datums, ontbrekende velden (#4) | Andere browsers dan Chrome |
 | Open Zaak-opslag: het document in de Documenten API, met metadata en vertrouwelijkheid (#6) | De Playwright/Cucumber-e2e-suite van ZAC. Die is onbetrouwbaar tegen de huidige ZAC (afspraak 16 september) |
 | Zaakkoppeling: het document hoort bij de zaak, en bij de taak als het vanuit een taak komt (#6) | Productie-inrichting: sleutelrotatie, een echte Epistola-tenant, een verwerkersovereenkomst (#20) |
-| Preview: het document openen in de browser, met metadata (#6) | |
+| Preview: het document openen in de browser, met metadata (#6) | De extra's buiten de Definition of Done: de voortgang van een generatie als stappen (#44) en de variant per kanaal (#47). Bewust geen testcase (B25), zie [Versie](#versie) |
 | Foutafhandeling: Epistola onbereikbaar, een mislukte job, een template dat verdwijnt, een timeout (#8) | |
 | Randvoorwaarden: SmartDocuments ongewijzigd (DoD 1), alleen CMMN (DoD 2, #7) | |
 | Nieuwe versie: een Epistola-document opnieuw genereren als volgende versie (DoD 11, optioneel, #9) | |
