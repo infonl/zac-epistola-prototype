@@ -10,7 +10,7 @@
 De zaaktypeconfiguratietabellen zoals ze er nu staan, en ~~de vier wijzigingen die Epistola nodig heeft. Het
 ontwerp **spiegelt de SmartDocuments-structuur in plaats van hem te generaliseren** — de twee providers
 houden aparte tabellen, zodat een wijziging aan de één de ander niet kan breken.~~ wat Epistola eraan toevoegt.
-*5 oktober:* sinds `V104` zijn dat drie kolommen op `zaaktype_configuration` en de tabel `epistola_document` (#51).
+*5 oktober:* sinds `V104` zijn dat ~~drie~~ *6 oktober:* vier kolommen op `zaaktype_configuration` en de tabel `epistola_document` (#51).
 Epistola spiegelt de templatetabellen van SmartDocuments niet meer, want een zaaktype kiest een catalog en geen
 templates. De twee providers delen nog steeds geen templatetabel, zodat een wijziging aan de één de ander niet kan
 breken.
@@ -40,6 +40,7 @@ erDiagram
         boolean epistola_ingeschakeld "NIEUW"
         varchar epistola_catalog_id "NIEUW in V104"
         uuid epistola_informatie_object_type_uuid "NIEUW in V104"
+        varchar epistola_locale "NIEUW in V104"
     }
     zaaktype_cmmn {
         bigint id PK,FK
@@ -127,7 +128,7 @@ de tabel zoals `V100` haar maakte.
 | `template_id` | varchar | nee | Identificatie van het template waarmee het document is gegenereerd |
 | `aanmaakdatum` | timestamptz | nee | Wanneer het document is gegenereerd |
 | `kanaal` | varchar | ja | ~~Het kanaal van de variant waarin het document is gegenereerd~~ *5 oktober:* het kanaal waar ZAC Epistola om vroeg, zoals `post` of `digitaal` (`V102`, #47), ook als dat het kanaal van de standaardvariant is dat de behandelaar in de keuzelijst liet staan. Leeg als ZAC om geen kanaal vroeg: bij een template zonder varianten per kanaal, en bij een standaardrender, waar de behandelaar geen kanaal kon kiezen en het communicatiekanaal van de zaak er geen voorstelde. Dan krijgt ook een nieuwe versie de standaardvariant, zolang het communicatiekanaal niets voorstelt. Ook leeg voor een document van vóór `V102`. Een nieuwe versie gebruikt een gevuld kanaal zolang het template dat kanaal nog heeft |
-| `locale` | varchar | ja | De taal waar ZAC Epistola om vroeg, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (`V103`, #52). De kolom heet naar het attribuut, zoals `kanaal`. Leeg als ZAC om geen taal vroeg, omdat de varianten van het template geen taal hebben, en voor een document van vóór `V103`. Een nieuwe versie vraagt om de opgeslagen taal zolang het template die nog heeft. Is de kolom leeg terwijl het template nu wel talen heeft, of heeft het template de taal niet meer, dan vraagt ze om de taal die ZAC voor het template kiest (Nederlands als het template dat heeft, anders die van de standaardvariant; de behandelaar kiest geen taal), zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen |
+| `locale` | varchar | ja | De taal waar ZAC Epistola om vroeg, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (`V103`, #52). De kolom heet naar het attribuut, zoals `kanaal`. Leeg als ZAC om geen taal vroeg, omdat de varianten van het template geen taal hebben, en voor een document van vóór `V103`. Een nieuwe versie vraagt om de opgeslagen taal zolang het template die nog heeft. Is de kolom leeg terwijl het template nu wel talen heeft, of heeft het template de taal niet meer, dan vraagt ze om de taal die ZAC voor het template kiest (~~Nederlands als het template dat heeft, anders die van de standaardvariant; de behandelaar kiest geen taal~~ *6 oktober:* de taal van het zaaktype, `zaaktype_configuration.epistola_locale`, als het template die heeft, anders Nederlands als het template dat heeft, anders die van de standaardvariant; de behandelaar kiest geen taal), zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen |
 | `catalog_id` | varchar | ja | *5 oktober:* de catalog waaruit het template kwam (`V104`, #51). Een nieuwe versie leest het template daaruit, ook als het zaaktype inmiddels een andere catalog heeft. Leeg voor een document van vóór `V104`: dat kwam uit de catalog van `EPISTOLA_CATALOG_ID`, en die gebruikt ZAC dan |
 
 Er staat één rij per gegenereerd document, geschreven nadat het in Open Zaak staat. Een document zonder rij, omdat het
@@ -135,21 +136,22 @@ ouder is of omdat het schrijven van de rij mislukte, heeft geen actie *Nieuwe ve
 dat later is verwijderd blijft staan. Dat doet geen kwaad, want ze wordt alleen gelezen met de UUID van een bestaand
 document.
 
-### `zaaktype_configuration` *(~~één nieuwe kolom~~ drie nieuwe kolommen, sinds `V104`)*
+### `zaaktype_configuration` *(~~één nieuwe kolom~~ ~~drie~~ vier nieuwe kolommen, sinds `V104`)*
 
 | Kolom | Type | Null | Toelichting |
 |---|---|---|---|
 | `epistola_ingeschakeld` | boolean | nee | Standaard `false`. Poort per zaaktype, spiegelt `smartdocuments_ingeschakeld`, dat sinds `V94` ook `NOT NULL DEFAULT FALSE` is |
 | `epistola_catalog_id` | varchar | ja | *5 oktober:* de catalog in Epistola waarvan het zaaktype elk template aanbiedt (`V104`, #51). Leeg tot de beheerder er een kiest; dan geldt de catalog van `EPISTOLA_CATALOG_ID` |
 | `epistola_informatie_object_type_uuid` | uuid | ja | *5 oktober:* het informatieobjecttype waaronder elk Epistola-document van het zaaktype in Open Zaak komt (`V104`, #51). Zolang het leeg is, biedt het zaaktype geen Epistola-templates aan |
+| `epistola_locale` | varchar | ja | *6 oktober:* de taal waarin ZAC Epistola om elk document van het zaaktype vraagt, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (`V104`, #51). De kolom heet naar het attribuut, zoals `epistola_document.locale`. De beheerder kiest de taal in de beheerkaart, uit de talen die elk template van de catalog heeft. Leeg tot hij er een kiest, en dan vraagt ZAC om Nederlands waar het template dat heeft. Heeft een template de taal niet, dan geldt dezelfde terugval. De behandelaar kiest geen taal |
 
-Een nieuwe versie van een zaaktype neemt beide kolommen over, zoals `epistola_ingeschakeld`.
+Een nieuwe versie van een zaaktype neemt ~~beide kolommen~~ *6 oktober:* alle vier de kolommen over, zoals `epistola_ingeschakeld`.
 
 ### `V104` · van templategroepen naar een catalog per zaaktype *(5 oktober, #51)*
 
 `V104__epistola_catalog_per_zaaktype.sql` doet vier dingen, in deze volgorde:
 
-1. Het voegt `epistola_catalog_id` en `epistola_informatie_object_type_uuid` toe aan `zaaktype_configuration`.
+1. Het voegt `epistola_catalog_id`, `epistola_informatie_object_type_uuid` en *6 oktober:* `epistola_locale` toe aan `zaaktype_configuration`.
 2. Het geeft elk zaaktype met Epistola-templates het informatieobjecttype dat de meeste van zijn templates hadden, zodat
    de minste documenten van type veranderen. Bij gelijke stand wint het type van het template dat het eerst is
    opgeslagen.
@@ -160,7 +162,8 @@ De catalog blijft overal leeg, omdat een Flyway-migratie `EPISTOLA_CATALOG_ID` n
 catalog die van `EPISTOLA_CATALOG_ID`, en daar kwam tot `V104` elk template uit, dus een bestaand zaaktype en een bestaand
 document werken na de upgrade zoals ervoor. Eén verschil: een zaaktype dat templates had, biedt daarna elk template van
 die catalog aan, niet alleen de templates die de beheerder had gekozen. Een zaaktype dat Epistola aan had maar geen
-templates, krijgt geen informatieobjecttype, en biedt pas iets aan als de beheerder er een kiest.
+templates, krijgt geen informatieobjecttype, en biedt pas iets aan als de beheerder er een kiest. *6 oktober:* de taal blijft
+ook leeg: een bestaand zaaktype vraagt dus om Nederlands waar het template dat heeft, zoals het deed.
 
 ## Ontwerpbesluiten
 

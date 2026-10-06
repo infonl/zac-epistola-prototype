@@ -41,6 +41,9 @@ gebouwde versie noemen Epistola wel (§5).
    keuzes staan als kolommen op het zaaktype in ZAC's eigen database ([datamodel](datamodel.md)): configuratie, nooit
    zaakdata. Zonder gekozen catalog geldt die van `EPISTOLA_CATALOG_ID`; zonder informatieobjecttype biedt het zaaktype
    niets aan.
+   *6 oktober:* kiest ook één taal voor het zaaktype, in dezelfde kaart (#51). Alle templates van het zaaktype worden in
+   die taal gemaakt. De kaart biedt alleen de talen die elk template van de catalog heeft; zonder keuze geldt Nederlands
+   waar het template dat heeft ([§5](#verzoek)).
 2. **Actie** — op een CMMN-zaak gebruikt de behandelaar de bestaande actie *Document maken*
    (`actie.document.maken`). Die verschijnt alleen wanneer de policy `creeren_document` toestaat
    ([§4](#4--autorisatiemodel)), en is op BPMN-zaken uitgeschakeld met een toelichtende tooltip (#7).
@@ -61,8 +64,9 @@ gebouwde versie noemen Epistola wel (§5).
    op Nederlands als het template dat heeft en anders op de taal van de standaardvariant. *Variant* biedt dan alleen de
    varianten in de gekozen taal~~ *6 oktober:* de behandelaar kiest geen taal; er is geen keuzelijst *Taal*. ZAC kiest
    zelf de taal waar het Epistola om vraagt: Nederlands als het template dat heeft, anders de taal van de
-   standaardvariant. *Variant* biedt de varianten die het template in die taal heeft ([§5](#verzoek)). Dat een zaaktype
-   zijn eigen taal kiest, in de beheerkaart van het zaaktype, is gepland in #51.
+   standaardvariant. *Variant* biedt de varianten die het template in die taal heeft ([§5](#verzoek)).
+   De taal waar ZAC om vraagt is die van het zaaktype, die de beheerder kiest in de beheerkaart (stap 1); zonder die keuze,
+   of als het template die taal niet heeft, is het Nederlands. De behandelaar kiest nog altijd geen taal.
 4. **Generatie** — ZAC leest de zaak uit Open Zaak en de initiator uit de BRP of KvK *op dat moment*, bouwt
    de payload ([§3](#3--datamapping)) en dient hem in bij Epistola. Generatie is **asynchroon**: het
    indienen levert een job op, ZAC pollt die tot hij klaar is en downloadt dan de PDF
@@ -456,16 +460,17 @@ de ~~drie~~ rechten via twee rollen: `DOCUMENT_GENERATOR` geeft `DOCUMENT_GENERA
 meer `TEMPLATE_VIEW` en `DOCUMENT_VIEW`, en (*5 oktober*) `CATALOG_VIEW`, dat ZAC sinds #51 nodig heeft. De sleutel
 krijgt dus geen nieuwe rol. Die twee rollen staan ook bij de sleutel in `.env.example` en in de Helm-chart.
 
-*5 oktober:* **ZAC's eigen endpoints voor de catalog** (#51), onder `/rest/zaakafhandelparameters`. De eerste vier zijn
-voor de beheerkaart en vragen het recht `beheren`. Het vijfde leest *Document maken*, en is net als bij SmartDocuments
+*5 oktober:* **ZAC's eigen endpoints voor de catalog** (#51), onder `/rest/zaakafhandelparameters`. ~~De eerste vier zijn~~
+*6 oktober:* de eerste vijf zijn voor de beheerkaart en vragen het recht `beheren`. ~~Het vijfde~~ *6 oktober:* het zesde leest *Document maken*, en is net als bij SmartDocuments
 open voor elke gebruiker.
 
 | Endpoint | Wat het doet |
 |---|---|
 | `GET epistola-catalogs` | De catalogs van de tenant, zonder `system`, op naam |
 | `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de lijst in de beheerkaart |
-| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog en het informatieobjecttype van het zaaktype. Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID` |
-| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat beide op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, en een informatieobjecttype dat niet bij het zaaktype hoort |
+| `GET epistola-catalogs/{catalogId}/locales` | *6 oktober:* de talen die elk template van de catalog heeft, als BCP-47-tags uit `system.locale`, voor de keuzelijst *Taal* in de beheerkaart. Leeg als de templates geen taal gemeen hebben, en voor een catalog zonder templates |
+| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog, ~~en~~ het informatieobjecttype *6 oktober:* en de taal van het zaaktype. Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID`, en zonder gekozen taal leeg |
+| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ~~beide~~ *6 oktober:* alle drie op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, een informatieobjecttype dat niet bij het zaaktype hoort, en een taal die geen taalcode is. Een lege taal wist de keuze |
 | `GET {zaaktypeUuid}/epistola-templates` | De templates van de catalog van het zaaktype, elk met het informatieobjecttype van het zaaktype. Leeg als het zaaktype geen Epistola-templates aanbiedt |
 
 Ze vervangen `GET epistola-templates` en `GET`/`POST {zaaktypeUuid}/epistola-templates-mapping` van #3, die er niet
@@ -540,7 +545,14 @@ standaardvariant.~~ *6 oktober:* de behandelaar kiest geen taal. ZAC vraagt om N
 (`nl-NL`, anders een andere Nederlandse regio) en anders om de taal van de standaardvariant; heeft de standaardvariant
 geen taal, dan vraagt het om geen. *Variant* biedt alleen de varianten die het template in die taal heeft, zodat
 Epistola nooit ongemerkt terugvalt op de standaardvariant in een andere taal. ZAC leest de talen uit de varianten en
-houdt zelf geen talenlijst bij. Dat een zaaktype zijn taal kiest (#51) volgt later. Het informatieobject in Open Zaak krijgt de gevraagde taal als ISO 639-2/B-code, zoals `eng`, en `dut` als
+houdt zelf geen talenlijst bij. *6 oktober:* het zaaktype kiest zijn taal (#51), in de beheerkaart, en ZAC vraagt om die
+taal als het template ze heeft. Een nieuwe versie vraagt eerst om de taal die het document opgeslagen heeft, zolang het
+template die nog heeft, en anders om die van het zaaktype; heeft het template ook die niet, of heeft het zaaktype er geen,
+dan geldt de keuze van hierboven. De keuzelijst *Variant*, de voorvertoning en het genereren vragen alle drie om dezelfde taal,
+omdat ze die op dezelfde plaats bepalen. De beheerkaart biedt alleen talen die elk template van de catalog heeft, uit de
+varianten van alle templates van de catalog (één `GET …/templates/{templateId}` per template, zonder dat ZAC iets bewaart);
+een template waarvan de varianten geen taal hebben, telt niet mee, omdat ZAC daar geen taal voor vraagt. Mislukt dat lezen,
+dan krijgt de beheerkaart de foutmelding die ook de lijst met templates krijgt. Het informatieobject in Open Zaak krijgt de gevraagde taal als ISO 639-2/B-code, zoals `eng`, en `dut` als
 ZAC om geen taal vroeg. ZAC slaat de gevraagde taal bij het document op, en een nieuwe versie vraagt erom zolang het
 template die taal nog heeft; zonder opgeslagen taal, of met een taal die het template niet meer heeft, vraagt ze om de
 taal die ZAC voor het template kiest. Zonder kanaal en zonder taal stuurt ZAC geen `attributes` en kiest Epistola de
@@ -656,6 +668,12 @@ Er zijn drie, elk voor iets anders:
   informatieobjecttype gaat daarom van één per template naar één per zaaktype, gekozen naast de catalog en bij het
   opslaan getoetst aan de informatieobjecttypen van het zaaktype. Opslaan toetst de catalog aan de live lijst van
   Epistola. Epistola's eigen catalog `system` staat niet in de keuzelijst: daar staan attributen in en geen templates.
+- ***De taal kiest het zaaktype, niet de behandelaar*** (6 oktober, #51). Eén taal voor alle templates van het zaaktype, in
+  de kaart naast de catalog, als kolom `epistola_locale` op `zaaktype_configuration` (`V104`). De keuzelijst biedt alleen talen die
+  elk template van de catalog heeft, zodat geen template van het zaaktype zonder de gekozen taal blijft; templates zonder talen
+  tellen niet mee. De beheerder mag ook geen taal kiezen, en dan geldt Nederlands waar het template dat heeft. Een
+  nieuwe versie houdt de taal van het document zolang het template die heeft. Een nieuwe versie van het zaaktype in ZAC
+  neemt de taal over, zoals de catalog.
 - ***Document maken* heeft voor Epistola geen veld *Templategroep*.** Het veld *Template* biedt de templates van de
   catalog meteen, en kiest het enige zelf ([§1](#1--functioneel-ontwerp), stap 3). SmartDocuments houdt zijn groepveld
   en zijn eigen namen. De dialoog heeft daardoor niet meer bij beide providers dezelfde velden ([wireframes](wireframes.md)).
