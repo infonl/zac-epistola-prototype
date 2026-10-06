@@ -173,7 +173,9 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     kanalen = postAndDigitaal,
                     locales = createDutchAndEnglishLocales()
                 )
-                every { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") } returns FAKE_PREVIEW
+                every {
+                    epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL")
+                } returns FAKE_PREVIEW
 
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
@@ -182,7 +184,9 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 )
 
                 then("the Dutch variant the communicatiekanaal suggests is previewed, as it would be generated") {
-                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
+                    verify(exactly = 1) {
+                        epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL")
+                    }
                 }
             }
         }
