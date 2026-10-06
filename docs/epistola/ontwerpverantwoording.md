@@ -354,8 +354,9 @@ A generated document stays for three to four months (§2). For production it is 
 to name.
 
 **Is a test tenant with non-production templates available for the prototype and the demo?**
-The question falls away: there is no external tenant at all. The prototype and the final demo run against the test
-server, and what keeps the §2 position standing is that only test data goes there.
+Yes. The prototype and the final demo run against Epistola's hosted test server (`demo.epistola.app`), with a tenant of
+its own that holds only test templates, so no production tenant is involved. What keeps the §2 position standing is
+that only test data goes there.
 
 **Who holds the agreement with Epistola — Dimpact centrally, or each gemeente separately?**
 For the prototype, neither: no persoonsgegevens of real people are processed (§2). Who holds a production agreement

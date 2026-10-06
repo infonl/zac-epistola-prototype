@@ -177,8 +177,8 @@ Een template is **plat binnen een tenant** — een id, een naam, een JSON Schema
 *varianten*. Een variant is hetzelfde document in een andere vorm, gekozen op attributen, wat taal en huisstijl is en
 geen archivering. Epistola deelt zijn templates in catalogs in. De stakeholders willen de templates indelen waar ze
 gemaakt worden, in de catalogs van Epistola, en niet in ZAC (#51). Elk zaaktype kiest daarom één catalog en biedt elk
-template daarin aan. ZAC heeft voor Epistola geen groeptabel en geen tabel per template, en de catalog staat als één kolom
-op het zaaktype. DoD-item 9 is zo ingevuld met de catalog op de plaats van de templategroep.
+template daarin aan. ZAC heeft voor Epistola geen groeptabel en geen tabel die elk template van de catalog bijhoudt: alleen een template met
+een eigen instelling heeft een rij (`zaaktype_epistola_template_settings`), en de catalog staat als één kolom op het zaaktype. DoD-item 9 is zo ingevuld met de catalog op de plaats van de templategroep.
 
 ### Een template heeft hoogstens één instelling per zaaktype
 
