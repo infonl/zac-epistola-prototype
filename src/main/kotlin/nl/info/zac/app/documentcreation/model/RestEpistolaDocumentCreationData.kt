@@ -28,11 +28,5 @@ data class RestEpistolaDocumentCreationData(
      * The chosen variant, named by its kanaal. Without one, the zaak's communicatiekanaal decides which of the
      * template's variants is used.
      */
-    var variant: String? = null,
-
-    /**
-     * The chosen language, by the BCP-47 tag of its `system.locale`. Without one, Dutch is used when the template has
-     * it, and otherwise the language of its default variant.
-     */
-    var taal: String? = null
+    var variant: String? = null
 )

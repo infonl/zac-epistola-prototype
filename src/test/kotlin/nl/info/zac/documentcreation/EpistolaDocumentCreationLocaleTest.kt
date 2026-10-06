@@ -90,7 +90,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
     afterEach { checkUnnecessaryStub() }
 
-    context("choosing the language of an Epistola document") {
+    context("the language ZAC asks Epistola for") {
         fun givenATemplate(zaak: Zaak, locales: EpistolaLocales): AskedVariant {
             val loggedInUser = createLoggedInUser()
             val askedVariant = AskedVariant()
@@ -119,18 +119,18 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         given("a template with Dutch variants by post and digitally and an English one by post, for a zaak by e-mail") {
             val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
 
-            `when`("a document is created without choosing a language") {
+            `when`("a document is created") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
                 epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
 
-                then("Dutch is asked for, in the variant the communicatiekanaal suggests") {
+                then("Dutch is asked for, in the variant the communicatiekanaal suggests, as the behandelaar chooses no language") {
                     askedVariant.locales.single() shouldBe "nl-NL"
                     askedVariant.kanalen.single() shouldBe "digitaal"
                 }
             }
 
-            `when`("a document is created in English") {
+            `when`("a document is generated again in English, as a new version of an English document is") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
                 epistolaDocumentCreationService.createDocument(
@@ -146,7 +146,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                 }
             }
 
-            `when`("a document is created digitally in English, a combination no variant has") {
+            `when`("a document is generated again digitally in English, a combination no variant has") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
                 epistolaDocumentCreationService.createDocument(
@@ -163,7 +163,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                 }
             }
 
-            `when`("a document is created in a language the template does not have") {
+            `when`("a document is generated again in a language the template no longer has") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
                 epistolaDocumentCreationService.createDocument(
@@ -182,7 +182,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         given("a template whose variants carry no language") {
             val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
 
-            `when`("a document is created in English") {
+            `when`("a document is generated again in English") {
                 val askedVariant = givenATemplate(zaak, EpistolaLocales())
 
                 epistolaDocumentCreationService.createDocument(
@@ -310,7 +310,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         }
     }
 
-    context("creating a document in a language, and later a new version of it") {
+    context("creating a document, and later a new version of it") {
         fun givenTheZaaksDossier(zaak: Zaak, zaakInformatieObject: ZaakInformatieObject) {
             val informatieObjectTypeUuid = UUID.randomUUID()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
@@ -338,7 +338,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
         }
 
-        fun createDocumentAndThenANewVersion(zaak: Zaak, locales: EpistolaLocales, taal: String?): Pair<AskedVariant, List<String?>> {
+        fun createDocumentAndThenANewVersion(zaak: Zaak, locales: EpistolaLocales): Pair<AskedVariant, List<String?>> {
             val loggedInUser = createLoggedInUser()
             val askedVariant = AskedVariant()
             val storedKanalen = mutableListOf<String?>()
@@ -388,8 +388,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                 zaak = zaak,
                 templateId = FAKE_TEMPLATE_ID,
                 title = "fakeTitle",
-                description = null,
-                taal = taal
+                description = null
             )
             epistolaDocumentVersionService.createNewVersion(
                 zaak = zaak,
@@ -401,14 +400,36 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         given("a template with Dutch variants by post and digitally and an English one by post, for a zaak by e-mail") {
             val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
 
-            `when`("a document is created in English, and later a new version of it") {
+            `when`("a document is created, and later a new version of it") {
                 val (askedVariant, storedLocales) = createDocumentAndThenANewVersion(
                     zaak = zaak,
-                    locales = createDutchAndEnglishLocales(),
-                    taal = "en-GB"
+                    locales = createDutchAndEnglishLocales()
                 )
 
-                then("both ask for English by post, rather than for the digital Dutch variant the zaak suggests") {
+                then("both ask for the digital Dutch variant the zaak suggests") {
+                    askedVariant.locales shouldBe listOf("nl-NL", "nl-NL")
+                    askedVariant.kanalen shouldBe listOf("digitaal", "digitaal")
+                }
+
+                and("the document stores Dutch") {
+                    storedLocales shouldBe listOf("nl-NL")
+                }
+            }
+        }
+
+        given("a template whose only language is British English, for a zaak by e-mail") {
+            val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+
+            `when`("a document is created, and later a new version of it") {
+                val (askedVariant, storedLocales) = createDocumentAndThenANewVersion(
+                    zaak = zaak,
+                    locales = EpistolaLocales(
+                        kanalenByLocale = mapOf("en-GB" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")),
+                        defaultLocale = "en-GB"
+                    )
+                )
+
+                then("both ask for English by post, the only variant there is") {
                     askedVariant.locales shouldBe listOf("en-GB", "en-GB")
                     askedVariant.kanalen shouldBe listOf("post", "post")
                 }
@@ -425,8 +446,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             `when`("a document is created, and later a new version of it") {
                 val (askedVariant, storedLocales) = createDocumentAndThenANewVersion(
                     zaak = zaak,
-                    locales = EpistolaLocales(),
-                    taal = null
+                    locales = EpistolaLocales()
                 )
 
                 then("neither asks for a language, so Epistola renders the default variant both times") {

@@ -11,6 +11,7 @@ import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createDutchAndEnglishLocales
+import nl.info.client.epistola.model.createGenerationTemplate
 
 class EpistolaLocaleTest : BehaviorSpec({
     afterEach { checkUnnecessaryStub() }
@@ -72,17 +73,43 @@ class EpistolaLocaleTest : BehaviorSpec({
         }
     }
 
+    context("resolving the language to ask Epistola for") {
+        given("a template in Dutch and in British English") {
+            val generationTemplate = createGenerationTemplate(locales = createDutchAndEnglishLocales())
+
+            `when`("the language is resolved without a requested language") {
+                then("Dutch is resolved") {
+                    generationTemplate.resolveLocale() shouldBe "nl-NL"
+                }
+            }
+
+            `when`("the language is resolved with British English requested") {
+                then("British English is resolved") {
+                    generationTemplate.resolveLocale(requestedLocale = "en-GB") shouldBe "en-GB"
+                }
+            }
+        }
+
+        given("a template whose variants carry no language") {
+            `when`("the language is resolved") {
+                then("no language is resolved") {
+                    createGenerationTemplate().resolveLocale() shouldBe null
+                }
+            }
+        }
+    }
+
     context("choosing the language to ask Epistola for") {
         given("a template in Dutch and in British English") {
             val locales = createDutchAndEnglishLocales()
 
-            `when`("the behandelaar chose British English") {
+            `when`("British English is requested") {
                 then("British English is asked for") {
                     locales.choose(requestedLocale = "en-GB") shouldBe "en-GB"
                 }
             }
 
-            `when`("the behandelaar chose no language, or one the template does not have") {
+            `when`("no language is requested, or one the template does not have") {
                 then("Dutch is asked for") {
                     listOf(null, "fr-FR").forEach {
                         locales.choose(requestedLocale = it) shouldBe "nl-NL"
@@ -92,7 +119,7 @@ class EpistolaLocaleTest : BehaviorSpec({
         }
 
         given("a template whose variants carry no language") {
-            `when`("the behandelaar chose British English") {
+            `when`("British English is requested") {
                 then("no language is asked for, so Epistola renders the template as before") {
                     EpistolaLocales().choose(requestedLocale = "en-GB") shouldBe null
                 }
