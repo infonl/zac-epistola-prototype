@@ -300,10 +300,15 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       );
     });
 
-    it("says what no choice means", async () => {
+    it("shows no hint when the catalog has languages to choose from", async () => {
       await setup();
 
-      expect(await screen.findByText("epistola.taal.hint")).toBeVisible();
+      expect(
+        await screen.findByRole("combobox", { name: /epistola\.taal/ }),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("msg.epistola.talen.geen"),
+      ).not.toBeInTheDocument();
     });
 
     it("shows the language stored with the zaaktype", async () => {

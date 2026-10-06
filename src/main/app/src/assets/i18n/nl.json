@@ -1018,7 +1018,6 @@
   "epistola.catalog.templates": "Templates in deze catalog",
   "epistola.taal": "Taal",
   "epistola.taal.standaard": "Nederlands waar aangeboden",
-  "epistola.taal.hint": "Alle templates van dit zaaktype worden in deze taal gemaakt. Zonder keuze maakt Epistola het document in het Nederlands, waar het template dat heeft.",
   "epistola.form.schakelaar": "Documenten maken met Epistola",
   "epistola.variant": "Variant",
   "epistola.variant.post": "Per post",
