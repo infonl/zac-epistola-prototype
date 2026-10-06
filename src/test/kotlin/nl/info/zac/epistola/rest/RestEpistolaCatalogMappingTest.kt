@@ -7,9 +7,11 @@ package nl.info.zac.epistola.rest
 import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
+import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.mockk.checkUnnecessaryStub
 import jakarta.json.bind.JsonbBuilder
+import jakarta.validation.Validation
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_MAPPING_INVALID
 import java.util.UUID
@@ -253,6 +255,55 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
                     catalogMapping.templateSettings shouldBe listOf(
                         createRestEpistolaTemplateSetting(templateId = "fake-template-1", isEnabled = false)
                     )
+                }
+            }
+        }
+    }
+
+    context("the constraints of a catalog mapping a client sends") {
+        val validator = Validation.buildDefaultValidatorFactory().validator
+        val jsonb = JsonbBuilder.create()
+
+        given("a catalog mapping with all required fields") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                templateSettings = listOf(createRestEpistolaTemplateSetting(templateId = "fake-template-1"))
+            )
+
+            `when`("it is validated") {
+                then("it has no violations") {
+                    validator.validate(catalogMapping) shouldHaveSize 0
+                }
+            }
+        }
+
+        given("a request body without the template settings") {
+            val catalogMapping = jsonb.fromJson(
+                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null,"locale":null}""",
+                RestEpistolaCatalogMapping::class.java
+            )
+
+            `when`("it is validated") {
+                val violations = validator.validate(catalogMapping)
+
+                then("the missing template settings are the only violation, so the request is rejected with 400") {
+                    violations shouldHaveSize 1
+                    violations.first().propertyPath.toString() shouldBe "templateSettings"
+                }
+            }
+        }
+
+        given("a request body with a blank catalog and a template setting without a template") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "",
+                templateSettings = listOf(createRestEpistolaTemplateSetting(templateId = ""))
+            )
+
+            `when`("it is validated") {
+                val violations = validator.validate(catalogMapping)
+
+                then("both are violations") {
+                    violations.map { it.propertyPath.toString() }.toSet() shouldBe
+                        setOf("catalogId", "templateSettings[0].templateId")
                 }
             }
         }

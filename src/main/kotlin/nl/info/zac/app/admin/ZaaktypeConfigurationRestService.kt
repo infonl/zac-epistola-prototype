@@ -365,7 +365,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @Path("{zaaktypeUuid}/epistola-catalog-mapping")
     fun storeEpistolaCatalogMapping(
         @PathParam("zaaktypeUuid") zaaktypeUuid: UUID,
-        restEpistolaCatalogMapping: RestEpistolaCatalogMapping
+        @Valid restEpistolaCatalogMapping: RestEpistolaCatalogMapping
     ) {
         assertPolicy(policyService.readOverigeRechten().beheren)
         epistolaTemplatesService.storeCatalogMapping(

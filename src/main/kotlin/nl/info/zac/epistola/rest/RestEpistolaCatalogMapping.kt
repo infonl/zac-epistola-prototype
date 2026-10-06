@@ -5,6 +5,9 @@
 package nl.info.zac.epistola.rest
 
 import jakarta.json.bind.annotation.JsonbProperty
+import jakarta.validation.Valid
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -21,9 +24,12 @@ import java.util.UUID
 @NoArgConstructor
 @AllOpen
 data class RestEpistolaCatalogMapping(
+    @field:NotBlank
     var catalogId: String,
     var informatieObjectTypeUUID: UUID?,
     var locale: String?,
+    @field:NotNull
+    @field:Valid
     var templateSettings: List<RestEpistolaTemplateSetting>
 )
 
@@ -35,6 +41,7 @@ data class RestEpistolaCatalogMapping(
 @NoArgConstructor
 @AllOpen
 data class RestEpistolaTemplateSetting(
+    @field:NotBlank
     var templateId: String,
     var informatieObjectTypeUUID: UUID?,
     @get:JsonbProperty("isEnabled")

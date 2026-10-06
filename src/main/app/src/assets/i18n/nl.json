@@ -1013,7 +1013,7 @@
   "msg.smartdocuments.wizard.subtext.unknown": "Sluit het tabblad en probeer het opnieuw",
   "msg.smartdocuments.form.disabled": "De koppeling met SmartDocuments staat uit voor dit zaaktype.",
   "title.epistola.form": "Epistola-documenttemplates",
-  "title.admin.parameters.step.epistola": "Kies de Epistola-catalog waarvan zaken van dit zaaktype alle templates aanbieden, de taal waarin de documenten worden gemaakt, en het documenttype waaronder ze worden opgeslagen.",
+  "title.admin.parameters.step.epistola": "Kies de Epistola-catalog waarvan dit zaaktype de templates aanbiedt, de taal waarin de documenten worden gemaakt, en het documenttype waaronder ze worden opgeslagen.",
   "msg.epistola.form.disabled": "Documenten maken met Epistola staat uit voor dit zaaktype.",
   "epistola.catalog": "Catalog",
   "epistola.catalog.templates": "Templates in deze catalog",

@@ -75,11 +75,11 @@ abstract class ZaaktypeConfiguration {
     @Column(name = "epistola_ingeschakeld")
     var isEpistolaEnabled: Boolean = false
 
-    /** Null until the beheerder chooses a catalog, and then ZAC uses the one of `EPISTOLA_CATALOG_ID`. */
+    /** While null, ZAC uses the catalog of `EPISTOLA_CATALOG_ID`; once the beheerder chooses a catalog, ZAC uses that one. */
     @Column(name = "epistola_catalog_id")
     var epistolaCatalogId: String? = null
 
-    /** Null until the beheerder chooses a language, and then ZAC asks for Dutch where the template has it. */
+    /** While null, ZAC asks for Dutch where the template has it; once the beheerder chooses a language, ZAC asks for that one. */
     @Column(name = "epistola_locale")
     var epistolaLocale: String? = null
 

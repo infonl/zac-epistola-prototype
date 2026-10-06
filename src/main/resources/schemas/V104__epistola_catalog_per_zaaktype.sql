@@ -11,8 +11,8 @@ ALTER TABLE ${schema}.zaaktype_configuration
     ADD COLUMN epistola_informatie_object_type_uuid UUID,
     ADD COLUMN epistola_locale                      VARCHAR;
 
-COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_catalog_id IS 'Catalog in Epistola waarvan dit zaaktype alle templates aanbiedt; leeg tot de beheerder er een kiest, en dan geldt de catalog van EPISTOLA_CATALOG_ID';
-COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_locale IS 'Taal (BCP-47-tag van system.locale in Epistola, zoals nl-NL) waarin ZAC Epistola om het document vraagt voor alle templates van dit zaaktype; leeg tot de beheerder er een kiest, en dan geldt Nederlands als het template dat heeft';
+COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_catalog_id IS 'Catalog in Epistola waarvan dit zaaktype alle templates aanbiedt; zolang dit leeg is, geldt de catalog van EPISTOLA_CATALOG_ID';
+COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_locale IS 'Taal (BCP-47-tag van system.locale in Epistola, zoals nl-NL) waarin ZAC Epistola om het document vraagt voor alle templates van dit zaaktype; zolang dit leeg is, vraagt ZAC om Nederlands als het template dat heeft';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_informatie_object_type_uuid IS 'Informatieobjecttype waaronder een met Epistola gegenereerd document in Open Zaak wordt opgeslagen';
 
 -- A template can have an informatieobjecttype of its own, and be switched off so that Document maken does not offer it.
