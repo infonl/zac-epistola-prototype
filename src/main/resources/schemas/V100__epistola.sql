@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
--- A zaaktype offers every template of one Epistola catalog, so the template groups and the per-template mapping of V100
--- give way to columns on the zaaktype. A Flyway migration cannot read EPISTOLA_CATALOG_ID, so the catalog stays
--- empty here, and ZAC then uses the catalog that variable names, which is the one every template came from until now.
 ALTER TABLE ${schema}.zaaktype_configuration
+    ADD COLUMN epistola_ingeschakeld                BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN epistola_catalog_id                  VARCHAR,
     ADD COLUMN epistola_informatie_object_type_uuid UUID,
     ADD COLUMN epistola_locale                      VARCHAR;
 
+COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_ingeschakeld IS 'Maak het aanmaken van documenten via Epistola mogelijk voor dit zaaktype';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_catalog_id IS 'Catalog in Epistola waarvan dit zaaktype alle templates aanbiedt; zolang dit leeg is, geldt de catalog van EPISTOLA_CATALOG_ID';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_locale IS 'Taal (BCP-47-tag van system.locale in Epistola, zoals nl-NL) waarin ZAC Epistola om het document vraagt voor alle templates van dit zaaktype; zolang dit leeg is, vraagt ZAC om Nederlands als het template dat heeft';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_informatie_object_type_uuid IS 'Informatieobjecttype waaronder een met Epistola gegenereerd document in Open Zaak wordt opgeslagen';
@@ -43,44 +42,24 @@ COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.informatie_objec
 COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.is_enabled IS 'Of Document maken dit template aanbiedt; een template dat de beheerder uitzet, blijft staan in Epistola maar verdwijnt uit de keuzelijst';
 COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.aanmaakdatum IS 'Datum waarop de instelling van het template in deze tabel is opgeslagen';
 
--- Each template had its own informatieobjecttype. The zaaktype keeps the one most of its templates had, so the fewest
--- documents change type, and of two that are used equally often the one of the template stored first.
-UPDATE ${schema}.zaaktype_configuration
-SET epistola_informatie_object_type_uuid = most_used.informatie_object_type_uuid
-FROM (
-    SELECT DISTINCT ON (zaaktype_configuration_id)
-        zaaktype_configuration_id,
-        informatie_object_type_uuid
-    FROM ${schema}.zaaktype_epistola_document_template_parameters
-    GROUP BY zaaktype_configuration_id, informatie_object_type_uuid
-    ORDER BY zaaktype_configuration_id, COUNT(*) DESC, MIN(id)
-) AS most_used
-WHERE zaaktype_configuration.id = most_used.zaaktype_configuration_id;
+-- The PDF of an Epistola document lives in Open Zaak, and ZAC keeps no copy of it. This only remembers which Epistola
+-- template produced the document there, in which catalog, language and variant, so that a behandelaar can generate a
+-- new version of it.
+CREATE TABLE ${schema}.epistola_document
+(
+    informatieobject_uuid UUID                     NOT NULL,
+    template_id           VARCHAR                  NOT NULL,
+    aanmaakdatum          TIMESTAMP WITH TIME ZONE NOT NULL,
+    kanaal                VARCHAR,
+    locale                VARCHAR,
+    catalog_id            VARCHAR,
+    CONSTRAINT pk_epistola_document
+        PRIMARY KEY (informatieobject_uuid)
+);
 
--- A template whose informatieobjecttype differs from the one the zaaktype keeps keeps its own, so that no document
--- changes type by this migration.
-INSERT INTO ${schema}.zaaktype_epistola_template_settings
-    (id, zaaktype_configuration_id, epistola_id, informatie_object_type_uuid, is_enabled, aanmaakdatum)
-SELECT nextval('${schema}.sq_zaaktype_epistola_template_settings'),
-       template.zaaktype_configuration_id,
-       template.epistola_id,
-       template.informatie_object_type_uuid,
-       TRUE,
-       template.aanmaakdatum
-FROM ${schema}.zaaktype_epistola_document_template_parameters AS template
-         JOIN ${schema}.zaaktype_configuration AS configuration
-              ON configuration.id = template.zaaktype_configuration_id
-WHERE template.informatie_object_type_uuid IS DISTINCT FROM configuration.epistola_informatie_object_type_uuid
-ORDER BY template.id;
-
-DROP TABLE ${schema}.zaaktype_epistola_document_template_parameters;
-DROP TABLE ${schema}.zaaktype_epistola_document_template_group_parameters;
-DROP SEQUENCE ${schema}.sq_zaaktype_epistola_document_template_parameters;
-DROP SEQUENCE ${schema}.sq_zaaktype_epistola_document_template_group_parameters;
-
--- A new version of a document is generated from the catalog of the first, also after its zaaktype has moved to another.
--- A document generated before this column came from the catalog of EPISTOLA_CATALOG_ID, and keeps null.
-ALTER TABLE ${schema}.epistola_document
-    ADD COLUMN catalog_id VARCHAR;
-
-COMMENT ON COLUMN ${schema}.epistola_document.catalog_id IS 'Catalog in Epistola waaruit het template komt waarmee het document is gegenereerd; leeg voor een document van voor deze kolom, dat uit de catalog van EPISTOLA_CATALOG_ID komt';
+COMMENT ON COLUMN ${schema}.epistola_document.informatieobject_uuid IS 'UUID van het informatieobject in Open Zaak dat met Epistola is gegenereerd';
+COMMENT ON COLUMN ${schema}.epistola_document.template_id IS 'ID van het Epistola-template waarmee het document is gegenereerd';
+COMMENT ON COLUMN ${schema}.epistola_document.aanmaakdatum IS 'Moment waarop het document is gegenereerd';
+COMMENT ON COLUMN ${schema}.epistola_document.kanaal IS 'Kanaal van de Epistola-variant waar ZAC om vroeg, zoals post of digitaal; leeg als ZAC om geen kanaal vroeg, bijvoorbeeld bij een template zonder varianten per kanaal of na een standaardrender';
+COMMENT ON COLUMN ${schema}.epistola_document.locale IS 'Taal waarin het document is gegenereerd, als BCP-47-tag van het Epistola-attribuut system.locale, zoals nl-NL; leeg als de varianten van het template geen taal hebben';
+COMMENT ON COLUMN ${schema}.epistola_document.catalog_id IS 'Catalog in Epistola waaruit het template komt waarmee het document is gegenereerd; leeg betekent de catalog van EPISTOLA_CATALOG_ID';

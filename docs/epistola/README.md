@@ -17,7 +17,7 @@ bijbehorende projectbord.
 | Document | Onderwerp | Issue |
 |---|---|---|
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
-| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en ~~de vier wijzigingen die Epistola nodig heeft~~ *5 oktober:* wat Epistola eraan toevoegt, sinds `V104` vier kolommen op het zaaktype, de tabel met de instellingen per template en de tabel `epistola_document` (#51), met ERD | #14 |
+| [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en ~~de vier wijzigingen die Epistola nodig heeft~~ *5 oktober:* wat Epistola eraan toevoegt, sinds `V104` vier kolommen op het zaaktype, de tabel met de instellingen per template en de tabel `epistola_document` (#51), met ERD; *6 oktober:* alle Epistola-migraties zitten in één `V100` | #14 |
 | [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testcases, positief en negatief, over de acht afgesproken gebieden, plus 8 voor het optionele #9. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testscenario's](testscenarios.md) | De testcases uit het testplan uitgewerkt tot elf testscenario's, één per functionaliteit, met randvoorwaarden, testdata en teststappen, positief en negatief. Volgens het examensjabloon (B1-K1-W4) | #18 |
