@@ -115,8 +115,7 @@ class DocumentCreationRestService @Inject constructor(
                 title = restEpistolaDocumentCreationData.title,
                 description = restEpistolaDocumentCreationData.description,
                 taskId = restEpistolaDocumentCreationData.taskId,
-                variant = restEpistolaDocumentCreationData.variant,
-                taal = restEpistolaDocumentCreationData.taal
+                variant = restEpistolaDocumentCreationData.variant
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
 
@@ -139,14 +138,13 @@ class DocumentCreationRestService @Inject constructor(
                 zaak = zaak,
                 templateId = restEpistolaDocumentPreviewData.templateId,
                 taskId = restEpistolaDocumentPreviewData.taskId,
-                variant = restEpistolaDocumentPreviewData.variant,
-                taal = restEpistolaDocumentPreviewData.taal
+                variant = restEpistolaDocumentPreviewData.variant
             )
         }
 
     /**
-     * The variants and languages a behandelaar can choose between, the variant the zaak's communicatiekanaal suggests,
-     * and the language that is preselected.
+     * The variants a behandelaar can choose between, in the language ZAC asks Epistola for, and the variant the zaak's
+     * communicatiekanaal suggests.
      */
     @GET
     @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/varianten")

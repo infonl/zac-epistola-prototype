@@ -43,15 +43,11 @@ describe(InformatieObjectenService.name, () => {
       varianten: ["post", "digitaal"],
       voorgesteldeVariant: "digitaal",
       communicatiekanaal: "E-mail",
-      talen: [],
-      voorgesteldeTaal: null,
     };
     const balieVarianten: GeneratedType<"RestEpistolaVarianten"> = {
       varianten: ["post", "digitaal"],
       voorgesteldeVariant: "post",
       communicatiekanaal: "Balie",
-      talen: [],
-      voorgesteldeTaal: null,
     };
 
     it("asks again every time, because the suggestion follows the zaak's communicatiekanaal, which can be edited in between", async () => {

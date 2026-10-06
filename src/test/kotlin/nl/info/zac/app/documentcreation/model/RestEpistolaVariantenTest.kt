@@ -15,56 +15,89 @@ import nl.info.client.epistola.model.createGenerationTemplate
 class RestEpistolaVariantenTest : BehaviorSpec({
     afterEach { checkUnnecessaryStub() }
 
-    context("offering the variants and languages of a template") {
+    context("offering the variants of a template") {
         given("a template with Dutch variants by post and digitally and an English one by post, for a zaak by e-mail") {
             val generationTemplate = createGenerationTemplate(
-                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"),
+                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal", "sms"), defaultKanaal = "sms"),
                 locales = createDutchAndEnglishLocales()
             )
 
             `when`("they are offered") {
                 val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
-                then("each language is offered with its variants and the one suggested in it, and Dutch is preselected") {
-                    restEpistolaVarianten.talen shouldBe listOf(
-                        RestEpistolaTaal(taal = "nl-NL", varianten = listOf("post", "digitaal"), voorgesteldeVariant = "digitaal"),
-                        RestEpistolaTaal(taal = "en-GB", varianten = listOf("post"), voorgesteldeVariant = "post")
+                then("the variants in Dutch are offered, with the one the communicatiekanaal suggests") {
+                    restEpistolaVarianten shouldBe RestEpistolaVarianten(
+                        varianten = listOf("post", "digitaal"),
+                        voorgesteldeVariant = "digitaal",
+                        communicatiekanaal = "E-mail"
                     )
-                    restEpistolaVarianten.voorgesteldeTaal shouldBe "nl-NL"
                 }
+            }
+        }
 
-                and("the variants of the template as a whole are offered as before, with the communicatiekanaal that suggests one") {
-                    restEpistolaVarianten.varianten shouldBe listOf("post", "digitaal")
-                    restEpistolaVarianten.voorgesteldeVariant shouldBe "digitaal"
-                    restEpistolaVarianten.communicatiekanaal shouldBe "E-mail"
+        given("a template with a Dutch variant by post only and an English one digitally, for a zaak by e-mail") {
+            val generationTemplate = createGenerationTemplate(
+                locales = EpistolaLocales(
+                    kanalenByLocale = mapOf(
+                        "nl-NL" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"),
+                        "en-GB" to EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = "digitaal")
+                    ),
+                    defaultLocale = "en-GB"
+                )
+            )
+
+            `when`("they are offered") {
+                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+
+                then("the digital English variant is not offered, and the e-mail suggests nothing in Dutch") {
+                    restEpistolaVarianten shouldBe RestEpistolaVarianten(
+                        varianten = listOf("post"),
+                        voorgesteldeVariant = "post",
+                        communicatiekanaal = null
+                    )
                 }
             }
         }
 
         given("a template in English and in German whose default variant carries no language") {
             val generationTemplate = createGenerationTemplate(
+                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"),
                 locales = EpistolaLocales(
-                    kanalenByLocale = mapOf("en-GB" to EpistolaKanalen(), "de-DE" to EpistolaKanalen()),
+                    kanalenByLocale = mapOf(
+                        "en-GB" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"),
+                        "de-DE" to EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = "digitaal")
+                    ),
                     defaultLocale = null
                 )
             )
 
             `when`("they are offered") {
-                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = null)
+                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
-                then("no language is preselected, so the behandelaar chooses one") {
-                    restEpistolaVarianten.voorgesteldeTaal shouldBe null
+                then("the variants of the template as a whole are offered, as no language is resolved") {
+                    restEpistolaVarianten shouldBe RestEpistolaVarianten(
+                        varianten = listOf("post", "digitaal"),
+                        voorgesteldeVariant = "digitaal",
+                        communicatiekanaal = "E-mail"
+                    )
                 }
             }
         }
 
         given("a template whose variants carry no language") {
-            `when`("they are offered") {
-                val restEpistolaVarianten = createGenerationTemplate().toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+            val generationTemplate = createGenerationTemplate(
+                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+            )
 
-                then("no language is offered or preselected") {
-                    restEpistolaVarianten.talen shouldBe emptyList()
-                    restEpistolaVarianten.voorgesteldeTaal shouldBe null
+            `when`("they are offered") {
+                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+
+                then("the variants of the template as a whole are offered") {
+                    restEpistolaVarianten shouldBe RestEpistolaVarianten(
+                        varianten = listOf("post", "digitaal"),
+                        voorgesteldeVariant = "digitaal",
+                        communicatiekanaal = "E-mail"
+                    )
                 }
             }
         }

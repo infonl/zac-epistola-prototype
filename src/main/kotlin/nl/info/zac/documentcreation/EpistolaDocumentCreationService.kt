@@ -31,6 +31,7 @@ import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
 import nl.info.zac.documentcreation.model.choose
 import nl.info.zac.documentcreation.model.chooseKanaal
+import nl.info.zac.documentcreation.model.resolveLocale
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
 import nl.info.zac.documentcreation.model.toInformatieobjectTaal
@@ -80,8 +81,7 @@ class EpistolaDocumentCreationService @Inject constructor(
         title: String,
         description: String?,
         taskId: String? = null,
-        variant: String? = null,
-        taal: String? = null
+        variant: String? = null
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
@@ -96,8 +96,7 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
                 taskId = taskId,
-                variant = variant,
-                taal = taal
+                variant = variant
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeDocument(
@@ -125,12 +124,13 @@ class EpistolaDocumentCreationService @Inject constructor(
     }
 
     /**
-     * A [variant] is named by its kanaal. Without one, or with one the template does not have in the chosen language,
-     * the zaak's communicatiekanaal decides. The document names the kanaal and the language ZAC asked Epistola for, and
-     * none when it asked for none and Epistola rendered the default variant, so that a new version asks for the same.
+     * A [variant] is named by its kanaal. Without one, or with one the template does not have in the language ZAC asks
+     * for, the zaak's communicatiekanaal decides. The document names the kanaal and the language ZAC asked Epistola
+     * for, and none when it asked for none and Epistola rendered the default variant, so that a new version asks for
+     * the same.
      *
-     * A [taal] is the BCP-47 tag of one of the template's languages. Without one, or with one the template does not
-     * have, ZAC asks for Dutch when the template has it, and otherwise for the language of its default variant.
+     * A [taal] is the BCP-47 tag of a language of the template, such as the one a document was generated in. Without
+     * one, or with one the template no longer has, ZAC asks for the language it resolves for the template.
      */
     @Suppress("LongParameterList")
     fun createDocument(
@@ -177,8 +177,7 @@ class EpistolaDocumentCreationService @Inject constructor(
         zaak: Zaak,
         templateId: String,
         taskId: String? = null,
-        variant: String? = null,
-        taal: String? = null
+        variant: String? = null
     ): ByteArray {
         epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
         return try {
@@ -187,7 +186,7 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 taskId = taskId,
                 variant = variant,
-                taal = taal
+                taal = null
             ).let { generationInput ->
                 LOG.fine { "Previewing Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
                 epistolaClientService.previewDocument(
@@ -215,7 +214,7 @@ class EpistolaDocumentCreationService @Inject constructor(
         taal: String?
     ): GenerationInput {
         val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
-        val locale = generationTemplate.locales.choose(requestedLocale = taal)
+        val locale = generationTemplate.resolveLocale(requestedLocale = taal)
         return GenerationInput(
             templateData = documentCreationDataService.createEpistolaData(
                 loggedInUser = loggedInUserInstance.get(),

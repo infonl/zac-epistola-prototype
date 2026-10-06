@@ -359,7 +359,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         }
     }
 
-    given("an Epistola document requested for a zaak by post, in English") {
+    given("an Epistola document requested for a zaak by post") {
         val zaak = createZaak()
         val loggedInUser = createLoggedInUser()
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
@@ -372,8 +372,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 title = "fakeTitle",
                 description = null,
                 taskId = null,
-                variant = "post",
-                taal = "en-GB"
+                variant = "post"
             )
         } returns createZaakInformatieobjectForReads()
 
@@ -383,12 +382,11 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                     zaakUuid = zaak.uuid,
                     templateId = "fake-template",
                     title = "fakeTitle",
-                    variant = "post",
-                    taal = "en-GB"
+                    variant = "post"
                 )
             )
 
-            then("the document is generated in that variant and that language") {
+            then("the document is generated in that variant") {
                 verify(exactly = 1) {
                     epistolaDocumentCreationService.createAndStoreDocument(
                         zaak = zaak,
@@ -396,8 +394,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                         title = "fakeTitle",
                         description = null,
                         taskId = null,
-                        variant = "post",
-                        taal = "en-GB"
+                        variant = "post"
                     )
                 }
             }
@@ -419,13 +416,11 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
 
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
 
-            then("both variants are offered, with the digital one suggested by the communicatiekanaal it names, and no language") {
+            then("both variants are offered, with the digital one suggested by the communicatiekanaal it names") {
                 restEpistolaVarianten shouldBe RestEpistolaVarianten(
                     varianten = listOf("post", "digitaal"),
                     voorgesteldeVariant = "digitaal",
-                    communicatiekanaal = "E-mail",
-                    talen = emptyList(),
-                    voorgesteldeTaal = null
+                    communicatiekanaal = "E-mail"
                 )
             }
         }
@@ -459,9 +454,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 restEpistolaVarianten shouldBe RestEpistolaVarianten(
                     varianten = listOf("post"),
                     voorgesteldeVariant = "post",
-                    communicatiekanaal = null,
-                    talen = emptyList(),
-                    voorgesteldeTaal = null
+                    communicatiekanaal = null
                 )
             }
         }

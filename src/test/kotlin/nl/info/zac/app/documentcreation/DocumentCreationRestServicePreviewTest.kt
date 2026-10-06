@@ -60,8 +60,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             zaakUuid = zaak.uuid,
             taskId = taskId,
             templateId = "fake-template",
-            variant = "post",
-            taal = "en-GB"
+            variant = "post"
         )
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { loggedInUserInstance.get() } returns loggedInUser
@@ -77,14 +76,13 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                     zaak = zaak,
                     templateId = "fake-template",
                     taskId = taskId,
-                    variant = "post",
-                    taal = "en-GB"
+                    variant = "post"
                 )
             } returns FAKE_PREVIEW
 
             val preview = documentCreationRestService.previewEpistolaDocument(restEpistolaDocumentPreviewData)
 
-            then("the document Epistola rendered is returned, in the variant and the language that were asked for") {
+            then("the document Epistola rendered is returned, in the variant that was asked for") {
                 preview shouldBe FAKE_PREVIEW
             }
         }
@@ -97,7 +95,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
             }
         }
 
@@ -113,7 +111,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
             }
         }
 
@@ -130,7 +128,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
             }
         }
     }

@@ -52,6 +52,13 @@ fun EpistolaLocales.preselectedLocale(): String? =
 fun EpistolaLocales.choose(requestedLocale: String?): String? =
     requestedLocale?.takeIf { it in locales } ?: preselectedLocale()
 
+/**
+ * The language ZAC asks Epistola for, and offers the variants of: the [requestedLocale] when the template has it,
+ * otherwise the preselected one. The behandelaar does not choose a language, so nothing requests one yet.
+ */
+fun EpistolaGenerationTemplate.resolveLocale(requestedLocale: String? = null): String? =
+    locales.choose(requestedLocale)
+
 fun EpistolaGenerationTemplate.kanalenIn(locale: String?): EpistolaKanalen =
     locale?.let(locales.kanalenByLocale::get) ?: kanalen
 

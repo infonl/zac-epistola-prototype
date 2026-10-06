@@ -1017,8 +1017,6 @@
   "epistola.templategroep": "Template group",
   "epistola.templategroep.nieuw": "New template group",
   "epistola.form.schakelaar": "Create documents with Epistola",
-  "epistola.taal": "Language",
-  "epistola.taal.hint": "Decides which language Epistola creates the document in. Variant lists only the variants the template has in this language.",
   "epistola.variant": "Variant",
   "epistola.variant.post": "By post",
   "epistola.variant.digitaal": "Digital",

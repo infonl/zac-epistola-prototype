@@ -159,23 +159,22 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                 }
             }
 
-            `when`("a preview is made in English, of a template with Dutch variants and an English one by post") {
+            `when`("a preview is made of a template with Dutch variants by post and digitally and an English one by post") {
                 givenATemplateThatIsOffered(
                     zaakUuid = zaak.zaaktype.extractUuid(),
                     kanalen = postAndDigitaal,
                     locales = createDutchAndEnglishLocales()
                 )
-                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post", "en-GB") } returns FAKE_PREVIEW
+                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") } returns FAKE_PREVIEW
 
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
                     templateId = FAKE_TEMPLATE_ID,
-                    taskId = "fakeTaskId",
-                    taal = "en-GB"
+                    taskId = "fakeTaskId"
                 )
 
-                then("the English variant by post is previewed, as it would be generated") {
-                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post", "en-GB") }
+                then("the Dutch variant the communicatiekanaal suggests is previewed, as it would be generated") {
+                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
                 }
             }
         }
