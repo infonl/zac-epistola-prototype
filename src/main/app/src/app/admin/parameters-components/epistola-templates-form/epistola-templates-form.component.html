@@ -122,10 +122,10 @@
                         </mat-panel-description>
                       </mat-expansion-panel-header>
                       <ng-template matExpansionPanelContent>
-                        @if (row.hasDetails) {
-                          <dl class="template-details">
-                            <dt>{{ "epistola.template.id" | translate }}</dt>
-                            <dd>{{ row.id }}</dd>
+                        <dl class="template-details">
+                          <dt>{{ "epistola.template.id" | translate }}</dt>
+                          <dd>{{ row.id }}</dd>
+                          @if (row.hasDetails) {
                             <dt>{{ "epistola.template.talen" | translate }}</dt>
                             <dd>
                               {{
@@ -180,8 +180,8 @@
                                 }}
                               }
                             </dd>
-                          </dl>
-                        }
+                          }
+                        </dl>
                         <div class="template-settings flex-row">
                           <mat-form-field subscriptSizing="dynamic">
                             <mat-label>{{

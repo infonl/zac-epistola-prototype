@@ -547,7 +547,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).toBeVisible();
     });
 
-    it("shows only the document type and the offering of a template whose details Epistola could not give", async () => {
+    it("shows the id, the document type and the offering of a template whose details Epistola could not give, but no languages or variants", async () => {
       const { user } = await setup({
         templatesByCatalog: {
           [VERGUNNINGEN.id]: [{ id: "brief", name: "Brief" }],
@@ -566,8 +566,12 @@ describe(EpistolaTemplatesFormComponent.name, () => {
           name: "epistola.template.aangeboden",
         }),
       ).toBeVisible();
+      expect(templatePanel("Brief").getAllByRole("term")).toHaveLength(1);
       expect(
-        templatePanel("Brief").queryByRole("term"),
+        templatePanel("Brief").getByText("epistola.template.id"),
+      ).toBeVisible();
+      expect(
+        templatePanel("Brief").queryByText("epistola.template.talen"),
       ).not.toBeInTheDocument();
       expect(
         templatePanel("Brief").queryByRole("listitem"),
@@ -575,9 +579,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       expect(
         templatePanel("Brief").queryByText("epistola.template.varianten.geen"),
       ).not.toBeInTheDocument();
-      expect(
-        templatePanel("Brief").queryByText("brief"),
-      ).not.toBeInTheDocument();
+      expect(templatePanel("Brief").getByText("brief")).toBeVisible();
     });
   });
 
