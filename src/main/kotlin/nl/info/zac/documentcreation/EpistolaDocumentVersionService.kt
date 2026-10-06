@@ -63,8 +63,9 @@ class EpistolaDocumentVersionService @Inject constructor(
     /**
      * Generates the document again from the template that produced it, read from the catalog it came from also after the
      * zaaktype has moved to another one, asking for the kanaal and the language stored with it while the template still
-     * offers them, and otherwise for the language of the zaaktype, with the zaak's data as it is now, and stores it as the next version of the same informatieobject. The
-     * versions before it stay in Open Zaak, and when the new version cannot be stored the current one is left as it was.
+     * offers them, and otherwise for the language of the zaaktype, with the zaak's data as it is now, and stores it as
+     * the next version of the same informatieobject. The versions before it stay in Open Zaak, and when the new version
+     * cannot be stored the current one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
      * Epistola's copy is deleted.

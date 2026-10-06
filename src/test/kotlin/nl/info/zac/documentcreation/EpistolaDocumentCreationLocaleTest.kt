@@ -531,6 +531,31 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
         }
 
+        fun givenTheEpistolaDocumentIsStoredAndFound(
+            informatieObjectUUID: UUID,
+            storedKanalen: MutableList<String?>,
+            storedLocales: MutableList<String?>
+        ) {
+            every {
+                epistolaDocumentRepository.createEpistolaDocument(
+                    informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    kanaal = captureNullable(storedKanalen),
+                    locale = captureNullable(storedLocales)
+                )
+            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, catalogId = FAKE_CATALOG_ID)
+            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
+                createEpistolaDocument(
+                    informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    kanaal = storedKanalen.single(),
+                    locale = storedLocales.single()
+                )
+            }
+        }
+
         fun createDocumentAndThenANewVersion(
             zaak: Zaak,
             locales: EpistolaLocales,
@@ -567,24 +592,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     onJobStatus = any()
                 )
             } answers { generatedDocument.copy(kanaal = askedVariant.kanalen.last(), locale = askedVariant.locales.last()) }
-            every {
-                epistolaDocumentRepository.createEpistolaDocument(
-                    informatieObjectUUID = informatieObjectUUID,
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    kanaal = captureNullable(storedKanalen),
-                    locale = captureNullable(storedLocales)
-                )
-            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, catalogId = FAKE_CATALOG_ID)
-            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
-                createEpistolaDocument(
-                    informatieObjectUUID = informatieObjectUUID,
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    kanaal = storedKanalen.single(),
-                    locale = storedLocales.single()
-                )
-            }
+            givenTheEpistolaDocumentIsStoredAndFound(informatieObjectUUID, storedKanalen, storedLocales)
             every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
 
             epistolaDocumentCreationService.createAndStoreDocument(
