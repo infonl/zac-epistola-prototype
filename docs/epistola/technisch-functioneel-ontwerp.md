@@ -635,7 +635,7 @@ Er zijn drie, elk voor iets anders:
 - **Een template dat een sectie uitdrukkelijk als `type: object` declareert** krijgt die sectie heel (B17). Dat is
   een bewuste keuze van de templatebouwer, en de allow-list uit [§3](#3--datamapping) versmalt daar niets. Een
   waarschuwing in de beheerkaart is een verbetervoorstel (#39).
-- **Namen en variabelen volgen Epistola** (B18, #31): *template*, *templategroep* en *catalog*, ook in het Nederlands.
+- **Namen en variabelen volgen Epistola** (B18, #31): *template* en *catalog*, ook in het Nederlands.
 - **Het testplan is goedgekeurd zoals het was** (B14), en de volgorde tot de einddemo is eerst #8, dan #7, dan
   opnieuw testen (B15). De einddemo is op maandag 12 oktober (B19).
 
