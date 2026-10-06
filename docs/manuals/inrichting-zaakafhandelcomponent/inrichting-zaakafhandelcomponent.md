@@ -616,9 +616,10 @@ De templates worden in Epistola gemaakt en daar ingedeeld in catalogs. Per zaakt
 
 - Documenten maken met Epistola aanzetten voor het huidige zaaktype
 - Catalog kiezen: de catalog in Epistola waaruit het zaaktype zijn templates haalt. Daaronder staan de templates die de catalog nu heeft. Zolang er voor het zaaktype geen catalog is gekozen, staat de catalog uit de installatie-instellingen (`EPISTOLA_CATALOG_ID`) geselecteerd
+- Taal kiezen: de taal waarin alle templates van het zaaktype worden gemaakt. De lijst biedt alleen de talen die elk template van de gekozen catalog heeft, zodat geen template zonder de gekozen taal blijft; templates waarvan de varianten in Epistola geen taal hebben, tellen daarbij niet mee. Kies je niets (*Nederlands waar aangeboden*), dan maakt Epistola het document in het Nederlands, waar het template dat heeft. Een andere catalog laadt de lijst opnieuw en wist een gekozen taal die de nieuwe catalog niet aanbiedt. Hebben de templates van de catalog geen taal gemeen, dan staat er een melding en is er niets te kiezen. De behandelaar kiest bij *Document maken* zelf geen taal
 - Documenttype kiezen: het documenttype waaronder elk document dat met Epistola voor dit zaaktype wordt gemaakt, in Open Zaak wordt opgeslagen. De vertrouwelijkheidaanduiding volgt uit het documenttype
 
-Staat Epistola aan, dan zijn de catalog en het documenttype verplicht. Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren.
+Staat Epistola aan, dan zijn de catalog en het documenttype verplicht; de taal is dat niet. Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren.
 
 # Inrichting in OpenZaak - voor functionaliteiten in ZAC
 

@@ -18,7 +18,8 @@
         Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 1. Spiegelt
         <code>smart-documents-form.component</code>. <em>5 oktober:</em> de beheerder kiest één catalog en één
         documenttype voor het zaaktype, en ziet welke templates de catalog heeft. Tot dan bouwde hij hier zelf
-        templategroepen op (#51).
+        templategroepen op (#51). <em>6 oktober:</em> en één taal voor alle templates van het zaaktype, uit de talen
+        die elk template van de catalog heeft. De behandelaar kiest geen taal.
       </p>
 
       <div class="frame">
@@ -32,8 +33,8 @@
               <div>
                 <div class="card-title">Epistola-documenttemplates</div>
                 <div class="card-sub">
-                  Kies de Epistola-catalog waarvan zaken van dit zaaktype alle templates aanbieden, en het
-                  documenttype waaronder de documenten worden opgeslagen.
+                  Kies de Epistola-catalog waarvan zaken van dit zaaktype alle templates aanbieden, de taal waarin
+                  de documenten worden gemaakt, en het documenttype waaronder ze worden opgeslagen.
                 </div>
               </div>
               <div class="toggle"><i></i></div>
@@ -44,6 +45,18 @@
                 <div class="fieldlabel">Catalog <span class="req">*</span></div>
                 <div class="box">ZAC-catalogus <i class="caret">▾</i></div>
                 <div class="fieldnote">Keuzes: de catalogs van de tenant, zonder system</div>
+              </div>
+              <div class="field">
+                <div class="fieldlabel">Taal</div>
+                <div class="box">Nederlands (Nederland) <i class="caret">▾</i></div>
+                <div class="fieldhint">
+                  Alle templates van dit zaaktype worden in deze taal gemaakt. Zonder keuze maakt Epistola het
+                  document in het Nederlands, waar het template dat heeft.
+                </div>
+                <div class="fieldnote">
+                  Keuzes: Nederlands waar aangeboden &middot; de talen die elk template van de catalog heeft, zoals
+                  Engels (Verenigd Koninkrijk)
+                </div>
               </div>
               <div class="field">
                 <div class="fieldlabel">Documenttype <span class="req">*</span></div>
