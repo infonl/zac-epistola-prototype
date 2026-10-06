@@ -24,7 +24,7 @@
 | Aantal testcases uitgevoerd | 36 van de 36, verdeeld over testscenario 1 t/m 10 (TS-09 is bij de uitvoering gesplitst in TS-09a en TS-09b). TS-35 was in ronde 1 niet uitvoerbaar en is in ronde 2 uitgevoerd |
 | Totaal geslaagd | 36 van de 36 (100 %). In ronde 1 waren dat 32 van de 35 (91 %). Daarnaast slagen de 8 testcases voor het optionele #9 (ronde 3, hieronder apart) |
 | Totaal mislukt | 0. In ronde 1 mislukten TS-06, TS-31 en TS-32. Alle drie slaagden in ronde 2, en TS-35 slaagde bij de eerste uitvoering |
-| Gevonden bugs | 8 bugs, alle opgelost. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08, een kleine opmerking over een algemene regel in het foutvenster, is na ronde 2 opgelost in #55 |
+| Gevonden bugs | 8 bugs, alle opgelost. B-01 t/m B-03 zijn opgelost door #7, #8 en #30 en in ronde 2 nagegaan. B-08, een kleine opmerking over een algemene regel in het foutvenster, is opgelost in #55 |
 | Geautomatiseerde tests | Ronde 2, op `c4dbdcca1`: 2729 backend-unittests, 2980 frontend-unittests (257 suites), 386 integratietests en de live-check (7 van 7 controles). Alle geslaagd |
 | Ronde 3 (#9) | Op 30 september, op de branch `feat/epistola-new-document-version` ([PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)): de 8 testcases TS-36 t/m TS-43 voor het optionele DoD-item 11, *een nieuwe versie van een Epistola-document*. Ze staan in testplan 1.3, dat de stakeholders niet hebben goedgekeurd, en tellen daarom niet mee in de 36 |
 | Na ronde 2 | Op 30 september gaat ZAC's Epistola-client van 1.3.1 naar 1.4.0 ([PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42)). De unittests, de integratietests en de live-check zijn daarop herhaald en geslaagd (Bijlage B). De 36 testcases zijn niet opnieuw doorlopen, want de operaties die ZAC aanroept zijn in beide versies gelijk |
@@ -43,7 +43,7 @@ Het nummer in de eerste kolom is het nummer van het testscenario in [de testscen
 | 6 | Open Zaak-opslag (#6) | TS-23 t/m TS-26 | ✅ Geslaagd | Nee | Opgeslagen als PDF met alle verplichte velden. Vertrouwelijkheid uit het documenttype, en de kopie bij Epistola is weg |
 | 7 | Zaakkoppeling (#6) | TS-27, TS-28 | ✅ Geslaagd | Nee | Het document staat direct in het tabblad Documenten van de zaak |
 | 8 | Preview (#6) | TS-29, TS-30 | ✅ Geslaagd | Nee | De PDF opent in de browser, met alle metadata |
-| 9 | Foutafhandeling (#8) | TS-31 t/m TS-35 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ 2 van de 4 uitgevoerde testcases) | Ja: B-02 en B-03 (opgelost, ronde 2), B-06 (opgelost), B-08 (laag, opgelost na ronde 2 in #55) | Elke fout geeft een melding die zegt wat er mis is en of opnieuw proberen helpt. Er gaat niets verloren en er blijft niets half achter |
+| 9 | Foutafhandeling (#8) | TS-31 t/m TS-35 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ 2 van de 4 uitgevoerde testcases) | Ja: B-02 en B-03 (opgelost, ronde 2), B-06 (opgelost), B-08 (laag, opgelost in #55) | Elke fout geeft een melding die zegt wat er mis is en of opnieuw proberen helpt. Er gaat niets verloren en er blijft niets half achter |
 | 10 | Randvoorwaarden: SmartDocuments ongewijzigd, alleen CMMN (DoD 1 en 2) | TS-22, TS-06 | ✅ Geslaagd in ronde 2 (ronde 1: ❌ TS-06) | Ja: B-01 (opgelost, ronde 2) | SmartDocuments werkt ongewijzigd. Bij een BPMN-zaak staat *Create document* uitgeschakeld, met een uitleg |
 | 11 | Nieuwe versie van een Epistola-document (DoD 11, optioneel, #9) | TS-36 t/m TS-43 | ✅ Geslaagd (ronde 3) | Nee | De actie verschijnt bij een document dat Epistola maakte, genereert de volgende versie met de zaakgegevens van dat moment, en laat de eerdere versies en de huidige versie ongemoeid bij een fout |
 
@@ -136,7 +136,7 @@ halve koppeling, en het genereerscherm blijft open. In ronde 1 zei de melding ne
 
 Eén kleine opmerking (B-08): onder de melding bij een onbereikbaar Epistola stond in ZAC's foutvenster nog een
 algemene regel, *An error has occurred.* Het antwoord droeg dan geen detail, en `fout-afhandeling.service.ts`
-viel terug op die regel. De melding erboven was juist en er ging niets verloren. *Opgelost op 5 oktober in #55: het venster herhaalt zijn titel niet meer.*
+viel terug op die regel. De melding erboven was juist en er ging niets verloren. Opgelost in #55: het venster herhaalt zijn titel niet meer.
 
 ### Functionaliteit 10 – Randvoorwaarden
 
@@ -175,13 +175,13 @@ onder de melding van TS-40 staat dezelfde algemene regel *An error has occurred.
 | B-05 | TS-19 | Datums gingen als `dd-MM-yyyy` naar Epistola. Een template dat Epistola's editor maakt (`format: date`, draft-07) liet elke job daardoor mislukken | Hoog | Ja | Gevonden bij de review van #24 en bevestigd met een proef op de testserver. Opgelost in `a56fc2401`, nagegaan in TS-19 |
 | B-06 | TS-33 | Bij een timeout bleef de job bij Epistola lopen, en de melding zei "controleer later" terwijl niets het document later toevoegt. Een fout tijdens het pollen annuleerde de job ook niet | Midden | Ja | Gevonden bij de review van #24 en de tweede Copilot-review. Opgelost in `0d3aa6ca7` en `b440d8f53`, nagegaan met unittests (TS-33) |
 | B-07 | TS-05 | Een template dat het zaaktype aanbood, werd niet geweigerd terwijl de beheerder Epistola voor het zaaktype had uitgezet. De controle uit #27 keek alleen naar de mapping | Midden | Ja | Gevonden bij de bouw van #5. Opgelost in `ce1c8d806`, nagegaan in TS-05 |
-| B-08 | TS-31 | Bij een onbereikbaar Epistola toont ZAC's foutvenster onder de melding nog een algemene regel, *An error has occurred.* Het antwoord draagt geen `exception`-detail, en `fout-afhandeling.service.ts` valt dan terug op die regel | Laag | Ja, na ronde 2 | Gevonden in ronde 2. Geen gevolgen voor de gegevens, en de melding erboven is juist. Opgelost op 5 oktober in #55 ([PR #55](https://github.com/infonl/zac-epistola-prototype/pull/55), `da303e035`, in het gedeelde `FoutAfhandelingService`): het venster herhaalt zijn eigen titel niet meer. Live nagegaan met een geblokkeerd Epistola, niet als testcase herhaald |
+| B-08 | TS-31 | Bij een onbereikbaar Epistola toont ZAC's foutvenster onder de melding nog een algemene regel, *An error has occurred.* Het antwoord draagt geen `exception`-detail, en `fout-afhandeling.service.ts` valt dan terug op die regel | Laag | Ja | Gevonden in ronde 2. Geen gevolgen voor de gegevens, en de melding erboven is juist. Opgelost in #55 ([PR #55](https://github.com/infonl/zac-epistola-prototype/pull/55), `da303e035`, in het gedeelde `FoutAfhandelingService`): het venster herhaalt zijn eigen titel niet meer. Live nagegaan met een geblokkeerd Epistola, niet als testcase herhaald |
 
 **Aantekening bij TS-31 en B-08.** Volgens [het testplan](testplan.md) (§5.1 en §5.2) slaagt een test alleen zonder onverwachte foutmelding in het
 scherm. TS-31 is als **geslaagd** beoordeeld, en dat is een oordeel dat hier uitdrukkelijk staat. Het verwachte resultaat is volledig bereikt: een
 begrijpelijke melding die zegt dat Epistola niet bereikbaar is, een genereerscherm dat open blijft, niets dat is opgeslagen, en de templates die bij naam
 zichtbaar blijven. De algemene regel *An error has occurred.* onder die melding komt uit ZAC's gedeelde foutvenster (`fout-afhandeling.service.ts`), dat
-hem toont bij elk antwoord zonder detailtekst. Hij is dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, sindsdien opgelost in #55).
+hem toont bij elk antwoord zonder detailtekst. Hij is dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, opgelost in #55).
 Wie het plan strenger leest, telt TS-31 als mislukt. Dan zijn 35 van de 36 testcases geslaagd, en blijft de rest van de uitkomsten gelijk.
 
 ### Bekende beperkingen
@@ -220,8 +220,8 @@ Het optionele DoD-item 11, een nieuwe versie van een Epistola-document (#9), is 
 testcases (TS-36 t/m TS-43), die alle slagen. Dat blok staat in testplan 1.3, dat de stakeholders nog niet hebben
 goedgekeurd, en telt daarom niet mee in de 36.
 
-Zeven van de acht gevonden bugs waren bij ronde 2 opgelost en nagegaan. B-08, een algemene regel in het foutvenster zonder
-gevolgen voor de gegevens, is daarna opgelost in #55 (5 oktober) en live nagegaan.
+Alle acht gevonden bugs zijn opgelost en nagegaan. B-08, een algemene regel in het foutvenster zonder
+gevolgen voor de gegevens, is opgelost in #55 en live nagegaan.
 
 De stakeholders hebben versie 1.1 van het testplan op 28 september goedgekeurd (B14). Het prototype is daarmee
 klaar voor oplevering aan de opdrachtgever. De gebruikerstest uit het plan is vervallen (testplan 1.4): Team Geneva
@@ -238,7 +238,7 @@ en moet de acceptatietest met de stakeholders de oplevering bevestigen.
   Het verzoek wacht op Epistola en houdt zolang een thread vast. Bij één behandelaar is dat 3 tot 10 seconden, maar
   niemand heeft het onder belasting gemeten.
 - **Test in meer browsers dan Chrome, en laat eindgebruikers het testen.** Alle testcases zijn door de ontwikkelaar
-  uitgevoerd, in Chrome met Engelse schermtekst. De Nederlandse schermen zijn op 1 oktober in een Nederlandstalige Chrome
+  uitgevoerd, in Chrome met Engelse schermtekst. De Nederlandse schermen zijn in een Nederlandstalige Chrome
   doorlopen, maar niet als testcases en niet in andere browsers. De gebruikerstest is vervallen (testplan 1.4). Een behandelaar en een beheerder die het prototype zelf gebruiken, zien
   wat een ontwikkelaar mist, zoals een onduidelijke tekst of een stap die ze niet vinden.
 
