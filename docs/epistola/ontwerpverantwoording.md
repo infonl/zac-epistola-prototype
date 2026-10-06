@@ -7,7 +7,7 @@
 | Bouwt op | #14 ontwerp · #2 provider-abstractie |
 | Gaat naar | #20 verbetervoorstellen · #10 Confluence |
 | Basis | De fork op `aeb888cc2` |
-| Stand | Versie 3 van 21 september 2026, na het stakeholderoverleg van die dag. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/ToejYJC7dHnRBfq7RjSoHV`, dat niet meer wordt bijgewerkt |
+| Stand | Versie 3 van 21 september 2026, na het stakeholderoverleg van die dag. Op 1 oktober 2026 overgezet naar deze repository |
 
 > **Over deze versie.** De tekst is versie 3 zoals die op 21 september is geschreven, in het Engels. Wat sindsdien is
 > veranderd, staat er met een datum bij: doorgehaald waar een uitspraak niet meer klopt, en de nieuwe stand ernaast.

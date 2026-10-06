@@ -7,7 +7,7 @@
 | Opdrachtgever | Team Geneva · Hanneke van de Horst |
 | Periode | 9 september – 9 oktober 2026 |
 | Bronnen | Examenafspraken v5 (getekend) · projectbeschrijving *PRJ-Epistola integration in ZAC* |
-| Stand | Afgestemd met de stakeholders op 21 september 2026 en de feedback verwerkt. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/5xw7jszczk9b3DDAYQfVAH`, dat niet meer wordt bijgewerkt |
+| Stand | Afgestemd met de stakeholders op 21 september 2026 en de feedback verwerkt. Op 1 oktober 2026 overgezet naar deze repository |
 
 > **Over deze versie.** De tekst is die van het document dat de stakeholders op 21 september zagen, in het Engels
 > zoals het toen geschreven is. Wat sindsdien is veranderd, staat er met een datum bij: doorgehaald waar een
