@@ -39,6 +39,7 @@ import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.documents.model.createEpistolaDocument
 import nl.info.zac.epistola.exception.EpistolaNewVersionNotPossibleException
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_DOCUMENT_NOT_STORED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_NEW_VERSION_NOT_POSSIBLE
@@ -98,7 +99,8 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             fileName: String,
             kanalen: EpistolaKanalen = EpistolaKanalen(),
             locales: EpistolaLocales = EpistolaLocales(),
-            catalogId: String = FAKE_CATALOG_ID
+            catalogId: String = FAKE_CATALOG_ID,
+            templateSettings: Map<String, EpistolaTemplateSetting> = emptyMap()
         ): EpistolaGeneratedDocument {
             val loggedInUser = createLoggedInUser(displayName = "fakeDisplayName")
             val askedLocales = mutableListOf<String?>()
@@ -110,7 +112,11 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
                 epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
-            } returns OfferedEpistolaCatalog(catalogId = FAKE_ZAAKTYPE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
+            } returns OfferedEpistolaCatalog(
+                catalogId = FAKE_ZAAKTYPE_CATALOG_ID,
+                informatieObjectTypeUuid = UUID.randomUUID(),
+                templateSettings = templateSettings
+            )
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
             every { epistolaClientService.readGenerationTemplate(catalogId, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = kanalen, locales = locales)
@@ -127,6 +133,40 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                 )
             } answers { generatedDocument.copy(locale = askedLocales.last()) }
             return generatedDocument
+        }
+
+        given("a document generated from a template that the beheerder has switched off since") {
+            val zaak = createZaak()
+            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
+            val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
+            val generatedDocument = givenANewVersionGenerated(
+                zaak = zaak,
+                fileName = FAKE_FILE_NAME,
+                templateSettings = mapOf(FAKE_TEMPLATE_ID to EpistolaTemplateSetting(isEnabled = false))
+            )
+            val newVersion = createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
+            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns
+                createEpistolaDocument(
+                    informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID
+                )
+            every {
+                enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
+                    enkelvoudigInformatieObjectUUID = informatieObjectUUID,
+                    enkelvoudigInformatieObjectWithLockRequest = any(),
+                    toelichting = "Nieuwe versie gegenereerd met Epistola"
+                )
+            } returns newVersion
+            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
+
+            `when`("a new version is created") {
+                val createdVersion = epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
+
+                then("it is made, as switching a template off only hides it from the selector in Document maken") {
+                    createdVersion shouldBe newVersion
+                }
+            }
         }
 
         given(

@@ -126,9 +126,9 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             val informatieObjectTypeUuid = UUID.randomUUID()
             val zaakInformatieObject = createZaakInformatieobjectForReads()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
-            every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
-            } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
+            val offeredCatalog = OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
+            every { epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any()) } returns offeredCatalog
+            every { epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()) } returns offeredCatalog
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns FAKE_BRONORGANISATIE
             every {
@@ -298,7 +298,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             val zaak = createZaak()
             val generationTemplate = EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal)
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
             every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns generationTemplate
 
@@ -314,7 +314,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
         given("a zaaktype that offers no Epistola templates") {
             val zaak = createZaak()
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } throws EpistolaTemplateNotConfiguredException("fakeMessage")
 
             `when`("its variants are read") {

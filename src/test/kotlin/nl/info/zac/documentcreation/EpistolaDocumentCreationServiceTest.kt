@@ -206,7 +206,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType(
                 uri = informatieObjectTypeUri,
@@ -626,7 +626,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             val informatieObjectTypeUuid = UUID.randomUUID()
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } returns OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = informatieObjectTypeUuid)
             every {
                 ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid)
@@ -695,7 +695,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             val zaak = createZaak()
             every { loggedInUserInstance.get() } returns createLoggedInUser()
             every {
-                epistolaTemplatesService.readOfferedCatalog(any())
+                epistolaTemplatesService.readCatalogOfferingTemplate(any(), any())
             } throws EpistolaTemplateNotConfiguredException("fakeNotConfigured")
 
             `when`("the document is created and stored") {

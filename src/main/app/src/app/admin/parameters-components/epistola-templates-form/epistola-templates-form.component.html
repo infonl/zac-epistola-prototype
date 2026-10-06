@@ -14,10 +14,8 @@
         <mat-slide-toggle
           formControlName="enabledForZaaktype"
           color="primary"
-          labelPosition="before"
-        >
-          {{ "epistola.form.schakelaar" | translate }}
-        </mat-slide-toggle>
+          [aria-label]="'epistola.form.schakelaar' | translate"
+        ></mat-slide-toggle>
       </div>
       <mat-divider class="my-3"></mat-divider>
       @if (form.controls.enabledForZaaktype.value) {
@@ -50,10 +48,7 @@
                 }}</mat-option>
               }
             </mat-select>
-            @if (
-              catalogLocalesQuery.isSuccess() &&
-              !catalogLocalesQuery.data().length
-            ) {
+            @if (hasNoCommonLocale()) {
               <mat-hint>{{ "msg.epistola.talen.geen" | translate }}</mat-hint>
             }
           </mat-form-field>
@@ -103,14 +98,97 @@
             </h3>
             @if (catalogTemplatesQuery.isSuccess()) {
               @if (catalogTemplatesQuery.data().length) {
-                <ul aria-labelledby="epistola-catalog-templates">
-                  @for (
-                    template of catalogTemplatesQuery.data();
-                    track template.id
-                  ) {
-                    <li>{{ template.name }}</li>
+                <mat-accordion
+                  formGroupName="templateSettings"
+                  role="group"
+                  aria-labelledby="epistola-catalog-templates"
+                >
+                  @for (row of templateRows(); track row.id) {
+                    <mat-expansion-panel [formGroupName]="row.id">
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>{{ row.name }}</mat-panel-title>
+                        <mat-panel-description>
+                          @if (!row.isEnabled) {
+                            {{ "epistola.template.verborgen" | translate }}
+                          } @else if (row.ownTypeName) {
+                            {{ row.ownTypeName }}
+                          } @else {
+                            {{
+                              "epistola.template.documenttype.standaard"
+                                | translate
+                                  : { documenttype: row.defaultTypeName ?? "-" }
+                            }}
+                          }
+                        </mat-panel-description>
+                      </mat-expansion-panel-header>
+                      <ng-template matExpansionPanelContent>
+                        @if (row.hasDetails) {
+                          <dl class="template-details">
+                            <dt>{{ "epistola.template.id" | translate }}</dt>
+                            <dd>{{ row.id }}</dd>
+                            <dt>{{ "epistola.template.talen" | translate }}</dt>
+                            <dd>
+                              {{
+                                row.languages ||
+                                  ("epistola.template.talen.geen" | translate)
+                              }}
+                            </dd>
+                            <dt>
+                              {{ "epistola.template.varianten" | translate }}
+                            </dt>
+                            <dd>
+                              @for (
+                                kanaal of row.kanalen;
+                                track kanaal;
+                                let isLast = $last
+                              ) {
+                                {{ variantLabel(kanaal) | translate
+                                }}{{ isLast ? "" : ", " }}
+                              } @empty {
+                                {{
+                                  "epistola.template.varianten.geen" | translate
+                                }}
+                              }
+                            </dd>
+                          </dl>
+                        }
+                        <div class="template-settings flex-row">
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>{{
+                              "informatieobjectTypeOmschrijving" | translate
+                            }}</mat-label>
+                            <mat-select
+                              formControlName="informatieObjectTypeUUID"
+                            >
+                              <mat-option value="">{{
+                                "epistola.template.documenttype.zaaktype"
+                                  | translate
+                              }}</mat-option>
+                              @for (
+                                informatieobjecttype of informatieobjecttypesQuery.data() ??
+                                  [];
+                                track informatieobjecttype.uuid
+                              ) {
+                                <mat-option
+                                  [value]="informatieobjecttype.uuid"
+                                  >{{
+                                    informatieobjecttype.omschrijving
+                                  }}</mat-option
+                                >
+                              }
+                            </mat-select>
+                          </mat-form-field>
+                          <mat-slide-toggle
+                            formControlName="isEnabled"
+                            color="primary"
+                          >
+                            {{ "epistola.template.aangeboden" | translate }}
+                          </mat-slide-toggle>
+                        </div>
+                      </ng-template>
+                    </mat-expansion-panel>
                   }
-                </ul>
+                </mat-accordion>
               } @else {
                 <p class="form-disabled-feedback">
                   {{ "msg.epistola.templates.geen" | translate }}

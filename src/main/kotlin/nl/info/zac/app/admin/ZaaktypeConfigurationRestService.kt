@@ -355,13 +355,6 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     }
 
     @GET
-    @Path("epistola-catalogs/{catalogId}/locales")
-    fun listEpistolaCatalogLocales(@PathParam("catalogId") catalogId: String): List<String> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
-        return epistolaTemplatesService.listCatalogLocales(catalogId)
-    }
-
-    @GET
     @Path("{zaaktypeUuid}/epistola-catalog-mapping")
     fun readEpistolaCatalogMapping(@PathParam("zaaktypeUuid") zaaktypeUuid: UUID): RestEpistolaCatalogMapping {
         assertPolicy(policyService.readOverigeRechten().beheren)

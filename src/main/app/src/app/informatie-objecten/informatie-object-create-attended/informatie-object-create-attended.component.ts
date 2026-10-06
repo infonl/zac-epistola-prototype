@@ -61,6 +61,7 @@ import {
   NotificationDialogComponent,
   NotificationDialogData,
 } from "../../shared/notification-dialog/notification-dialog.component";
+import { epistolaVariantLabel } from "../../shared/utils/epistola-variant-label";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import {
   EPISTOLA_GENERATION_FINISHED_DISPLAY_MS,
@@ -82,11 +83,6 @@ type TemplateGroupOption = {
   id: string;
   name: string;
   templates: TemplateOption[];
-};
-
-const VARIANT_LABELS: Record<string, string> = {
-  post: "epistola.variant.post",
-  digitaal: "epistola.variant.digitaal",
 };
 
 @Component({
@@ -170,8 +166,7 @@ export class InformatieObjectCreateAttendedComponent
     const varianten = this.varianten()?.varianten ?? [];
     return varianten.length > 1 ? varianten : [];
   });
-  protected readonly variantLabel = (variant: string) =>
-    VARIANT_LABELS[variant] ?? variant;
+  protected readonly variantLabel = epistolaVariantLabel;
   private readonly chosenVariant = toSignal(
     this.form.controls.variant.valueChanges,
     { initialValue: null },
