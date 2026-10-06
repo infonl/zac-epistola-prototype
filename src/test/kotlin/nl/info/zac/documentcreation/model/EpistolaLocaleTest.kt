@@ -88,12 +88,42 @@ class EpistolaLocaleTest : BehaviorSpec({
                     generationTemplate.resolveLocale(requestedLocale = "en-GB") shouldBe "en-GB"
                 }
             }
+
+            `when`("the language is resolved with British English configured for the zaaktype") {
+                then("British English is resolved") {
+                    generationTemplate.resolveLocale(configuredLocale = "en-GB") shouldBe "en-GB"
+                }
+            }
+
+            `when`("the language is resolved with a language configured for the zaaktype that the template does not have") {
+                then("Dutch is resolved") {
+                    generationTemplate.resolveLocale(configuredLocale = "fr-FR") shouldBe "nl-NL"
+                }
+            }
+
+            `when`("the language is resolved with Dutch requested and British English configured for the zaaktype") {
+                then("the requested language wins") {
+                    generationTemplate.resolveLocale(requestedLocale = "nl-NL", configuredLocale = "en-GB") shouldBe "nl-NL"
+                }
+            }
+
+            `when`("the language is resolved with one requested that the template does not have and British English configured") {
+                then("the configured language is resolved") {
+                    generationTemplate.resolveLocale(requestedLocale = "fr-FR", configuredLocale = "en-GB") shouldBe "en-GB"
+                }
+            }
         }
 
         given("a template whose variants carry no language") {
             `when`("the language is resolved") {
                 then("no language is resolved") {
                     createGenerationTemplate().resolveLocale() shouldBe null
+                }
+            }
+
+            `when`("the language is resolved with British English configured for the zaaktype") {
+                then("no language is resolved") {
+                    createGenerationTemplate().resolveLocale(configuredLocale = "en-GB") shouldBe null
                 }
             }
         }

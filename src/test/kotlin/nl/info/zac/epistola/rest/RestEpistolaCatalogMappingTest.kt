@@ -58,6 +58,65 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
             }
         }
 
+        given("a catalog Epistola has, an informatieobjecttype of the zaaktype and a language") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "fake-catalog",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                locale = "en-GB"
+            )
+
+            `when`("it is validated") {
+                then("it passes") {
+                    shouldNotThrowAny {
+                        catalogMapping.validate(
+                            availableCatalogIds = setOf("fake-catalog"),
+                            informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
+                        )
+                    }
+                }
+            }
+        }
+
+        given("a blank language, which the beheerder sends for no choice") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "fake-catalog",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                locale = " "
+            )
+
+            `when`("it is validated") {
+                then("it passes") {
+                    shouldNotThrowAny {
+                        catalogMapping.validate(
+                            availableCatalogIds = setOf("fake-catalog"),
+                            informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
+                        )
+                    }
+                }
+            }
+        }
+
+        given("a language that is not a language tag") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "fake-catalog",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                locale = "-"
+            )
+
+            `when`("it is validated") {
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    catalogMapping.validate(
+                        availableCatalogIds = setOf("fake-catalog"),
+                        informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
+                    )
+                }
+
+                then("it is rejected, naming the language") {
+                    epistolaTemplateMappingException.message shouldBe "Invalid Epistola language: '-'"
+                }
+            }
+        }
+
         given("no informatieobjecttype") {
             val catalogMapping = createRestEpistolaCatalogMapping(catalogId = "fake-catalog", informatieObjectTypeUUID = null)
 

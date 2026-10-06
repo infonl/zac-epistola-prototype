@@ -79,10 +79,15 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
         zaakUuid: UUID,
         kanalen: EpistolaKanalen,
         dataContract: Any? = TEMPLATE_SCHEMA,
-        locales: EpistolaLocales = EpistolaLocales()
+        locales: EpistolaLocales = EpistolaLocales(),
+        zaaktypeLocale: String? = null
     ) {
         every { epistolaTemplatesService.readOfferedCatalog(zaakUuid) } returns
-            OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
+            OfferedEpistolaCatalog(
+                catalogId = FAKE_CATALOG_ID,
+                informatieObjectTypeUuid = UUID.randomUUID(),
+                locale = zaaktypeLocale
+            )
         every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
             EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
     }
@@ -178,6 +183,37 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 then("the Dutch variant the communicatiekanaal suggests is previewed, as it would be generated") {
                     verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
+                }
+            }
+        }
+
+        given("a task and a zaak whose communicatiekanaal is e-mail, in a zaaktype set to English") {
+            val loggedInUser = createLoggedInUser()
+            val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+            every { loggedInUserInstance.get() } returns loggedInUser
+            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, "fakeTaskId") } returns createData()
+
+            `when`("a preview is made of a template with Dutch variants by post and digitally and an English one by post") {
+                givenATemplateThatIsOffered(
+                    zaakUuid = zaak.zaaktype.extractUuid(),
+                    kanalen = postAndDigitaal,
+                    locales = createDutchAndEnglishLocales(),
+                    zaaktypeLocale = "en-GB"
+                )
+                every {
+                    epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "post", "en-GB")
+                } returns FAKE_PREVIEW
+
+                epistolaDocumentCreationService.previewDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    taskId = "fakeTaskId"
+                )
+
+                then("the English variant is previewed, as it would be generated") {
+                    verify(exactly = 1) {
+                        epistolaClientService.previewDocument(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID, any(), "post", "en-GB")
+                    }
                 }
             }
         }

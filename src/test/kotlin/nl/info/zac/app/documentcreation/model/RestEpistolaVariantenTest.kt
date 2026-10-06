@@ -7,10 +7,15 @@ package nl.info.zac.app.documentcreation.model
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.checkUnnecessaryStub
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createDutchAndEnglishLocales
 import nl.info.client.epistola.model.createGenerationTemplate
+import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
+import nl.info.zac.documentcreation.model.resolveLocale
+
+private fun EpistolaGenerationTemplate.inItsResolvedLocale() = EpistolaTemplateInLocale(template = this, locale = resolveLocale())
 
 class RestEpistolaVariantenTest : BehaviorSpec({
     afterEach { checkUnnecessaryStub() }
@@ -23,7 +28,7 @@ class RestEpistolaVariantenTest : BehaviorSpec({
             )
 
             `when`("they are offered") {
-                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+                val restEpistolaVarianten = generationTemplate.inItsResolvedLocale().toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
                 then("the variants in Dutch are offered, with the one the communicatiekanaal suggests") {
                     restEpistolaVarianten shouldBe RestEpistolaVarianten(
@@ -47,9 +52,31 @@ class RestEpistolaVariantenTest : BehaviorSpec({
             )
 
             `when`("they are offered") {
-                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+                val restEpistolaVarianten = generationTemplate.inItsResolvedLocale().toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
                 then("the digital English variant is not offered, and the e-mail suggests nothing in Dutch") {
+                    restEpistolaVarianten shouldBe RestEpistolaVarianten(
+                        varianten = listOf("post"),
+                        voorgesteldeVariant = "post",
+                        communicatiekanaal = null
+                    )
+                }
+            }
+        }
+
+        given("a template with Dutch variants by post and digitally and an English one by post, in the language of the zaaktype") {
+            val generationTemplate = createGenerationTemplate(
+                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal", "sms"), defaultKanaal = "sms"),
+                locales = createDutchAndEnglishLocales()
+            )
+
+            `when`("they are offered in English, as the zaaktype is set to English") {
+                val restEpistolaVarianten = EpistolaTemplateInLocale(
+                    template = generationTemplate,
+                    locale = generationTemplate.resolveLocale(configuredLocale = "en-GB")
+                ).toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+
+                then("only the English variant is offered, and the e-mail suggests nothing in English") {
                     restEpistolaVarianten shouldBe RestEpistolaVarianten(
                         varianten = listOf("post"),
                         voorgesteldeVariant = "post",
@@ -72,7 +99,7 @@ class RestEpistolaVariantenTest : BehaviorSpec({
             )
 
             `when`("they are offered") {
-                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+                val restEpistolaVarianten = generationTemplate.inItsResolvedLocale().toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
                 then("the variants of the template as a whole are offered, as no language is resolved") {
                     restEpistolaVarianten shouldBe RestEpistolaVarianten(
@@ -90,7 +117,7 @@ class RestEpistolaVariantenTest : BehaviorSpec({
             )
 
             `when`("they are offered") {
-                val restEpistolaVarianten = generationTemplate.toRestEpistolaVarianten(communicatiekanaal = "E-mail")
+                val restEpistolaVarianten = generationTemplate.inItsResolvedLocale().toRestEpistolaVarianten(communicatiekanaal = "E-mail")
 
                 then("the variants of the template as a whole are offered") {
                     restEpistolaVarianten shouldBe RestEpistolaVarianten(

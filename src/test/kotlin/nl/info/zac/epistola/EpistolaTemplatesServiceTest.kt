@@ -15,8 +15,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import jakarta.ws.rs.ProcessingException
 import nl.info.client.epistola.EpistolaClientService
+import nl.info.client.epistola.exception.EpistolaRequestFailedException
+import nl.info.client.epistola.model.EpistolaKanalen
+import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createCatalog
+import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createZaakType
@@ -32,6 +37,7 @@ import nl.info.zac.epistola.rest.RestEpistolaCatalog
 import nl.info.zac.epistola.rest.RestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
 import nl.info.zac.epistola.rest.createRestEpistolaCatalogMapping
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 import java.net.URI
 import java.util.UUID
 
@@ -61,10 +67,12 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         zaaktypeUuid: UUID,
         catalogId: String?,
         informatieObjectTypeUuid: UUID?,
-        isEpistolaEnabled: Boolean = true
+        isEpistolaEnabled: Boolean = true,
+        locale: String? = null
     ) = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply {
         this.isEpistolaEnabled = isEpistolaEnabled
         epistolaCatalogId = catalogId
+        epistolaLocale = locale
         epistolaInformatieobjecttypeUuid = informatieObjectTypeUuid
     }
 
@@ -187,7 +195,204 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         }
     }
 
+    context("listing the languages of a catalog") {
+        fun givenTemplatesWithLocales(catalogId: String, localesByTemplateId: Map<String, EpistolaLocales>) {
+            every { epistolaClientService.listTemplates(catalogId) } returns
+                localesByTemplateId.keys.map { createTemplateSummary(id = it, slug = it) }
+            localesByTemplateId.forEach { (templateId, locales) ->
+                every { epistolaClientService.readGenerationTemplate(catalogId, templateId) } returns
+                    createGenerationTemplate(locales = locales)
+            }
+        }
+
+        fun localesOf(vararg locales: String) = EpistolaLocales(
+            kanalenByLocale = locales.associateWith { EpistolaKanalen() }
+        )
+
+        given("a catalog whose templates all offer Dutch and English") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(
+                catalogId = "fake-catalog",
+                localesByTemplateId = mapOf(
+                    "fake-template-1" to localesOf("nl-NL", "en-GB"),
+                    "fake-template-2" to localesOf("en-GB", "nl-NL")
+                )
+            )
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("both are returned, in alphabetical order") {
+                    locales shouldBe listOf("en-GB", "nl-NL")
+                }
+            }
+        }
+
+        given("a catalog with a template that has no English") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(
+                catalogId = "fake-catalog",
+                localesByTemplateId = mapOf(
+                    "fake-template-1" to localesOf("nl-NL", "en-GB"),
+                    "fake-template-2" to localesOf("nl-NL"),
+                    "fake-template-3" to localesOf("nl-NL", "en-GB", "de-DE")
+                )
+            )
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("English is not offered, because a zaak would get a document without it from that template") {
+                    locales shouldBe listOf("nl-NL")
+                }
+            }
+        }
+
+        given("a catalog whose templates share no language") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(
+                catalogId = "fake-catalog",
+                localesByTemplateId = mapOf(
+                    "fake-template-1" to localesOf("nl-NL"),
+                    "fake-template-2" to localesOf("en-GB")
+                )
+            )
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("none is offered") {
+                    locales.shouldBeEmpty()
+                }
+            }
+        }
+
+        given("a catalog with a template whose variants carry no language") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(
+                catalogId = "fake-catalog",
+                localesByTemplateId = mapOf(
+                    "fake-template-1" to localesOf("nl-NL", "en-GB"),
+                    "fake-template-2" to EpistolaLocales()
+                )
+            )
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("that template takes no part, as it is generated without a language") {
+                    locales shouldBe listOf("en-GB", "nl-NL")
+                }
+            }
+        }
+
+        given("a catalog whose templates carry no language at all") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(
+                catalogId = "fake-catalog",
+                localesByTemplateId = mapOf(
+                    "fake-template-1" to EpistolaLocales(),
+                    "fake-template-2" to EpistolaLocales()
+                )
+            )
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("none is offered") {
+                    locales.shouldBeEmpty()
+                }
+            }
+        }
+
+        given("a catalog without templates") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            givenTemplatesWithLocales(catalogId = "fake-catalog", localesByTemplateId = emptyMap())
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("none is offered") {
+                    locales.shouldBeEmpty()
+                }
+            }
+        }
+
+        given("a catalog whose template has a slug next to its deprecated id") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates("fake-catalog") } returns
+                listOf(createTemplateSummary(id = "fake-deprecated-id", slug = "fake-template-slug"))
+            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-slug") } returns
+                createGenerationTemplate(locales = localesOf("nl-NL"))
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("the template is read by its slug, as Epistola identifies it") {
+                    locales shouldBe listOf("nl-NL")
+                }
+            }
+        }
+
+        given("an Epistola that cannot be reached") {
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { epistolaClientService.listTemplates("fake-catalog") } throws EpistolaRequestFailedException(
+                errorCode = ERROR_CODE_EPISTOLA_UNAVAILABLE,
+                message = "fakeMessage",
+                cause = ProcessingException("fakeCause")
+            )
+
+            `when`("the languages are listed") {
+                val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
+                    epistolaTemplatesService.listCatalogLocales("fake-catalog")
+                }
+
+                then("the failure reaches the caller, as it does when the templates are listed") {
+                    epistolaRequestFailedException.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
+                }
+            }
+        }
+
+        given("SmartDocuments is the active provider") {
+            givenActiveProvider(DocumentCreationProvider.SMARTDOCUMENTS)
+
+            `when`("the languages are listed") {
+                val locales = epistolaTemplatesService.listCatalogLocales("fake-catalog")
+
+                then("none are returned and Epistola is not called, because its settings are not validated") {
+                    locales.shouldBeEmpty()
+                    verify(exactly = 0) { epistolaClientService.listTemplates(any()) }
+                }
+            }
+        }
+    }
+
     context("reading the catalog mapping of a zaaktype") {
+        given("a zaaktype for which the beheerder chose a catalog, a language and an informatieobjecttype") {
+            val zaaktypeUuid = UUID.randomUUID()
+            val informatieObjectTypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
+                offeringZaaktypeConfiguration(
+                    zaaktypeUuid = zaaktypeUuid,
+                    catalogId = "fake-catalog",
+                    informatieObjectTypeUuid = informatieObjectTypeUuid,
+                    locale = "en-GB"
+                )
+
+            `when`("the mapping is read") {
+                val catalogMapping = epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
+
+                then("the language is returned with the catalog and the informatieobjecttype") {
+                    catalogMapping shouldBe RestEpistolaCatalogMapping(
+                        catalogId = "fake-catalog",
+                        informatieObjectTypeUUID = informatieObjectTypeUuid,
+                        locale = "en-GB"
+                    )
+                }
+            }
+        }
+
         given("a zaaktype for which the beheerder chose a catalog and an informatieobjecttype") {
             val zaaktypeUuid = UUID.randomUUID()
             val informatieObjectTypeUuid = UUID.randomUUID()
@@ -205,7 +410,8 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                 then("both are returned") {
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = "fake-catalog",
-                        informatieObjectTypeUUID = informatieObjectTypeUuid
+                        informatieObjectTypeUUID = informatieObjectTypeUuid,
+                        locale = null
                     )
                 }
             }
@@ -229,7 +435,8 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                 then("the catalog is the one of ZAC's settings, which its templates come from") {
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = FAKE_DEFAULT_CATALOG_ID,
-                        informatieObjectTypeUUID = informatieObjectTypeUuid
+                        informatieObjectTypeUUID = informatieObjectTypeUuid,
+                        locale = null
                     )
                 }
             }
@@ -247,7 +454,8 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                 then("it names the catalog of ZAC's settings and no informatieobjecttype") {
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = FAKE_DEFAULT_CATALOG_ID,
-                        informatieObjectTypeUUID = null
+                        informatieObjectTypeUUID = null,
+                        locale = null
                     )
                 }
             }
@@ -291,16 +499,34 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                     zaaktypeUuid = zaaktypeUuid,
                     catalogMapping = createRestEpistolaCatalogMapping(
                         catalogId = "fake-catalog",
-                        informatieObjectTypeUUID = informatieObjectTypeUuid
+                        informatieObjectTypeUUID = informatieObjectTypeUuid,
+                        locale = "en-GB"
                     )
                 )
 
-                then("the zaaktype configuration is stored with the catalog and the informatieobjecttype") {
+                then("the zaaktype configuration is stored with the catalog, the language and the informatieobjecttype") {
                     with(storedConfigurationSlot.captured) {
                         this shouldBeSameInstanceAs zaaktypeCmmnConfiguration
                         epistolaCatalogId shouldBe "fake-catalog"
+                        epistolaLocale shouldBe "en-GB"
                         epistolaInformatieobjecttypeUuid shouldBe informatieObjectTypeUuid
                     }
+                }
+            }
+
+            `when`("the mapping is stored without a language") {
+                zaaktypeCmmnConfiguration.epistolaLocale = "en-GB"
+                epistolaTemplatesService.storeCatalogMapping(
+                    zaaktypeUuid = zaaktypeUuid,
+                    catalogMapping = createRestEpistolaCatalogMapping(
+                        catalogId = "fake-catalog",
+                        informatieObjectTypeUUID = informatieObjectTypeUuid,
+                        locale = ""
+                    )
+                )
+
+                then("a language chosen earlier is cleared") {
+                    storedConfigurationSlot.captured.epistolaLocale shouldBe null
                 }
             }
         }

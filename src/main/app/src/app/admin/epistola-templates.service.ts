@@ -29,6 +29,14 @@ export class EpistolaTemplatesService {
     );
   }
 
+  /** The languages that every template of the catalog offers, as BCP-47 tags. */
+  listCatalogLocalesQuery(catalogId: string) {
+    return this.zacQueryClient.GET(
+      "/rest/zaakafhandelparameters/epistola-catalogs/{catalogId}/locales",
+      { path: { catalogId } },
+    );
+  }
+
   getCatalogMappingQuery(zaaktypeUuid: string) {
     return this.zacQueryClient.GET(
       "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-catalog-mapping",

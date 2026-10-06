@@ -242,6 +242,7 @@ class ZaaktypeCmmnConfigurationBeheerService @Inject constructor(
             smartDocumentsEnabled = previousZaaktypeCmmnConfiguration.smartDocumentsEnabled
             isEpistolaEnabled = previousZaaktypeCmmnConfiguration.isEpistolaEnabled
             epistolaCatalogId = previousZaaktypeCmmnConfiguration.epistolaCatalogId
+            epistolaLocale = previousZaaktypeCmmnConfiguration.epistolaLocale
             epistolaInformatieobjecttypeUuid = previousZaaktypeCmmnConfiguration.epistolaInformatieobjecttypeUuid
             uiterlijkeEinddatumAfdoeningWaarschuwing =
                 previousZaaktypeCmmnConfiguration.uiterlijkeEinddatumAfdoeningWaarschuwing

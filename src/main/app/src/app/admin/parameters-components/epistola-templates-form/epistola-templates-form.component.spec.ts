@@ -60,14 +60,21 @@ const TEMPLATES_BY_CATALOG: Record<
   ],
 };
 
+const LOCALES_BY_CATALOG: Record<string, string[]> = {
+  [VERGUNNINGEN.id]: ["nl-NL", "en-GB"],
+  [HANDHAVING.id]: ["nl-NL", "de-DE"],
+};
+
 describe(EpistolaTemplatesFormComponent.name, () => {
   async function setup({
     enabledForZaaktype = true,
     catalogs = [VERGUNNINGEN, HANDHAVING],
     templatesByCatalog = TEMPLATES_BY_CATALOG,
+    localesByCatalog = LOCALES_BY_CATALOG,
     catalogMapping = {
       catalogId: VERGUNNINGEN.id,
       informatieObjectTypeUUID: BESLUIT.uuid,
+      locale: null,
     },
     readCatalogMapping = () => Promise.resolve(catalogMapping),
   }: {
@@ -77,6 +84,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       string,
       GeneratedType<"RestEpistolaTemplate">[]
     >;
+    localesByCatalog?: Record<string, string[]>;
     catalogMapping?: GeneratedType<"RestEpistolaCatalogMapping">;
     readCatalogMapping?: () => Promise<
       GeneratedType<"RestEpistolaCatalogMapping">
@@ -101,6 +109,12 @@ describe(EpistolaTemplatesFormComponent.name, () => {
                 queryKey: ["epistola-catalog-templates", catalogId],
                 queryFn: () =>
                   Promise.resolve(templatesByCatalog[catalogId] ?? []),
+              }),
+            listCatalogLocalesQuery: (catalogId: string) =>
+              queryOptions({
+                queryKey: ["epistola-catalog-locales", catalogId],
+                queryFn: () =>
+                  Promise.resolve(localesByCatalog[catalogId] ?? []),
               }),
             getCatalogMappingQuery: (zaaktypeUuid: string) =>
               queryOptions({
@@ -137,6 +151,8 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
   const catalogPicker = () =>
     screen.getByRole("combobox", { name: /epistola.catalog/ });
+  const languagePicker = () =>
+    screen.getByRole("combobox", { name: /epistola.taal$/ });
   const informatieobjecttypePicker = () =>
     screen.getByRole("combobox", { name: /informatieobjectTypeOmschrijving/ });
 
@@ -254,7 +270,179 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       expect(storeCatalogMapping).toHaveBeenCalledWith(ZAAKTYPE_UUID, {
         catalogId: HANDHAVING.id,
         informatieObjectTypeUUID: BIJLAGE.uuid,
+        locale: null,
       });
+    });
+  });
+
+  describe("given a catalog whose templates all offer Dutch and British English", () => {
+    async function optionNames(user: UserEvent) {
+      await user.click(languagePicker());
+      const names = screen
+        .getAllByRole("option")
+        .map(({ textContent }) => textContent?.trim());
+      await user.keyboard("{Escape}");
+      return names;
+    }
+
+    it("offers each language by its name in the language ZAC is shown in, after the choice to leave it to ZAC", async () => {
+      const { user } = await setup();
+      await waitFor(() =>
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
+      );
+
+      await waitFor(async () =>
+        expect(await optionNames(user)).toEqual([
+          "epistola.taal.standaard",
+          "Engels (Verenigd Koninkrijk)",
+          "Nederlands (Nederland)",
+        ]),
+      );
+    });
+
+    it("says what no choice means", async () => {
+      await setup();
+
+      expect(await screen.findByText("epistola.taal.hint")).toBeVisible();
+    });
+
+    it("shows the language stored with the zaaktype", async () => {
+      await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "en-GB",
+        },
+      });
+
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent(
+          "Engels (Verenigd Koninkrijk)",
+        ),
+      );
+    });
+
+    it("saves the chosen language with the catalog and the document type", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await waitFor(() =>
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
+      );
+      await waitFor(async () =>
+        expect(await optionNames(user)).toHaveLength(3),
+      );
+
+      await chooseOption(
+        user,
+        languagePicker(),
+        "Engels (Verenigd Koninkrijk)",
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenCalledWith(ZAAKTYPE_UUID, {
+        catalogId: VERGUNNINGEN.id,
+        informatieObjectTypeUUID: BESLUIT.uuid,
+        locale: "en-GB",
+      });
+    });
+
+    it("saves no language once the choice is left to ZAC again", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "en-GB",
+        },
+      });
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent(
+          "Engels (Verenigd Koninkrijk)",
+        ),
+      );
+
+      await chooseOption(user, languagePicker(), "epistola.taal.standaard");
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ locale: null }),
+      );
+    });
+  });
+
+  describe("given the beheerder chooses another catalog", () => {
+    it("offers the languages of that catalog instead", async () => {
+      const { user } = await setup();
+      await waitFor(() =>
+        expect(catalogPicker()).toHaveTextContent("Vergunningen"),
+      );
+
+      await chooseOption(user, catalogPicker(), "Handhaving");
+
+      await user.click(languagePicker());
+      expect(
+        await screen.findByRole("option", { name: "Duits (Duitsland)" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("option", { name: "Engels (Verenigd Koninkrijk)" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("clears a chosen language that the other catalog does not offer", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "en-GB",
+        },
+      });
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent(
+          "Engels (Verenigd Koninkrijk)",
+        ),
+      );
+
+      await chooseOption(user, catalogPicker(), "Handhaving");
+
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent("epistola.taal.standaard"),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ catalogId: HANDHAVING.id, locale: null }),
+      );
+    });
+
+    it("keeps a chosen language that the other catalog offers too", async () => {
+      const { user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "nl-NL",
+        },
+      });
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent("Nederlands (Nederland)"),
+      );
+
+      await chooseOption(user, catalogPicker(), "Handhaving");
+
+      await user.click(languagePicker());
+      expect(
+        await screen.findByRole("option", { name: "Duits (Duitsland)" }),
+      ).toBeVisible();
+      await user.keyboard("{Escape}");
+      expect(languagePicker()).toHaveTextContent("Nederlands (Nederland)");
+    });
+  });
+
+  describe("given a catalog whose templates share no language", () => {
+    it("says so, and offers only the choice to leave it to ZAC", async () => {
+      const { user } = await setup({ localesByCatalog: {} });
+
+      expect(await screen.findByText("msg.epistola.talen.geen")).toBeVisible();
+      await user.click(languagePicker());
+      expect(screen.getAllByRole("option")).toHaveLength(1);
     });
   });
 

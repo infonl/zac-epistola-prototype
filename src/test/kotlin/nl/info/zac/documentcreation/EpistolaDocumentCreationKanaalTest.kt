@@ -306,7 +306,7 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                 val varianten = epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
 
                 then("both kanalen are returned, with that of the default variant") {
-                    varianten.kanalen shouldBe postAndDigitaal
+                    varianten.template.kanalen shouldBe postAndDigitaal
                 }
             }
         }

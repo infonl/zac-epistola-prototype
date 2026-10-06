@@ -18,8 +18,9 @@ fun createRestEpistolaCatalog(
 
 fun createRestEpistolaCatalogMapping(
     catalogId: String = "fake-catalog-id",
-    informatieObjectTypeUUID: UUID? = UUID.randomUUID()
-) = RestEpistolaCatalogMapping(catalogId = catalogId, informatieObjectTypeUUID = informatieObjectTypeUUID)
+    informatieObjectTypeUUID: UUID? = UUID.randomUUID(),
+    locale: String? = null
+) = RestEpistolaCatalogMapping(catalogId = catalogId, informatieObjectTypeUUID = informatieObjectTypeUUID, locale = locale)
 
 fun createRestOfferedEpistolaTemplate(
     id: String = "fake-template-id",
