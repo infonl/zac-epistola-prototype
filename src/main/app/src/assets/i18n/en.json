@@ -1018,7 +1018,6 @@
   "epistola.catalog.templates": "Templates in this catalog",
   "epistola.taal": "Language",
   "epistola.taal.standaard": "Dutch where offered",
-  "epistola.taal.hint": "All templates of this case type are created in this language. Without a choice, Epistola creates the document in Dutch where the template has it.",
   "epistola.form.schakelaar": "Create documents with Epistola",
   "epistola.variant": "Variant",
   "epistola.variant.post": "By post",
