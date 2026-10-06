@@ -661,7 +661,7 @@ Deze actie maakt het mogelijk om een document met sjablonen in een documentcreat
 
 1 In een zaak kies je actie *Document maken*
 
-2 Kies de templategroep en daarvan het template van het te maken document en vul de titel in en als gewenst een beschrijving. Met Epistola is er geen templategroep: je kiest meteen een template uit de templates van het zaaktype, en is er maar één, dan is die al gekozen
+2 Kies de templategroep en daarvan het template van het te maken document en vul de titel in en als gewenst een beschrijving. Met Epistola is er geen templategroep: je kiest meteen een template uit de templates van het zaaktype (een template dat de beheerder heeft uitgezet, staat er niet bij), en is er maar één, dan is die al gekozen
 
 3 Pas als gewenst de creatiedatum en behandelaar aan
 
