@@ -475,10 +475,26 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       return screen.getByRole("button", { name: "actie.genereren" });
     }
 
-    async function fillInValidEpistolaForm() {
+    const withoutChoice: GeneratedType<"RestEpistolaKanalen"> = {
+      kanalen: ["post"],
+      voorgesteldKanaal: "post",
+      communicatiekanaal: null,
+    };
+
+    async function chooseTemplateAndFillInTitle() {
       await choose("sjabloonGroep", "Brieven");
       await choose("sjabloon", "Standaardbrief");
       await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
+    }
+
+    async function fillInValidEpistolaForm(
+      kanalen: GeneratedType<"RestEpistolaKanalen"> = withoutChoice,
+    ) {
+      await chooseTemplateAndFillInTitle();
+      await sleep();
+      httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush(kanalen);
+      await sleep();
+      fixture.detectChanges();
     }
 
     it("offers the template groups the beheerder arranged for Epistola", async () => {
@@ -604,11 +620,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       async function chooseTheTemplate(
         kanalen: GeneratedType<"RestEpistolaKanalen"> = postAndDigitaal,
       ) {
-        await fillInValidEpistolaForm();
-        await sleep();
-        httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush(kanalen);
-        await sleep();
-        fixture.detectChanges();
+        await fillInValidEpistolaForm(kanalen);
         // zac-select sets its options only after it has rendered
         await sleep();
         fixture.detectChanges();
@@ -696,6 +708,30 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(kanaalPicker()).toHaveTextContent("epistola.kanaal.post");
       });
 
+      it("offers no generation until the kanalen of another template have arrived, so that the picker cannot be skipped", async () => {
+        await setupEpistola();
+        await chooseTheTemplate();
+
+        await user.clear(field("sjabloon"));
+        await user.click(
+          screen.getByRole("option", { name: "Ontvangstbevestiging" }),
+        );
+        await sleep();
+        fixture.detectChanges();
+
+        expect(generateButton()).toBeDisabled();
+
+        httpTestingController.expectOne(EPISTOLA_OTHER_KANALEN_URL).flush({
+          kanalen: ["post", "digitaal"],
+          voorgesteldKanaal: "post",
+          communicatiekanaal: "Post",
+        });
+        await sleep();
+        fixture.detectChanges();
+
+        expect(generateButton()).toBeEnabled();
+      });
+
       it("suggests the kanaal of the zaak's communicatiekanaal as it is now, when the same template is chosen again after the communicatiekanaal was edited", async () => {
         await setupEpistola();
         await chooseTheTemplate();
@@ -748,15 +784,11 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
 
     it("offers no kanaal for a template whose variants are made for one kanaal at most", async () => {
       await setupEpistola();
-      await fillInValidEpistolaForm();
-      await sleep();
-      httpTestingController.expectOne(EPISTOLA_KANALEN_URL).flush({
+      await fillInValidEpistolaForm({
         kanalen: ["post"],
         voorgesteldKanaal: "post",
         communicatiekanaal: "Post",
       });
-      await sleep();
-      fixture.detectChanges();
 
       expect(
         screen.queryByRole("combobox", { name: "epistola.kanaal" }),
@@ -770,7 +802,7 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
 
     it("offers no kanaal, and still generates, when the template's kanalen cannot be read", async () => {
       await setupEpistola();
-      await fillInValidEpistolaForm();
+      await chooseTemplateAndFillInTitle();
       await sleep();
       httpTestingController
         .expectOne(EPISTOLA_KANALEN_URL)
@@ -786,6 +818,23 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
       httpTestingController
         .expectOne(EPISTOLA_CREATE_URL)
         .flush({ informatieobjectUuid: "fakeInformatieobjectUuid" });
+    });
+
+    it("offers no generation until the kanalen of the chosen template have arrived", async () => {
+      await setupEpistola();
+      await chooseTemplateAndFillInTitle();
+      await sleep();
+      fixture.detectChanges();
+
+      expect(generateButton()).toBeDisabled();
+
+      httpTestingController
+        .expectOne(EPISTOLA_KANALEN_URL)
+        .flush(withoutChoice);
+      await sleep();
+      fixture.detectChanges();
+
+      expect(generateButton()).toBeEnabled();
     });
 
     it("links the document to the task it was created from", async () => {

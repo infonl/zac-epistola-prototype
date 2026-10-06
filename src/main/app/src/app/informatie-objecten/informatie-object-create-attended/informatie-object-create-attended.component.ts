@@ -17,7 +17,12 @@ import {
   signal,
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import {
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidatorFn,
+  Validators,
+} from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
@@ -83,6 +88,10 @@ const KANAAL_LABELS: Record<string, string> = {
   post: "epistola.kanaal.post",
   digitaal: "epistola.kanaal.digitaal",
 };
+
+/** A disabled control is left out of the form's validity, so the picker's wait for the kanalen has to be checked here. */
+const kanalenLookupFinished: ValidatorFn = (form) =>
+  form.get("kanaal")?.disabled ? { kanalenLookupPending: true } : null;
 
 @Component({
   selector: "zac-informatie-object-create-attended",
@@ -328,6 +337,7 @@ export class InformatieObjectCreateAttendedComponent
       });
 
     if (this.usesEpistola) {
+      this.form.addValidators(kanalenLookupFinished);
       this.form.controls.template.valueChanges
         .pipe(
           takeUntil(this.destroy$),
