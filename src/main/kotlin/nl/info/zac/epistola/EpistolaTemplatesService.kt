@@ -104,13 +104,37 @@ class EpistolaTemplatesService @Inject constructor(
             emptyList()
         }
 
+    /**
+     * The languages every template of the catalog offers, as BCP-47 tags of their variants' `system.locale`, so that the
+     * language a beheerder chooses for a zaaktype is one that each of its templates has. A template whose variants carry
+     * no language is generated without one and takes no part. Empty when Epistola is not the active provider, as
+     * [listCatalogs] is, and when no template of the catalog has a language.
+     */
+    fun listCatalogLocales(catalogId: String): List<String> =
+        if (isEpistolaActive()) {
+            epistolaClientService.listTemplates(catalogId)
+                .map { template ->
+                    epistolaClientService.readGenerationTemplate(
+                        catalogId = catalogId,
+                        templateId = template.toRestEpistolaTemplate().id
+                    ).locales.locales
+                }
+                .filter(List<String>::isNotEmpty)
+                .reduceOrNull { commonLocales, templateLocales -> commonLocales.intersect(templateLocales.toSet()).toList() }
+                .orEmpty()
+                .sorted()
+        } else {
+            emptyList()
+        }
+
     /** The catalog is the one ZAC uses for the zaaktype, also while the beheerder has not chosen one. */
     fun readCatalogMapping(zaaktypeUuid: UUID): RestEpistolaCatalogMapping {
         assertEpistolaIsActive()
         val zaaktypeConfiguration = zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
         return RestEpistolaCatalogMapping(
             catalogId = zaaktypeConfiguration?.epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
-            informatieObjectTypeUUID = zaaktypeConfiguration?.epistolaInformatieobjecttypeUuid
+            informatieObjectTypeUUID = zaaktypeConfiguration?.epistolaInformatieobjecttypeUuid,
+            locale = zaaktypeConfiguration?.epistolaLocale
         )
     }
 
@@ -131,6 +155,7 @@ class EpistolaTemplatesService @Inject constructor(
             zaaktypeCmmnConfiguration.apply {
                 epistolaCatalogId = catalogMapping.catalogId
                 epistolaInformatieobjecttypeUuid = catalogMapping.informatieObjectTypeUUID
+                epistolaLocale = catalogMapping.locale?.takeIf(String::isNotBlank)
             }
         )
     }
@@ -190,7 +215,8 @@ class EpistolaTemplatesService @Inject constructor(
             ?.let {
                 OfferedEpistolaCatalog(
                     catalogId = epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
-                    informatieObjectTypeUuid = it
+                    informatieObjectTypeUuid = it,
+                    locale = epistolaLocale
                 )
             }
 

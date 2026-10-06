@@ -63,7 +63,7 @@ class EpistolaDocumentVersionService @Inject constructor(
     /**
      * Generates the document again from the template that produced it, read from the catalog it came from also after the
      * zaaktype has moved to another one, asking for the kanaal and the language stored with it while the template still
-     * offers them, with the zaak's data as it is now, and stores it as the next version of the same informatieobject. The
+     * offers them, and otherwise for the language of the zaaktype, with the zaak's data as it is now, and stores it as the next version of the same informatieobject. The
      * versions before it stay in Open Zaak, and when the new version cannot be stored the current one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
@@ -84,7 +84,7 @@ class EpistolaDocumentVersionService @Inject constructor(
                 "Document '$informatieObjectUUID' was not generated with Epistola, so it has no template to use."
             )
         val templateId = epistolaDocument.templateId
-        epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+        val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
         try {
             val generatedDocument = epistolaDocumentCreationService.createDocument(
                 zaak = zaak,
@@ -92,7 +92,8 @@ class EpistolaDocumentVersionService @Inject constructor(
                 templateId = templateId,
                 fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
                 variant = epistolaDocument.kanaal,
-                taal = epistolaDocument.locale
+                taal = epistolaDocument.locale,
+                zaaktypeLocale = offeredCatalog.locale
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(

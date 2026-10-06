@@ -50,10 +50,12 @@ class EpistolaOfferedTemplatesTest : BehaviorSpec({
         zaaktypeUuid: UUID,
         catalogId: String?,
         informatieObjectTypeUuid: UUID?,
-        isEpistolaEnabled: Boolean = true
+        isEpistolaEnabled: Boolean = true,
+        locale: String? = null
     ) = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply {
         this.isEpistolaEnabled = isEpistolaEnabled
         epistolaCatalogId = catalogId
+        epistolaLocale = locale
         epistolaInformatieobjecttypeUuid = informatieObjectTypeUuid
     }
 
@@ -230,6 +232,26 @@ class EpistolaOfferedTemplatesTest : BehaviorSpec({
 
                 and("Epistola is not asked whether the catalog holds a template, since reading the template tells") {
                     verify(exactly = 0) { epistolaClientService.listTemplates(any()) }
+                }
+            }
+        }
+
+        given("a zaaktype for which the beheerder chose a language") {
+            val zaaktypeUuid = UUID.randomUUID()
+            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
+            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
+                offeringZaaktypeConfiguration(
+                    zaaktypeUuid = zaaktypeUuid,
+                    catalogId = "fake-catalog",
+                    informatieObjectTypeUuid = UUID.randomUUID(),
+                    locale = "en-GB"
+                )
+
+            `when`("the offered catalog is read") {
+                val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaaktypeUuid)
+
+                then("it names the language, for the documents of the zaaktype to be generated in") {
+                    offeredCatalog.locale shouldBe "en-GB"
                 }
             }
         }

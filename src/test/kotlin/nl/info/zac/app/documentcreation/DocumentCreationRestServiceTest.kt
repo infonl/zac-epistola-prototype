@@ -11,6 +11,7 @@ import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaVarianten
 import nl.info.zac.documentcreation.EpistolaDocumentCreationService
+import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode
@@ -412,7 +413,12 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
-                createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"))
+                EpistolaTemplateInLocale(
+                template = createGenerationTemplate(
+                    kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+                ),
+                locale = null
+            )
 
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
 
@@ -445,7 +451,10 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         every { loggedInUserInstance.get() } returns loggedInUser
         every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
         every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
-            createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"))
+            EpistolaTemplateInLocale(
+                template = createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")),
+                locale = null
+            )
 
         `when`("its variants are read") {
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")

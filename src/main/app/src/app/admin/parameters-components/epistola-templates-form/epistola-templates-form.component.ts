@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
-import { Component, effect, inject, input } from "@angular/core";
+import { Component, computed, effect, inject, input } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import {
   FormControl,
@@ -17,7 +17,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { TranslateModule } from "@ngx-translate/core";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { injectQuery } from "@tanstack/angular-query-experimental";
 import { InformatieObjectenService } from "src/app/informatie-objecten/informatie-objecten.service";
 import { EpistolaTemplatesService } from "../../epistola-templates.service";
@@ -46,6 +46,7 @@ export class EpistolaTemplatesFormComponent {
   private readonly informatieObjectenService = inject(
     InformatieObjectenService,
   );
+  private readonly translateService = inject(TranslateService);
 
   protected readonly form = new FormGroup({
     enabledForZaaktype: new FormControl(false, { nonNullable: true }),
@@ -53,6 +54,7 @@ export class EpistolaTemplatesFormComponent {
       nonNullable: true,
       validators: Validators.required,
     }),
+    locale: new FormControl("", { nonNullable: true }),
     informatieObjectTypeUUID: new FormControl<string | null>(
       null,
       Validators.required,
@@ -83,6 +85,25 @@ export class EpistolaTemplatesFormComponent {
     };
   });
 
+  protected readonly catalogLocalesQuery = injectQuery(() => {
+    const catalogId = this.chosenCatalogId();
+    return {
+      ...this.epistolaTemplatesService.listCatalogLocalesQuery(catalogId),
+      enabled: Boolean(catalogId),
+    };
+  });
+
+  private readonly chosenLocale = toSignal(
+    this.form.controls.locale.valueChanges,
+    { initialValue: this.form.controls.locale.value },
+  );
+
+  protected readonly localeOptions = computed(() =>
+    (this.catalogLocalesQuery.data() ?? [])
+      .map((locale) => ({ locale, name: this.languageName(locale) }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  );
+
   private readonly chosenInformatieObjectTypeUuid = toSignal(
     this.form.controls.informatieObjectTypeUUID.valueChanges,
     { initialValue: this.form.controls.informatieObjectTypeUUID.value },
@@ -95,11 +116,23 @@ export class EpistolaTemplatesFormComponent {
       this.form.controls.enabledForZaaktype.setValue(this.enabledForZaaktype()),
     );
     effect(() => {
+      const offeredLocales = this.catalogLocalesQuery.data();
+      const chosenLocale = this.chosenLocale();
+      if (
+        offeredLocales &&
+        chosenLocale &&
+        !offeredLocales.includes(chosenLocale)
+      ) {
+        this.form.controls.locale.setValue("");
+      }
+    });
+    effect(() => {
       const catalogMapping = this.catalogMappingQuery.data();
       if (!catalogMapping || this.isCatalogMappingLoaded) return;
       this.isCatalogMappingLoaded = true;
       this.form.patchValue({
         catalogId: catalogMapping.catalogId,
+        locale: catalogMapping.locale ?? "",
         informatieObjectTypeUUID: catalogMapping.informatieObjectTypeUUID,
       });
       // Touched straight away, so a missing document type shows why saving is disabled.
@@ -120,10 +153,11 @@ export class EpistolaTemplatesFormComponent {
   }
 
   saveEpistolaTemplatesMapping() {
-    const { catalogId, informatieObjectTypeUUID } = this.form.getRawValue();
+    const { catalogId, locale, informatieObjectTypeUUID } =
+      this.form.getRawValue();
     return this.epistolaTemplatesService.storeCatalogMapping(
       this.zaaktypeUuid(),
-      { catalogId, informatieObjectTypeUUID },
+      { catalogId, locale: locale || null, informatieObjectTypeUUID },
     );
   }
 
@@ -132,5 +166,28 @@ export class EpistolaTemplatesFormComponent {
       .data()
       ?.find(({ uuid }) => uuid === this.chosenInformatieObjectTypeUuid())
       ?.vertrouwelijkheidaanduiding;
+  }
+
+  /** ZAC keeps no list of languages: the browser names the tag, in the language ZAC is shown in. */
+  private languageName(locale: string) {
+    try {
+      return (
+        new Intl.DisplayNames([this.uiLanguage()], {
+          type: "language",
+          languageDisplay: "standard",
+        }).of(locale) ?? locale
+      );
+    } catch {
+      return locale;
+    }
+  }
+
+  /** Dutch is ZAC's own default language. */
+  private uiLanguage() {
+    return (
+      this.translateService.getCurrentLang() ||
+      this.translateService.getFallbackLang() ||
+      "nl"
+    );
   }
 }

@@ -4,13 +4,15 @@
  */
 
 -- A zaaktype offers every template of one Epistola catalog, so the template groups and the per-template mapping of V100
--- give way to two columns on the zaaktype. A Flyway migration cannot read EPISTOLA_CATALOG_ID, so the catalog stays
+-- give way to columns on the zaaktype. A Flyway migration cannot read EPISTOLA_CATALOG_ID, so the catalog stays
 -- empty here, and ZAC then uses the catalog that variable names, which is the one every template came from until now.
 ALTER TABLE ${schema}.zaaktype_configuration
     ADD COLUMN epistola_catalog_id                  VARCHAR,
-    ADD COLUMN epistola_informatie_object_type_uuid UUID;
+    ADD COLUMN epistola_informatie_object_type_uuid UUID,
+    ADD COLUMN epistola_locale                      VARCHAR;
 
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_catalog_id IS 'Catalog in Epistola waarvan dit zaaktype alle templates aanbiedt; leeg tot de beheerder er een kiest, en dan geldt de catalog van EPISTOLA_CATALOG_ID';
+COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_locale IS 'Taal (BCP-47-tag van system.locale in Epistola, zoals nl-NL) waarin ZAC Epistola om het document vraagt voor alle templates van dit zaaktype; leeg tot de beheerder er een kiest, en dan geldt Nederlands als het template dat heeft';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_informatie_object_type_uuid IS 'Informatieobjecttype waaronder een met Epistola gegenereerd document in Open Zaak wordt opgeslagen';
 
 -- Each template had its own informatieobjecttype. The zaaktype keeps the one most of its templates had, so the fewest

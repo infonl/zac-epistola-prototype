@@ -208,12 +208,14 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
             every { policyService.readOverigeRechten().beheren } returns true
             every { epistolaTemplatesService.listCatalogs() } returns restEpistolaCatalogs
             every { epistolaTemplatesService.listTemplates("fake-catalog-id") } returns restEpistolaTemplates
+            every { epistolaTemplatesService.listCatalogLocales("fake-catalog-id") } returns listOf("en-GB", "nl-NL")
             every { epistolaTemplatesService.readCatalogMapping(zaaktypeUuid) } returns restEpistolaCatalogMapping
             every { epistolaTemplatesService.storeCatalogMapping(zaaktypeUuid, restEpistolaCatalogMapping) } just runs
 
-            `when`("the catalogs and a catalog's templates are listed, and a mapping is read and stored") {
+            `when`("the catalogs, a catalog's templates and its languages are listed, and a mapping is read and stored") {
                 val listedEpistolaCatalogs = zaaktypeConfigurationRestService.listEpistolaCatalogs()
                 val listedEpistolaTemplates = zaaktypeConfigurationRestService.listEpistolaTemplates("fake-catalog-id")
+                val listedEpistolaCatalogLocales = zaaktypeConfigurationRestService.listEpistolaCatalogLocales("fake-catalog-id")
                 val readEpistolaCatalogMapping = zaaktypeConfigurationRestService.readEpistolaCatalogMapping(zaaktypeUuid)
                 zaaktypeConfigurationRestService.storeEpistolaCatalogMapping(
                     zaaktypeUuid = zaaktypeUuid,
@@ -223,6 +225,7 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
                 then("each reaches the Epistola templates service") {
                     listedEpistolaCatalogs shouldBe restEpistolaCatalogs
                     listedEpistolaTemplates shouldBe restEpistolaTemplates
+                    listedEpistolaCatalogLocales shouldBe listOf("en-GB", "nl-NL")
                     readEpistolaCatalogMapping shouldBe restEpistolaCatalogMapping
                     verify(exactly = 1) {
                         epistolaTemplatesService.storeCatalogMapping(zaaktypeUuid, restEpistolaCatalogMapping)
@@ -252,6 +255,17 @@ class ZaaktypeConfigurationRestServiceTest : BehaviorSpec({
 
                 then("the listing is refused") {
                     policyException shouldNotBe null
+                }
+            }
+
+            `when`("the languages of a catalog are listed") {
+                val policyException = shouldThrow<PolicyException> {
+                    zaaktypeConfigurationRestService.listEpistolaCatalogLocales("fake-catalog-id")
+                }
+
+                then("the listing is refused and Epistola is not asked") {
+                    policyException shouldNotBe null
+                    verify(exactly = 0) { epistolaTemplatesService.listCatalogLocales(any()) }
                 }
             }
 

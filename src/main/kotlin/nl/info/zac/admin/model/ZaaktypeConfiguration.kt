@@ -78,6 +78,10 @@ abstract class ZaaktypeConfiguration {
     @Column(name = "epistola_catalog_id")
     var epistolaCatalogId: String? = null
 
+    /** Null until the beheerder chooses a language, and then ZAC asks for Dutch where the template has it. */
+    @Column(name = "epistola_locale")
+    var epistolaLocale: String? = null
+
     @Column(name = "epistola_informatie_object_type_uuid")
     var epistolaInformatieobjecttypeUuid: UUID? = null
 

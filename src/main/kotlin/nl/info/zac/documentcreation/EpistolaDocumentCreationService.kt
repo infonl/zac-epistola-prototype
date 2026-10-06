@@ -12,7 +12,6 @@ import jakarta.transaction.TransactionalException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
-import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
@@ -31,6 +30,7 @@ import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
 import nl.info.zac.documentcreation.model.choose
 import nl.info.zac.documentcreation.model.chooseKanaal
+import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
 import nl.info.zac.documentcreation.model.resolveLocale
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
@@ -93,7 +93,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
                 taskId = taskId,
-                variant = variant
+                variant = variant,
+                zaaktypeLocale = offeredCatalog.locale
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeDocument(
@@ -128,7 +129,8 @@ class EpistolaDocumentCreationService @Inject constructor(
      * the same.
      *
      * A [taal] is the BCP-47 tag of a language of the template, such as the one a document was generated in. Without
-     * one, or with one the template no longer has, ZAC asks for the language it resolves for the template.
+     * one, or with one the template no longer has, ZAC asks for the [zaaktypeLocale] when the template has it, and
+     * otherwise for the language it resolves for the template.
      */
     @Suppress("LongParameterList")
     fun createDocument(
@@ -139,6 +141,7 @@ class EpistolaDocumentCreationService @Inject constructor(
         taskId: String? = null,
         variant: String? = null,
         taal: String? = null,
+        zaaktypeLocale: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument =
         try {
@@ -148,7 +151,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 taskId = taskId,
                 variant = variant,
-                taal = taal
+                taal = taal,
+                zaaktypeLocale = zaaktypeLocale
             ).let { generationInput ->
                 LOG.fine {
                     "Generating Epistola document from template '$templateId' of catalog '$catalogId' " +
@@ -183,7 +187,8 @@ class EpistolaDocumentCreationService @Inject constructor(
         taskId: String? = null,
         variant: String? = null
     ): ByteArray {
-        val catalogId = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).catalogId
+        val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+        val catalogId = offeredCatalog.catalogId
         return try {
             readGenerationInput(
                 zaak = zaak,
@@ -191,7 +196,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 taskId = taskId,
                 variant = variant,
-                taal = null
+                taal = null,
+                zaaktypeLocale = offeredCatalog.locale
             ).let { generationInput ->
                 LOG.fine {
                     "Previewing Epistola document from template '$templateId' of catalog '$catalogId' " +
@@ -221,10 +227,11 @@ class EpistolaDocumentCreationService @Inject constructor(
         templateId: String,
         taskId: String?,
         variant: String?,
-        taal: String?
+        taal: String?,
+        zaaktypeLocale: String?
     ): GenerationInput {
         val generationTemplate = epistolaClientService.readGenerationTemplate(catalogId = catalogId, templateId = templateId)
-        val locale = generationTemplate.resolveLocale(requestedLocale = taal)
+        val locale = generationTemplate.resolveLocale(requestedLocale = taal, configuredLocale = zaaktypeLocale)
         return GenerationInput(
             templateData = documentCreationDataService.createEpistolaData(
                 loggedInUser = loggedInUserInstance.get(),
@@ -243,12 +250,20 @@ class EpistolaDocumentCreationService @Inject constructor(
         )
     }
 
-    /** The template's variants, by kanaal and by language, read from the catalog the zaaktype offers. */
-    fun readVarianten(zaak: Zaak, templateId: String): EpistolaGenerationTemplate =
-        epistolaClientService.readGenerationTemplate(
-            catalogId = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).catalogId,
-            templateId = templateId
-        )
+    /**
+     * The template's variants, by kanaal and by language, read from the catalog the zaaktype offers, with the language
+     * that creating a document from it asks Epistola for.
+     */
+    fun readVarianten(zaak: Zaak, templateId: String): EpistolaTemplateInLocale =
+        epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).let { offeredCatalog ->
+            epistolaClientService.readGenerationTemplate(catalogId = offeredCatalog.catalogId, templateId = templateId)
+                .let {
+                    EpistolaTemplateInLocale(
+                        template = it,
+                        locale = it.resolveLocale(configuredLocale = offeredCatalog.locale)
+                    )
+                }
+        }
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
