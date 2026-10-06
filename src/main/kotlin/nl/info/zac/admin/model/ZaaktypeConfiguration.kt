@@ -22,6 +22,7 @@ import jakarta.persistence.Table
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import nl.info.zac.database.flyway.FlywayIntegrator.Companion.SCHEMA
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.util.AllOpen
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -120,7 +121,41 @@ abstract class ZaaktypeConfiguration {
     )
     var zaaktypeCompletionParameters: MutableSet<ZaaktypeCompletionParameters>? = null
 
+    // The set is necessary for Hibernate when you have more than one eager collection on an entity.
+    @OneToMany(
+        mappedBy = "zaaktypeConfiguration",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.EAGER,
+        orphanRemoval = true
+    )
+    var epistolaTemplateSettings: MutableSet<ZaaktypeEpistolaTemplateSettings> = mutableSetOf()
+
     abstract fun getConfigurationType(): ZaaktypeConfigurationType
+
+    fun readEpistolaTemplateSettings(): Map<String, EpistolaTemplateSetting> =
+        epistolaTemplateSettings.associate {
+            it.epistolaId to EpistolaTemplateSetting(
+                informatieObjectTypeUuid = it.informatieObjectTypeUUID,
+                isEnabled = it.isEnabled
+            )
+        }
+
+    /** A template whose setting is the default has none stored, so that one added to its catalog later is offered. */
+    fun replaceEpistolaTemplateSettings(desired: Map<String, EpistolaTemplateSetting>) {
+        val desiredNonDefault = desired.filterValues { !it.isDefault }
+        epistolaTemplateSettings.removeIf { it.epistolaId !in desiredNonDefault }
+        desiredNonDefault.forEach { (epistolaId, setting) ->
+            val templateSettings = epistolaTemplateSettings.firstOrNull { it.epistolaId == epistolaId }
+                ?: ZaaktypeEpistolaTemplateSettings().apply {
+                    zaaktypeConfiguration = this@ZaaktypeConfiguration
+                    this.epistolaId = epistolaId
+                    creationDate = ZonedDateTime.now()
+                    epistolaTemplateSettings.add(this)
+                }
+            templateSettings.informatieObjectTypeUUID = setting.informatieObjectTypeUuid
+            templateSettings.isEnabled = setting.isEnabled
+        }
+    }
 
     fun getBetrokkeneParameters(): ZaaktypeBetrokkeneParameters =
         zaaktypeBetrokkeneParameters ?: ZaaktypeBetrokkeneParameters()

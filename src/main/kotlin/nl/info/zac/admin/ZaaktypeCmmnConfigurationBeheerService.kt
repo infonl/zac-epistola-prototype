@@ -244,6 +244,7 @@ class ZaaktypeCmmnConfigurationBeheerService @Inject constructor(
             epistolaCatalogId = previousZaaktypeCmmnConfiguration.epistolaCatalogId
             epistolaLocale = previousZaaktypeCmmnConfiguration.epistolaLocale
             epistolaInformatieobjecttypeUuid = previousZaaktypeCmmnConfiguration.epistolaInformatieobjecttypeUuid
+            replaceEpistolaTemplateSettings(previousZaaktypeCmmnConfiguration.readEpistolaTemplateSettings())
             uiterlijkeEinddatumAfdoeningWaarschuwing =
                 previousZaaktypeCmmnConfiguration.uiterlijkeEinddatumAfdoeningWaarschuwing
             creatiedatum = ZonedDateTime.now()

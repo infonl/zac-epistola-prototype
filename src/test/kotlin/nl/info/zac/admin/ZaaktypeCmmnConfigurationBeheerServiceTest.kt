@@ -33,6 +33,7 @@ import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createResultaatType
 import nl.info.client.zgw.ztc.model.createZaakType
 import nl.info.zac.admin.exception.ZaaktypeConfigurationNotFoundException
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.admin.model.ZaaktypeBetrokkeneParameters
 import nl.info.zac.admin.model.ZaaktypeCmmnConfiguration
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZAAKTYPE_UUID_VARIABLE_NAME
@@ -253,11 +254,18 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
 
         originalZaaktypeCmmnConfiguration.zaaktypeBetrokkeneParameters = betrokkeneKoppelingen
         val epistolaInformatieobjecttypeUuid = UUID.randomUUID()
+        val epistolaTemplateInformatieobjecttypeUuid = UUID.randomUUID()
         originalZaaktypeCmmnConfiguration.apply {
             isEpistolaEnabled = true
             epistolaCatalogId = "fake-catalog"
             epistolaLocale = "en-GB"
             this.epistolaInformatieobjecttypeUuid = epistolaInformatieobjecttypeUuid
+            replaceEpistolaTemplateSettings(
+                mapOf(
+                    "fake-template-1" to EpistolaTemplateSetting(informatieObjectTypeUuid = epistolaTemplateInformatieobjecttypeUuid),
+                    "fake-template-2" to EpistolaTemplateSetting(isEnabled = false)
+                )
+            )
         }
 
         val slotPersistZaaktypeCmmnConfiguration = slot<ZaaktypeCmmnConfiguration>()
@@ -432,6 +440,18 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                     epistolaCatalogId shouldBe "fake-catalog"
                     epistolaLocale shouldBe "en-GB"
                     this.epistolaInformatieobjecttypeUuid shouldBe epistolaInformatieobjecttypeUuid
+                }
+            }
+
+            and("the setting of each template, its own informatieobjecttype and whether it is offered, is copied as well") {
+                with(slotPersistZaaktypeCmmnConfiguration.captured) {
+                    readEpistolaTemplateSettings() shouldBe mapOf(
+                        "fake-template-1" to EpistolaTemplateSetting(
+                            informatieObjectTypeUuid = epistolaTemplateInformatieobjecttypeUuid
+                        ),
+                        "fake-template-2" to EpistolaTemplateSetting(isEnabled = false)
+                    )
+                    epistolaTemplateSettings.forEach { it.zaaktypeConfiguration shouldBe this }
                 }
             }
 

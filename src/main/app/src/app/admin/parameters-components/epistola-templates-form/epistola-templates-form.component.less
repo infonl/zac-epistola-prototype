@@ -28,9 +28,29 @@ mat-card {
   h3 {
     margin: 0 0 8px;
   }
+}
 
-  ul {
+.template-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+
+  dt {
+    font-weight: 500;
+  }
+
+  dd {
     margin: 0;
-    padding-left: 20px;
+  }
+}
+
+.template-settings {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  mat-form-field {
+    width: 270px;
   }
 }

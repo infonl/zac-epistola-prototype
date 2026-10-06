@@ -82,7 +82,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
         locales: EpistolaLocales = EpistolaLocales(),
         zaaktypeLocale: String? = null
     ) {
-        every { epistolaTemplatesService.readOfferedCatalog(zaakUuid) } returns
+        every { epistolaTemplatesService.readCatalogOfferingTemplate(zaakUuid, any()) } returns
             OfferedEpistolaCatalog(
                 catalogId = FAKE_CATALOG_ID,
                 informatieObjectTypeUuid = UUID.randomUUID(),
@@ -221,7 +221,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
         given("a zaaktype that offers no Epistola templates") {
             val zaak = createZaak()
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } throws EpistolaTemplateNotConfiguredException("fakeNotConfigured")
 
             `when`("a preview is made") {

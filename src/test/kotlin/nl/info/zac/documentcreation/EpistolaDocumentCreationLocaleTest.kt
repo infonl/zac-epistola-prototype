@@ -323,7 +323,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
-                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
             } returns OfferedEpistolaCatalog(
                 catalogId = FAKE_CATALOG_ID,
                 informatieObjectTypeUuid = informatieObjectTypeUuid,
@@ -438,7 +438,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             val zaak = createZaak()
 
             `when`("the variants of the template are read") {
-                every { epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()) } returns
+                every { epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any()) } returns
                     OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
                 every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                     EpistolaGenerationTemplate(
@@ -499,15 +499,17 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
         ) {
             val informatieObjectTypeUuid = UUID.randomUUID()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
+            fun offeredCatalog(locale: String?) = OfferedEpistolaCatalog(
+                catalogId = FAKE_CATALOG_ID,
+                informatieObjectTypeUuid = informatieObjectTypeUuid,
+                locale = locale
+            )
+            every {
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
+            } returns offeredCatalog(zaaktypeLocaleOnCreation)
             every {
                 epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
-            } returnsMany listOf(zaaktypeLocaleOnCreation, zaaktypeLocaleOnNewVersion).map {
-                OfferedEpistolaCatalog(
-                    catalogId = FAKE_CATALOG_ID,
-                    informatieObjectTypeUuid = informatieObjectTypeUuid,
-                    locale = it
-                )
-            }
+            } returns offeredCatalog(zaaktypeLocaleOnNewVersion)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns "123443210"
             val loggedInUser = createLoggedInUser()

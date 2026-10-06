@@ -4,7 +4,7 @@
  */
 
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
-import { TranslateModule } from "@ngx-translate/core";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import {
   provideQueryClient,
   queryOptions,
@@ -41,28 +41,39 @@ const HANDHAVING: GeneratedType<"RestEpistolaCatalog"> = {
   name: "Handhaving",
 };
 
+const BESLUIT_TEMPLATE: GeneratedType<"RestEpistolaTemplate"> = {
+  id: "besluit-evenementenvergunning",
+  name: "Besluit evenementenvergunning",
+  locales: ["en-GB", "nl-NL"],
+  kanalen: ["post", "digitaal"],
+};
+const ONTVANGSTBEVESTIGING_TEMPLATE: GeneratedType<"RestEpistolaTemplate"> = {
+  id: "ontvangstbevestiging-aanvraag",
+  name: "Ontvangstbevestiging aanvraag",
+  locales: ["en-GB", "nl-NL"],
+  kanalen: [],
+};
+const HANDHAVING_TEMPLATES: GeneratedType<"RestEpistolaTemplate">[] = [
+  {
+    id: "besluit-evenementenvergunning",
+    name: "Besluit evenementenvergunning",
+    locales: ["de-DE", "nl-NL"],
+    kanalen: ["post"],
+  },
+  {
+    id: "vooraankondiging-last",
+    name: "Vooraankondiging last",
+    locales: ["de-DE", "nl-NL"],
+    kanalen: ["post"],
+  },
+];
+
 const TEMPLATES_BY_CATALOG: Record<
   string,
   GeneratedType<"RestEpistolaTemplate">[]
 > = {
-  [VERGUNNINGEN.id]: [
-    {
-      id: "besluit-evenementenvergunning",
-      name: "Besluit evenementenvergunning",
-    },
-    {
-      id: "ontvangstbevestiging-aanvraag",
-      name: "Ontvangstbevestiging aanvraag",
-    },
-  ],
-  [HANDHAVING.id]: [
-    { id: "vooraankondiging-last", name: "Vooraankondiging last" },
-  ],
-};
-
-const LOCALES_BY_CATALOG: Record<string, string[]> = {
-  [VERGUNNINGEN.id]: ["nl-NL", "en-GB"],
-  [HANDHAVING.id]: ["nl-NL", "de-DE"],
+  [VERGUNNINGEN.id]: [BESLUIT_TEMPLATE, ONTVANGSTBEVESTIGING_TEMPLATE],
+  [HANDHAVING.id]: HANDHAVING_TEMPLATES,
 };
 
 describe(EpistolaTemplatesFormComponent.name, () => {
@@ -70,13 +81,15 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     enabledForZaaktype = true,
     catalogs = [VERGUNNINGEN, HANDHAVING],
     templatesByCatalog = TEMPLATES_BY_CATALOG,
-    localesByCatalog = LOCALES_BY_CATALOG,
     catalogMapping = {
       catalogId: VERGUNNINGEN.id,
       informatieObjectTypeUUID: BESLUIT.uuid,
       locale: null,
+      templateSettings: [],
     },
     readCatalogMapping = () => Promise.resolve(catalogMapping),
+    readCatalogTemplates = (catalogId: string) =>
+      Promise.resolve(templatesByCatalog[catalogId] ?? []),
   }: {
     enabledForZaaktype?: boolean;
     catalogs?: GeneratedType<"RestEpistolaCatalog">[];
@@ -84,11 +97,13 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       string,
       GeneratedType<"RestEpistolaTemplate">[]
     >;
-    localesByCatalog?: Record<string, string[]>;
     catalogMapping?: GeneratedType<"RestEpistolaCatalogMapping">;
     readCatalogMapping?: () => Promise<
       GeneratedType<"RestEpistolaCatalogMapping">
     >;
+    readCatalogTemplates?: (
+      catalogId: string,
+    ) => Promise<GeneratedType<"RestEpistolaTemplate">[]>;
   } = {}) {
     const storeCatalogMapping = jest.fn().mockReturnValue(of(undefined));
 
@@ -107,14 +122,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
             listCatalogTemplatesQuery: (catalogId: string) =>
               queryOptions({
                 queryKey: ["epistola-catalog-templates", catalogId],
-                queryFn: () =>
-                  Promise.resolve(templatesByCatalog[catalogId] ?? []),
-              }),
-            listCatalogLocalesQuery: (catalogId: string) =>
-              queryOptions({
-                queryKey: ["epistola-catalog-locales", catalogId],
-                queryFn: () =>
-                  Promise.resolve(localesByCatalog[catalogId] ?? []),
+                queryFn: () => readCatalogTemplates(catalogId),
               }),
             getCatalogMappingQuery: (zaaktypeUuid: string) =>
               queryOptions({
@@ -138,6 +146,14 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       inputs: { zaaktypeUuid: ZAAKTYPE_UUID, enabledForZaaktype },
     });
 
+    const translateService =
+      rendered.fixture.debugElement.injector.get(TranslateService);
+    translateService.setTranslation("nl", {
+      "epistola.template.documenttype.standaard":
+        "Zaaktype-standaard: {{documenttype}}",
+    });
+    translateService.use("nl");
+
     await rendered.fixture.whenStable();
     rendered.fixture.detectChanges();
 
@@ -155,6 +171,10 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     screen.getByRole("combobox", { name: /epistola.taal$/ });
   const informatieobjecttypePicker = () =>
     screen.getByRole("combobox", { name: /informatieobjectTypeOmschrijving/ });
+  const templateHeader = (name: string) =>
+    screen.getByRole("button", { name: new RegExp(name) });
+  const templatePanel = (name: string) =>
+    within(screen.getByRole("region", { name: new RegExp(name) }));
 
   async function chooseOption(
     user: UserEvent,
@@ -165,12 +185,22 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     await user.click(screen.getByRole("option", { name: option }));
   }
 
-  function catalogTemplateNames() {
-    return within(
-      screen.getByRole("list", { name: "epistola.catalog.templates" }),
-    )
-      .getAllByRole("listitem")
-      .map(({ textContent }) => textContent?.trim());
+  async function openTemplate(user: UserEvent, name: string) {
+    await user.click(
+      await screen.findByRole("button", { name: new RegExp(name) }),
+    );
+  }
+
+  async function expectTemplateHeaders(names: string[]) {
+    await waitFor(() => {
+      const headers = within(
+        screen.getByRole("group", { name: "epistola.catalog.templates" }),
+      ).getAllByRole("button");
+      expect(headers).toHaveLength(names.length);
+      names.forEach((name, index) =>
+        expect(headers[index]).toHaveAccessibleName(new RegExp(`^${name}`)),
+      );
+    });
   }
 
   describe("given Epistola is switched off for the zaaktype", () => {
@@ -186,10 +216,25 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).not.toBeInTheDocument();
     });
 
-    it("labels the switch visibly with what it switches", async () => {
+    it("names the switch for assistive technology without showing its name as text next to it", async () => {
       await setup({ enabledForZaaktype: false });
 
-      expect(screen.getByText("epistola.form.schakelaar")).toBeVisible();
+      expect(
+        screen.getByRole("switch", { name: "epistola.form.schakelaar" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByText("epistola.form.schakelaar"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("switches Epistola on when the switch is used", async () => {
+      const { component, user } = await setup({ enabledForZaaktype: false });
+
+      await user.click(
+        screen.getByRole("switch", { name: "epistola.form.schakelaar" }),
+      );
+
+      expect(component.enabledForZaaktypeValue).toBe(true);
     });
 
     it("is valid, because nothing it holds would be saved", async () => {
@@ -216,6 +261,14 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       expect(component.isValid()).toBe(false);
     });
+
+    it("is not valid while the templates of the catalog are loading, so their settings cannot be saved away", async () => {
+      const { component } = await setup({
+        readCatalogTemplates: () => new Promise(() => {}),
+      });
+
+      expect(component.isValid()).toBe(false);
+    });
   });
 
   describe("given a zaaktype with a stored catalog and document type", () => {
@@ -229,22 +282,19 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       expect(
         screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
       ).toHaveValue("vertrouwelijkheidaanduiding.VERTROUWELIJK");
-      expect(component.isValid()).toBe(true);
+      await waitFor(() => expect(component.isValid()).toBe(true));
     });
 
-    it("lists every template of the catalog, which the zaaktype then offers, without a way to pick them one by one", async () => {
+    it("shows one accordion item for every template of the catalog, by its name", async () => {
       await setup();
 
-      await waitFor(() =>
-        expect(catalogTemplateNames()).toEqual([
-          "Besluit evenementenvergunning",
-          "Ontvangstbevestiging aanvraag",
-        ]),
-      );
-      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      await expectTemplateHeaders([
+        "Besluit evenementenvergunning",
+        "Ontvangstbevestiging aanvraag",
+      ]);
     });
 
-    it("lists the templates of another catalog once the beheerder chooses it", async () => {
+    it("shows the other templates once the beheerder chooses another catalog", async () => {
       const { user } = await setup();
       await waitFor(() =>
         expect(catalogPicker()).toHaveTextContent("Vergunningen"),
@@ -252,12 +302,13 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       await chooseOption(user, catalogPicker(), "Handhaving");
 
-      await waitFor(() =>
-        expect(catalogTemplateNames()).toEqual(["Vooraankondiging last"]),
-      );
+      await expectTemplateHeaders([
+        "Besluit evenementenvergunning",
+        "Vooraankondiging last",
+      ]);
     });
 
-    it("saves the chosen catalog with the document type", async () => {
+    it("saves the chosen catalog with the document type, and no setting for any template", async () => {
       const { component, storeCatalogMapping, user } = await setup();
       await waitFor(() =>
         expect(catalogPicker()).toHaveTextContent("Vergunningen"),
@@ -265,25 +316,470 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       await chooseOption(user, catalogPicker(), "Handhaving");
       await chooseOption(user, informatieobjecttypePicker(), "Bijlage");
+      await waitFor(() => expect(component.isValid()).toBe(true));
       component.saveEpistolaTemplatesMapping().subscribe();
 
       expect(storeCatalogMapping).toHaveBeenCalledWith(ZAAKTYPE_UUID, {
         catalogId: HANDHAVING.id,
         informatieObjectTypeUUID: BIJLAGE.uuid,
         locale: null,
+        templateSettings: [],
       });
     });
   });
 
+  describe("given the templates of the catalog", () => {
+    it("tells in the header of each which document type applies: the zaaktype's by default", async () => {
+      await setup();
+
+      expect(
+        await screen.findByRole("button", {
+          name: /Besluit evenementenvergunning.*Zaaktype-standaard: Besluit/,
+        }),
+      ).toBeVisible();
+      expect(
+        templateHeader("Ontvangstbevestiging aanvraag"),
+      ).toHaveAccessibleName(/Zaaktype-standaard: Besluit/);
+    });
+
+    it("keeps the details of a template out of sight until its item is opened", async () => {
+      await setup();
+      expect(
+        await screen.findByRole("button", {
+          name: /Besluit evenementenvergunning/,
+        }),
+      ).toBeVisible();
+
+      expect(
+        screen.queryByText("besluit-evenementenvergunning"),
+      ).not.toBeInTheDocument();
+      expect(templateHeader("Besluit evenementenvergunning")).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    });
+
+    it("shows the id, the languages by name and the variants of a template once its item is opened", async () => {
+      const { user } = await setup();
+
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      expect(
+        templatePanel("Besluit evenementenvergunning").getByText(
+          "epistola.template.id",
+        ),
+      ).toBeVisible();
+      expect(
+        templatePanel("Besluit evenementenvergunning").getByText(
+          "besluit-evenementenvergunning",
+        ),
+      ).toBeVisible();
+      expect(
+        templatePanel("Besluit evenementenvergunning").getByText(
+          "Engels (Verenigd Koninkrijk), Nederlands (Nederland)",
+        ),
+      ).toBeVisible();
+      expect(
+        templatePanel("Besluit evenementenvergunning").getByText(
+          "epistola.variant.post, epistola.variant.digitaal",
+        ),
+      ).toBeVisible();
+    });
+
+    it("says so briefly when a template has no variants", async () => {
+      const { user } = await setup();
+
+      await openTemplate(user, "Ontvangstbevestiging aanvraag");
+
+      expect(
+        templatePanel("Ontvangstbevestiging aanvraag").getByText(
+          "epistola.template.varianten.geen",
+        ),
+      ).toBeVisible();
+      expect(
+        templatePanel("Ontvangstbevestiging aanvraag").queryByText(
+          "epistola.template.talen.geen",
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    it("says so briefly when a template has no languages", async () => {
+      const { user } = await setup({
+        templatesByCatalog: {
+          [VERGUNNINGEN.id]: [
+            { id: "brief", name: "Brief", locales: [], kanalen: ["post"] },
+          ],
+        },
+      });
+
+      await openTemplate(user, "Brief");
+
+      expect(
+        templatePanel("Brief").getByText("epistola.template.talen.geen"),
+      ).toBeVisible();
+    });
+
+    it("shows only the document type and the offering of a template whose details Epistola could not give", async () => {
+      const { user } = await setup({
+        templatesByCatalog: {
+          [VERGUNNINGEN.id]: [{ id: "brief", name: "Brief" }],
+        },
+      });
+
+      await openTemplate(user, "Brief");
+
+      expect(
+        templatePanel("Brief").getByRole("combobox", {
+          name: /informatieobjectTypeOmschrijving/,
+        }),
+      ).toBeVisible();
+      expect(
+        templatePanel("Brief").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      ).toBeVisible();
+      expect(
+        templatePanel("Brief").queryByRole("term"),
+      ).not.toBeInTheDocument();
+      expect(
+        templatePanel("Brief").queryByText("brief"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("given the beheerder chooses a document type for a template", () => {
+    it("starts with the choice to take the zaaktype's, and offers the zaaktype's document types", async () => {
+      const { user } = await setup();
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      const picker = templatePanel("Besluit evenementenvergunning").getByRole(
+        "combobox",
+        {
+          name: /informatieobjectTypeOmschrijving/,
+        },
+      );
+      await waitFor(() =>
+        expect(picker).toHaveTextContent(
+          "epistola.template.documenttype.zaaktype",
+        ),
+      );
+      await user.click(picker);
+
+      expect(
+        screen
+          .getAllByRole("option")
+          .map(({ textContent }) => textContent?.trim()),
+      ).toEqual([
+        "epistola.template.documenttype.zaaktype",
+        "Besluit",
+        "Bijlage",
+      ]);
+    });
+
+    it("saves it for that template alone, and shows it in the header", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      await chooseOption(
+        user,
+        templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
+          name: /informatieobjectTypeOmschrijving/,
+        }),
+        "Bijlage",
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(
+        templateHeader("Besluit evenementenvergunning"),
+      ).toHaveAccessibleName(/Bijlage/);
+      expect(
+        templateHeader("Besluit evenementenvergunning"),
+      ).not.toHaveAccessibleName(/Zaaktype-standaard/);
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              isEnabled: true,
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+            },
+          ],
+        }),
+      );
+    });
+
+    it("shows and keeps a document type that is stored for a template", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: null,
+          templateSettings: [
+            {
+              templateId: "ontvangstbevestiging-aanvraag",
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+              isEnabled: true,
+            },
+          ],
+        },
+      });
+
+      await openTemplate(user, "Ontvangstbevestiging aanvraag");
+
+      await waitFor(() =>
+        expect(
+          templatePanel("Ontvangstbevestiging aanvraag").getByRole("combobox", {
+            name: /informatieobjectTypeOmschrijving/,
+          }),
+        ).toHaveTextContent("Bijlage"),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          templateSettings: [
+            {
+              templateId: "ontvangstbevestiging-aanvraag",
+              isEnabled: true,
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+            },
+          ],
+        }),
+      );
+    });
+
+    it("saves no setting for a template once it takes the zaaktype's document type again", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: null,
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+              isEnabled: true,
+            },
+          ],
+        },
+      });
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      await chooseOption(
+        user,
+        templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
+          name: /informatieobjectTypeOmschrijving/,
+        }),
+        "epistola.template.documenttype.zaaktype",
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ templateSettings: [] }),
+      );
+      expect(
+        templateHeader("Besluit evenementenvergunning"),
+      ).toHaveAccessibleName(/Zaaktype-standaard: Besluit/);
+    });
+
+    it("is valid without a document type for any template", async () => {
+      const { component } = await setup();
+
+      await waitFor(() => expect(component.isValid()).toBe(true));
+    });
+  });
+
+  describe("given the beheerder switches a template off", () => {
+    it("saves the template as not offered, and says in its header that it is hidden", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      await user.click(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(
+        templateHeader("Besluit evenementenvergunning"),
+      ).toHaveAccessibleName(/epistola.template.verborgen/);
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              isEnabled: false,
+              informatieObjectTypeUUID: null,
+            },
+          ],
+        }),
+      );
+    });
+
+    it("keeps the document type of the template for when it is switched on again", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await openTemplate(user, "Besluit evenementenvergunning");
+      await chooseOption(
+        user,
+        templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
+          name: /informatieobjectTypeOmschrijving/,
+        }),
+        "Bijlage",
+      );
+
+      await user.click(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenLastCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              isEnabled: false,
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+            },
+          ],
+        }),
+      );
+
+      await user.click(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(
+        templateHeader("Besluit evenementenvergunning"),
+      ).toHaveAccessibleName(/Bijlage/);
+      expect(storeCatalogMapping).toHaveBeenLastCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              isEnabled: true,
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+            },
+          ],
+        }),
+      );
+    });
+
+    it("saves no setting for a template that is switched off and on again without another change", async () => {
+      const { component, storeCatalogMapping, user } = await setup();
+      await openTemplate(user, "Besluit evenementenvergunning");
+
+      await user.click(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+      await user.click(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ templateSettings: [] }),
+      );
+    });
+
+    it("shows a template that is stored as not offered as hidden, switched off", async () => {
+      const { user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: null,
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              informatieObjectTypeUUID: null,
+              isEnabled: false,
+            },
+          ],
+        },
+      });
+
+      expect(
+        await screen.findByRole("button", {
+          name: /Besluit evenementenvergunning.*epistola.template.verborgen/,
+        }),
+      ).toBeVisible();
+      await openTemplate(user, "Besluit evenementenvergunning");
+      expect(
+        templatePanel("Besluit evenementenvergunning").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      ).not.toBeChecked();
+    });
+  });
+
+  describe("given the beheerder chooses another catalog", () => {
+    it("drops the settings of templates the other catalog does not have, and keeps those of templates it has too", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: null,
+          templateSettings: [],
+        },
+      });
+      await openTemplate(user, "Besluit evenementenvergunning");
+      await chooseOption(
+        user,
+        templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
+          name: /informatieobjectTypeOmschrijving/,
+        }),
+        "Bijlage",
+      );
+      await openTemplate(user, "Ontvangstbevestiging aanvraag");
+      await user.click(
+        templatePanel("Ontvangstbevestiging aanvraag").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+
+      await chooseOption(user, catalogPicker(), "Handhaving");
+      expect(
+        await screen.findByRole("button", { name: /Vooraankondiging last/ }),
+      ).toBeVisible();
+      component.saveEpistolaTemplatesMapping().subscribe();
+
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({
+          catalogId: HANDHAVING.id,
+          templateSettings: [
+            {
+              templateId: "besluit-evenementenvergunning",
+              isEnabled: true,
+              informatieObjectTypeUUID: BIJLAGE.uuid,
+            },
+          ],
+        }),
+      );
+    });
+  });
+
   describe("given a catalog whose templates all offer Dutch and British English", () => {
-    async function optionNames(user: UserEvent) {
-      await user.click(languagePicker());
-      const names = screen
+    const optionNames = () =>
+      screen
         .getAllByRole("option")
         .map(({ textContent }) => textContent?.trim());
-      await user.keyboard("{Escape}");
-      return names;
-    }
 
     it("offers each language by its name in the language ZAC is shown in, after the choice to leave it to ZAC", async () => {
       const { user } = await setup();
@@ -291,8 +787,10 @@ describe(EpistolaTemplatesFormComponent.name, () => {
         expect(catalogPicker()).toHaveTextContent("Vergunningen"),
       );
 
-      await waitFor(async () =>
-        expect(await optionNames(user)).toEqual([
+      await user.click(languagePicker());
+
+      await waitFor(() =>
+        expect(optionNames()).toEqual([
           "epistola.taal.standaard",
           "Engels (Verenigd Koninkrijk)",
           "Nederlands (Nederland)",
@@ -317,6 +815,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
           catalogId: VERGUNNINGEN.id,
           informatieObjectTypeUUID: BESLUIT.uuid,
           locale: "en-GB",
+          templateSettings: [],
         },
       });
 
@@ -332,9 +831,9 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await waitFor(() =>
         expect(catalogPicker()).toHaveTextContent("Vergunningen"),
       );
-      await waitFor(async () =>
-        expect(await optionNames(user)).toHaveLength(3),
-      );
+      await user.click(languagePicker());
+      await waitFor(() => expect(optionNames()).toHaveLength(3));
+      await user.keyboard("{Escape}");
 
       await chooseOption(
         user,
@@ -347,6 +846,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
         catalogId: VERGUNNINGEN.id,
         informatieObjectTypeUUID: BESLUIT.uuid,
         locale: "en-GB",
+        templateSettings: [],
       });
     });
 
@@ -356,6 +856,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
           catalogId: VERGUNNINGEN.id,
           informatieObjectTypeUUID: BESLUIT.uuid,
           locale: "en-GB",
+          templateSettings: [],
         },
       });
       await waitFor(() =>
@@ -374,6 +875,125 @@ describe(EpistolaTemplatesFormComponent.name, () => {
     });
   });
 
+  describe("given a catalog with a template that is only in Dutch", () => {
+    const TEMPLATES = [
+      BESLUIT_TEMPLATE,
+      {
+        id: "brief-nederlands",
+        name: "Brief Nederlands",
+        locales: ["nl-NL"],
+        kanalen: ["post"],
+      },
+    ];
+
+    it("offers only Dutch while that template is offered", async () => {
+      const { user } = await setup({
+        templatesByCatalog: { [VERGUNNINGEN.id]: TEMPLATES },
+      });
+      expect(
+        await screen.findByRole("button", { name: /Brief Nederlands/ }),
+      ).toBeVisible();
+
+      await user.click(languagePicker());
+
+      expect(
+        screen
+          .getAllByRole("option")
+          .map(({ textContent }) => textContent?.trim()),
+      ).toEqual(["epistola.taal.standaard", "Nederlands (Nederland)"]);
+    });
+
+    it("offers English again once that template is switched off, because no document is generated from it", async () => {
+      const { user } = await setup({
+        templatesByCatalog: { [VERGUNNINGEN.id]: TEMPLATES },
+      });
+      await openTemplate(user, "Brief Nederlands");
+
+      await user.click(
+        templatePanel("Brief Nederlands").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+
+      await user.click(languagePicker());
+      expect(
+        await screen.findByRole("option", {
+          name: "Engels (Verenigd Koninkrijk)",
+        }),
+      ).toBeVisible();
+    });
+
+    it("clears a chosen language that only the switched off template lacks, once it is switched on", async () => {
+      const { component, storeCatalogMapping, user } = await setup({
+        templatesByCatalog: { [VERGUNNINGEN.id]: TEMPLATES },
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "en-GB",
+          templateSettings: [
+            {
+              templateId: "brief-nederlands",
+              informatieObjectTypeUUID: null,
+              isEnabled: false,
+            },
+          ],
+        },
+      });
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent(
+          "Engels (Verenigd Koninkrijk)",
+        ),
+      );
+      await openTemplate(user, "Brief Nederlands");
+
+      await user.click(
+        templatePanel("Brief Nederlands").getByRole("switch", {
+          name: "epistola.template.aangeboden",
+        }),
+      );
+
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent("epistola.taal.standaard"),
+      );
+      component.saveEpistolaTemplatesMapping().subscribe();
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ locale: null }),
+      );
+    });
+  });
+
+  describe("given templates whose languages Epistola could not give", () => {
+    it("keeps the language stored with the zaaktype, which is then not known to be wrong", async () => {
+      const { component, storeCatalogMapping } = await setup({
+        templatesByCatalog: {
+          [VERGUNNINGEN.id]: [{ id: "brief", name: "Brief" }],
+        },
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: "en-GB",
+          templateSettings: [],
+        },
+      });
+
+      await waitFor(() =>
+        expect(languagePicker()).toHaveTextContent(
+          "Engels (Verenigd Koninkrijk)",
+        ),
+      );
+      await waitFor(() => expect(component.isValid()).toBe(true));
+      component.saveEpistolaTemplatesMapping().subscribe();
+      expect(storeCatalogMapping).toHaveBeenCalledWith(
+        ZAAKTYPE_UUID,
+        expect.objectContaining({ locale: "en-GB" }),
+      );
+      expect(
+        screen.queryByText("msg.epistola.talen.geen"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("given the beheerder chooses another catalog", () => {
     it("offers the languages of that catalog instead", async () => {
       const { user } = await setup();
@@ -382,6 +1002,9 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       );
 
       await chooseOption(user, catalogPicker(), "Handhaving");
+      expect(
+        await screen.findByRole("button", { name: /Vooraankondiging last/ }),
+      ).toBeVisible();
 
       await user.click(languagePicker());
       expect(
@@ -398,6 +1021,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
           catalogId: VERGUNNINGEN.id,
           informatieObjectTypeUUID: BESLUIT.uuid,
           locale: "en-GB",
+          templateSettings: [],
         },
       });
       await waitFor(() =>
@@ -424,6 +1048,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
           catalogId: VERGUNNINGEN.id,
           informatieObjectTypeUUID: BESLUIT.uuid,
           locale: "nl-NL",
+          templateSettings: [],
         },
       });
       await waitFor(() =>
@@ -431,6 +1056,9 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       );
 
       await chooseOption(user, catalogPicker(), "Handhaving");
+      expect(
+        await screen.findByRole("button", { name: /Vooraankondiging last/ }),
+      ).toBeVisible();
 
       await user.click(languagePicker());
       expect(
@@ -443,7 +1071,14 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
   describe("given a catalog whose templates share no language", () => {
     it("says so, and offers only the choice to leave it to ZAC", async () => {
-      const { user } = await setup({ localesByCatalog: {} });
+      const { user } = await setup({
+        templatesByCatalog: {
+          [VERGUNNINGEN.id]: [
+            { id: "een", name: "Een", locales: ["nl-NL"], kanalen: [] },
+            { id: "twee", name: "Twee", locales: ["en-GB"], kanalen: [] },
+          ],
+        },
+      });
 
       expect(await screen.findByText("msg.epistola.talen.geen")).toBeVisible();
       await user.click(languagePicker());
@@ -457,6 +1092,8 @@ describe(EpistolaTemplatesFormComponent.name, () => {
         catalogMapping: {
           catalogId: VERGUNNINGEN.id,
           informatieObjectTypeUUID: null,
+          locale: null,
+          templateSettings: [],
         },
       });
 
@@ -468,7 +1105,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       expect(
         screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
       ).toHaveValue("vertrouwelijkheidaanduiding.OPENBAAR");
-      expect(component.isValid()).toBe(true);
+      await waitFor(() => expect(component.isValid()).toBe(true));
     });
   });
 

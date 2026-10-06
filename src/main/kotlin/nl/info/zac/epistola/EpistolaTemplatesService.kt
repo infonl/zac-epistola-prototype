@@ -11,6 +11,7 @@ import jakarta.transaction.Transactional.TxType.REQUIRED
 import jakarta.transaction.Transactional.TxType.SUPPORTS
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.SYSTEM_CATALOG
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
@@ -24,10 +25,13 @@ import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.epistola.exception.EpistolaCmmnOnlyException
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.exception.EpistolaTemplateNotOfferedException
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import nl.info.zac.epistola.rest.RestEpistolaCatalog
 import nl.info.zac.epistola.rest.RestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
+import nl.info.zac.epistola.rest.RestEpistolaTemplateSetting
 import nl.info.zac.epistola.rest.RestOfferedEpistolaTemplate
 import nl.info.zac.epistola.rest.toRestEpistolaCatalog
 import nl.info.zac.epistola.rest.toRestEpistolaTemplate
@@ -54,6 +58,7 @@ import java.util.logging.Logger
 @Transactional(SUPPORTS)
 @NoArgConstructor
 @AllOpen
+@Suppress("TooManyFunctions")
 class EpistolaTemplatesService @Inject constructor(
     private val epistolaClientService: EpistolaClientService,
     private val zaaktypeConfigurationService: ZaaktypeConfigurationService,
@@ -86,43 +91,25 @@ class EpistolaTemplatesService @Inject constructor(
     /**
      * Empty when Epistola is not the active provider, as [listCatalogs] is.
      *
-     * Every successful listing replaces the names kept for the catalog, so a template Epistola has dropped from it
-     * cannot come back from them.
+     * Each template carries its languages and kanalen, read from Epistola with one request per template. While Epistola
+     * cannot be reached the templates come by the names of the last listing, and without languages and kanalen.
      */
     fun listTemplates(catalogId: String): List<RestEpistolaTemplate> =
         if (isEpistolaActive()) {
-            epistolaClientService.listTemplates(catalogId)
-                .map { it.toRestEpistolaTemplate() }
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-                .also { templates ->
-                    lastReadTemplateNames[catalogId] = ReadTemplateNames(
-                        namesById = templates.associate { it.id to it.name },
-                        readAt = Instant.now()
-                    )
-                }
-        } else {
-            emptyList()
-        }
-
-    /**
-     * The languages every template of the catalog offers, as BCP-47 tags of their variants' `system.locale`, so that the
-     * language a beheerder chooses for a zaaktype is one that each of its templates has. A template whose variants carry
-     * no language is generated without one and takes no part. Empty when Epistola is not the active provider, as
-     * [listCatalogs] is, and when no template of the catalog has a language.
-     */
-    fun listCatalogLocales(catalogId: String): List<String> =
-        if (isEpistolaActive()) {
-            epistolaClientService.listTemplates(catalogId)
-                .map { template ->
-                    epistolaClientService.readGenerationTemplate(
-                        catalogId = catalogId,
-                        templateId = template.toRestEpistolaTemplate().id
-                    ).locales.locales
-                }
-                .filter(List<String>::isNotEmpty)
-                .reduceOrNull { commonLocales, templateLocales -> commonLocales.intersect(templateLocales.toSet()).toList() }
-                .orEmpty()
-                .sorted()
+            val templateNames = readTemplateNames(catalogId)
+            val generationTemplates = if (templateNames.isRemembered) {
+                emptyMap()
+            } else {
+                readGenerationTemplates(catalogId = catalogId, templateIds = templateNames.namesById.keys)
+            }
+            templateNames.namesById.map { (id, name) ->
+                RestEpistolaTemplate(
+                    id = id,
+                    name = name,
+                    locales = generationTemplates[id]?.locales?.locales?.sorted(),
+                    kanalen = generationTemplates[id]?.kanalen?.kanalen
+                )
+            }
         } else {
             emptyList()
         }
@@ -134,7 +121,16 @@ class EpistolaTemplatesService @Inject constructor(
         return RestEpistolaCatalogMapping(
             catalogId = zaaktypeConfiguration?.epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
             informatieObjectTypeUUID = zaaktypeConfiguration?.epistolaInformatieobjecttypeUuid,
-            locale = zaaktypeConfiguration?.epistolaLocale
+            locale = zaaktypeConfiguration?.epistolaLocale,
+            templateSettings = zaaktypeConfiguration?.readEpistolaTemplateSettings().orEmpty()
+                .map { (templateId, templateSetting) ->
+                    RestEpistolaTemplateSetting(
+                        templateId = templateId,
+                        informatieObjectTypeUUID = templateSetting.informatieObjectTypeUuid,
+                        isEnabled = templateSetting.isEnabled
+                    )
+                }
+                .sortedBy(RestEpistolaTemplateSetting::templateId)
         )
     }
 
@@ -151,24 +147,41 @@ class EpistolaTemplatesService @Inject constructor(
                 .mapTo(mutableSetOf()) { it.extractUuid() }
         )
         LOG.fine { "Storing Epistola catalog '${catalogMapping.catalogId}' for zaaktype '$zaaktypeUuid'" }
+        val templateIdsInCatalog = epistolaClientService.listTemplates(catalogMapping.catalogId)
+            .mapTo(mutableSetOf()) { it.toRestEpistolaTemplate().id }
         zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(
             zaaktypeCmmnConfiguration.apply {
                 epistolaCatalogId = catalogMapping.catalogId
                 epistolaInformatieobjecttypeUuid = catalogMapping.informatieObjectTypeUUID
                 epistolaLocale = catalogMapping.locale?.takeIf(String::isNotBlank)
+                replaceEpistolaTemplateSettings(
+                    catalogMapping.templateSettings
+                        .filter { it.templateId in templateIdsInCatalog }
+                        .associate {
+                            it.templateId to EpistolaTemplateSetting(
+                                informatieObjectTypeUuid = it.informatieObjectTypeUUID,
+                                isEnabled = it.isEnabled
+                            )
+                        }
+                )
             }
         )
     }
 
-    /** Empty when [readOfferedCatalog] would refuse, so that *Document maken* lists nothing to generate from. */
+    /**
+     * Empty when [readOfferedCatalog] would refuse, so that *Document maken* lists nothing to generate from. A template
+     * the beheerder switched off is left out, and each template names the informatieobjecttype its document is stored
+     * under: its own, or else the zaaktype's.
+     */
     fun listOfferedTemplates(zaaktypeUuid: UUID): List<RestOfferedEpistolaTemplate> =
         findOfferedCatalog(zaaktypeUuid)?.let { offeredCatalog ->
-            readTemplateNamesById(offeredCatalog.catalogId)
+            readTemplateNames(offeredCatalog.catalogId).namesById
+                .filterKeys(offeredCatalog::isOffered)
                 .map { (id, name) ->
                     RestOfferedEpistolaTemplate(
                         id = id,
                         name = name,
-                        informatieObjectTypeUUID = offeredCatalog.informatieObjectTypeUuid
+                        informatieObjectTypeUUID = offeredCatalog.informatieObjectTypeUuidOf(id)
                     )
                 }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -194,6 +207,21 @@ class EpistolaTemplatesService @Inject constructor(
             ?: throw EpistolaTemplateNotConfiguredException("Zaaktype '$zaaktypeUuid' offers no Epistola templates.")
     }
 
+    /**
+     * [readOfferedCatalog] for generating a document from [templateId], which the beheerder may have switched off. Only
+     * a new version of a document skips this check, as it is made from the template the first version came from.
+     *
+     * @throws EpistolaTemplateNotOfferedException when the zaaktype does not offer the template
+     */
+    fun readCatalogOfferingTemplate(zaaktypeUuid: UUID, templateId: String): OfferedEpistolaCatalog =
+        readOfferedCatalog(zaaktypeUuid).also {
+            if (!it.isOffered(templateId)) {
+                throw EpistolaTemplateNotOfferedException(
+                    "Zaaktype '$zaaktypeUuid' does not offer Epistola template '$templateId'."
+                )
+            }
+        }
+
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 
     private fun assertEpistolaIsActive() {
@@ -216,17 +244,34 @@ class EpistolaTemplatesService @Inject constructor(
                 OfferedEpistolaCatalog(
                     catalogId = epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
                     informatieObjectTypeUuid = it,
-                    locale = epistolaLocale
+                    locale = epistolaLocale,
+                    templateSettings = readEpistolaTemplateSettings()
                 )
             }
+
+    /**
+     * Every successful listing replaces the names kept for the catalog, so a template Epistola has dropped from it
+     * cannot come back from them.
+     */
+    private fun listTemplateNames(catalogId: String): Map<String, String> =
+        epistolaClientService.listTemplates(catalogId)
+            .map { it.toRestEpistolaTemplate() }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            .also { templates ->
+                lastReadTemplateNames[catalogId] = ReadTemplateNames(
+                    namesById = templates.associate { it.id to it.name },
+                    readAt = Instant.now()
+                )
+            }
+            .associate { it.id to it.name }
 
     /**
      * Only an Epistola that cannot be reached falls back to the names of the catalog's last listing. Refused access, a
      * rate limit or a rejected request say something the user needs to see.
      */
-    private fun readTemplateNamesById(catalogId: String): Map<String, String> =
+    private fun readTemplateNames(catalogId: String): TemplateNames =
         try {
-            listTemplates(catalogId).associate { it.id to it.name }
+            TemplateNames(namesById = listTemplateNames(catalogId), isRemembered = false)
         } catch (epistolaRequestFailedException: EpistolaRequestFailedException) {
             lastReadTemplateNames[catalogId]
                 ?.takeIf { epistolaRequestFailedException.errorCode == ERROR_CODE_EPISTOLA_UNAVAILABLE }
@@ -235,9 +280,31 @@ class EpistolaTemplatesService @Inject constructor(
                         "Epistola cannot be reached; listing the templates of catalog '$catalogId' by the names read at ${it.readAt}"
                     }
                 }
-                ?.namesById
+                ?.let { TemplateNames(namesById = it.namesById, isRemembered = true) }
                 ?: throw epistolaRequestFailedException
+        }
+
+    /** Stops at the first template Epistola cannot be reached for, so that the others do not each wait for a timeout. */
+    private fun readGenerationTemplates(catalogId: String, templateIds: Collection<String>) =
+        mutableMapOf<String, EpistolaGenerationTemplate>().also { generationTemplates ->
+            try {
+                templateIds.forEach {
+                    generationTemplates[it] = epistolaClientService.readGenerationTemplate(
+                        catalogId = catalogId,
+                        templateId = it
+                    )
+                }
+            } catch (epistolaRequestFailedException: EpistolaRequestFailedException) {
+                if (epistolaRequestFailedException.errorCode != ERROR_CODE_EPISTOLA_UNAVAILABLE) {
+                    throw epistolaRequestFailedException
+                }
+                LOG.warning {
+                    "Epistola cannot be reached; listing the templates of catalog '$catalogId' without their details"
+                }
+            }
         }
 }
 
 private data class ReadTemplateNames(val namesById: Map<String, String>, val readAt: Instant)
+
+private data class TemplateNames(val namesById: Map<String, String>, val isRemembered: Boolean)

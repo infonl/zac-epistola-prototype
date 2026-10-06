@@ -9,6 +9,7 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.checkUnnecessaryStub
+import jakarta.json.bind.JsonbBuilder
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_MAPPING_INVALID
 import java.util.UUID
@@ -153,6 +154,105 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
                 then("it is rejected, because Open Zaak would not accept the document under it for a zaak of this type") {
                     epistolaTemplateMappingException.message shouldBe
                         "Informatieobjecttype '$otherInformatieObjectTypeUuid' is not one of the zaaktype's."
+                }
+            }
+        }
+    }
+
+    context("validating the template settings of a catalog mapping") {
+        given("templates whose informatieobjecttypen are the zaaktype's, or none") {
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "fake-catalog",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                templateSettings = listOf(
+                    createRestEpistolaTemplateSetting(templateId = "fake-template-1", informatieObjectTypeUUID = informatieObjectTypeUuid),
+                    createRestEpistolaTemplateSetting(templateId = "fake-template-2", isEnabled = false)
+                )
+            )
+
+            `when`("it is validated") {
+                then("it passes") {
+                    shouldNotThrowAny {
+                        catalogMapping.validate(
+                            availableCatalogIds = setOf("fake-catalog"),
+                            informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
+                        )
+                    }
+                }
+            }
+        }
+
+        given("a template with an informatieobjecttype that is not one of the zaaktype's") {
+            val otherInformatieObjectTypeUuid = UUID.randomUUID()
+            val catalogMapping = createRestEpistolaCatalogMapping(
+                catalogId = "fake-catalog",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                templateSettings = listOf(
+                    createRestEpistolaTemplateSetting(
+                        templateId = "fake-template-1",
+                        informatieObjectTypeUUID = otherInformatieObjectTypeUuid
+                    )
+                )
+            )
+
+            `when`("it is validated") {
+                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
+                    catalogMapping.validate(
+                        availableCatalogIds = setOf("fake-catalog"),
+                        informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
+                    )
+                }
+
+                then("it is rejected, naming the informatieobjecttype") {
+                    epistolaTemplateMappingException.message shouldBe
+                        "Informatieobjecttype '$otherInformatieObjectTypeUuid' is not one of the zaaktype's."
+                }
+            }
+        }
+    }
+
+    context("sending and receiving a template setting as JSON") {
+        val jsonb = JsonbBuilder.create()
+
+        given("a template setting that is switched off and has an informatieobjecttype of its own") {
+            val restEpistolaTemplateSetting = createRestEpistolaTemplateSetting(
+                templateId = "fake-template-1",
+                informatieObjectTypeUUID = informatieObjectTypeUuid,
+                isEnabled = false
+            )
+
+            `when`("it is serialized via JSON-B") {
+                val json = jsonb.toJson(restEpistolaTemplateSetting)
+
+                then("the boolean keeps the name of the property, including its is prefix") {
+                    json shouldBe """{"informatieObjectTypeUUID":"$informatieObjectTypeUuid","isEnabled":false,""" +
+                        """"templateId":"fake-template-1"}"""
+                }
+            }
+
+            `when`("it is serialized and deserialized again") {
+                val roundTripped = jsonb.fromJson(
+                    jsonb.toJson(restEpistolaTemplateSetting),
+                    RestEpistolaTemplateSetting::class.java
+                )
+
+                then("the flag is read back, not left at its default of enabled") {
+                    roundTripped shouldBe restEpistolaTemplateSetting
+                }
+            }
+        }
+
+        given("a catalog mapping with a template that is switched off, as the frontend sends it") {
+            val json = """{"catalogId":"fake-catalog","informatieObjectTypeUUID":"$informatieObjectTypeUuid","locale":null,""" +
+                """"templateSettings":[{"templateId":"fake-template-1","informatieObjectTypeUUID":null,"isEnabled":false}]}"""
+
+            `when`("it is deserialized via JSON-B") {
+                val catalogMapping = jsonb.fromJson(json, RestEpistolaCatalogMapping::class.java)
+
+                then("the template is read as switched off") {
+                    catalogMapping.templateSettings shouldBe listOf(
+                        createRestEpistolaTemplateSetting(templateId = "fake-template-1", isEnabled = false)
+                    )
                 }
             }
         }

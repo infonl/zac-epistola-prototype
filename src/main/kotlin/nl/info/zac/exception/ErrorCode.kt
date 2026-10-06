@@ -45,6 +45,7 @@ enum class ErrorCode(val value: String) {
     ERROR_CODE_EPISTOLA_REQUEST_FAILED("msg.error.epistola.request-failed"),
     ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED("msg.error.epistola.template.data-rejected"),
     ERROR_CODE_EPISTOLA_TEMPLATE_NOT_FOUND("msg.error.epistola.template.not-found"),
+    ERROR_CODE_EPISTOLA_TEMPLATE_NOT_OFFERED("msg.error.epistola.template.not-offered"),
     ERROR_CODE_EPISTOLA_TEMPLATE_WITHOUT_SCHEMA("msg.error.epistola.template.without-schema"),
     ERROR_CODE_EPISTOLA_TEMPLATE_MAPPING_INVALID("msg.error.epistola.template.mapping-invalid"),
     ERROR_CODE_EPISTOLA_TEMPLATE_NOT_CONFIGURED("msg.error.epistola.template.not-configured"),

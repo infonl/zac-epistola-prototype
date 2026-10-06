@@ -85,8 +85,13 @@ class EpistolaDocumentCreationService @Inject constructor(
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
-            val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
-            val informatieObjectType = ztcClientService.readInformatieobjecttype(offeredCatalog.informatieObjectTypeUuid)
+            val offeredCatalog = epistolaTemplatesService.readCatalogOfferingTemplate(
+                zaaktypeUuid = zaak.zaaktype.extractUuid(),
+                templateId = templateId
+            )
+            val informatieObjectType = ztcClientService.readInformatieobjecttype(
+                offeredCatalog.informatieObjectTypeUuidOf(templateId)
+            )
             val generatedDocument = createDocument(
                 zaak = zaak,
                 catalogId = offeredCatalog.catalogId,
@@ -187,7 +192,10 @@ class EpistolaDocumentCreationService @Inject constructor(
         taskId: String? = null,
         variant: String? = null
     ): ByteArray {
-        val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+        val offeredCatalog = epistolaTemplatesService.readCatalogOfferingTemplate(
+            zaaktypeUuid = zaak.zaaktype.extractUuid(),
+            templateId = templateId
+        )
         val catalogId = offeredCatalog.catalogId
         return try {
             readGenerationInput(
@@ -255,7 +263,10 @@ class EpistolaDocumentCreationService @Inject constructor(
      * that creating a document from it asks Epistola for.
      */
     fun readVarianten(zaak: Zaak, templateId: String): EpistolaTemplateInLocale =
-        epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid()).let { offeredCatalog ->
+        epistolaTemplatesService.readCatalogOfferingTemplate(
+            zaaktypeUuid = zaak.zaaktype.extractUuid(),
+            templateId = templateId
+        ).let { offeredCatalog ->
             epistolaClientService.readGenerationTemplate(catalogId = offeredCatalog.catalogId, templateId = templateId)
                 .let {
                     EpistolaTemplateInLocale(

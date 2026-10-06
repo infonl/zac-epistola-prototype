@@ -72,10 +72,22 @@ describe(EpistolaTemplatesService.name, () => {
       .expectOne(
         "/rest/zaakafhandelparameters/epistola-catalogs/fake-catalog/templates",
       )
-      .flush([{ id: "fake-template", name: "Standaardbrief" }]);
+      .flush([
+        {
+          id: "fake-template",
+          name: "Standaardbrief",
+          locales: ["nl-NL"],
+          kanalen: ["post"],
+        },
+      ]);
 
     expect(await catalogTemplates).toEqual([
-      { id: "fake-template", name: "Standaardbrief" },
+      {
+        id: "fake-template",
+        name: "Standaardbrief",
+        locales: ["nl-NL"],
+        kanalen: ["post"],
+      },
     ]);
   });
 
@@ -88,6 +100,14 @@ describe(EpistolaTemplatesService.name, () => {
       epistolaTemplatesService.storeCatalogMapping(ZAAKTYPE_UUID, {
         catalogId: "fake-catalog",
         informatieObjectTypeUUID: "fake-informatieobjecttype-uuid",
+        locale: null,
+        templateSettings: [
+          {
+            templateId: "fake-template",
+            informatieObjectTypeUUID: null,
+            isEnabled: false,
+          },
+        ],
       }),
     );
     const postedRequest = httpTestingController.expectOne(
@@ -97,6 +117,14 @@ describe(EpistolaTemplatesService.name, () => {
     expect(postedRequest.request.body).toEqual({
       catalogId: "fake-catalog",
       informatieObjectTypeUUID: "fake-informatieobjecttype-uuid",
+      locale: null,
+      templateSettings: [
+        {
+          templateId: "fake-template",
+          informatieObjectTypeUUID: null,
+          isEnabled: false,
+        },
+      ],
     });
     postedRequest.flush(null);
     await stored;
