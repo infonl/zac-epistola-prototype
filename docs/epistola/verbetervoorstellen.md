@@ -35,10 +35,10 @@ die ook slagen.
 
 Daarnaast zijn er **zes verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11, -16). De
 belangrijkste is een belastingtest (VV-05): een verzoek houdt een thread vast zolang Epistola rendert, bij één
-gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. Er zijn **drie punten
-die van Epistola afhangen** (VV-04, VV-08, VV-10), **drie uitbreidingen** die pas zin hebben na een besluit over de
-richting (VV-12, VV-13, VV-15), en sinds 6 oktober **één voorstel over varianten** (VV-16): ZAC kan alleen op taal en
-kanaal kiezen, en Epistola weigert een verzoek waarbij meer varianten even goed passen.
+gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. VV-16 is van 6 oktober: ZAC
+kan alleen op taal en kanaal kiezen, en Epistola weigert een verzoek waarbij meer varianten even goed passen. Er zijn
+verder **drie punten die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na
+een besluit over de richting (VV-12, VV-13, VV-15).
 
 Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie bewust geaccepteerd met een reden
 (waaronder één dat bij een ander team ligt), en twee omgezet in een voorstel. Zie [§3](#3-het-risicoregister-alle-negen).

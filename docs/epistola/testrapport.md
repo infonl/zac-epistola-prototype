@@ -134,9 +134,9 @@ halve koppeling, en het genereerscherm blijft open. In ronde 1 zei de melding ne
   verwijderde het bestand weer, meldde *The document was created, but storing it in Open Zaak failed. Nothing was
   added to the case*, en verwijderde ook de kopie bij Epistola.
 
-Eén kleine opmerking (B-08): onder de melding bij een onbereikbaar Epistola staat in ZAC's foutvenster nog een
-algemene regel, *An error has occurred.* Het antwoord draagt dan geen detail, en `fout-afhandeling.service.ts`
-valt terug op die regel. De melding erboven is juist en er gaat niets verloren. *Opgelost op 5 oktober in #55: het venster herhaalt zijn titel niet meer.*
+Eén kleine opmerking (B-08): onder de melding bij een onbereikbaar Epistola stond in ZAC's foutvenster nog een
+algemene regel, *An error has occurred.* Het antwoord droeg dan geen detail, en `fout-afhandeling.service.ts`
+viel terug op die regel. De melding erboven was juist en er ging niets verloren. *Opgelost op 5 oktober in #55: het venster herhaalt zijn titel niet meer.*
 
 ### Functionaliteit 10 – Randvoorwaarden
 
