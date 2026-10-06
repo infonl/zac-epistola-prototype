@@ -1084,10 +1084,10 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
         expect(field("template")).toHaveValue("Standaardbrief");
         expect(previewButton()).toBeDisabled();
 
-        const kanalenRequest = await waitFor(() =>
+        const variantenRequest = await waitFor(() =>
           httpTestingController.expectOne(EPISTOLA_VARIANTEN_URL),
         );
-        kanalenRequest.flush(postAndDigitaal);
+        variantenRequest.flush(postAndDigitaal);
         await waitFor(() => {
           fixture.detectChanges();
           expect(previewButton()).toBeEnabled();

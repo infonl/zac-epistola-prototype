@@ -27,7 +27,7 @@ toepassing van het endpoint, dus het botst niet met besluit B5 (de preview niet 
 
 1. *Document maken*, een templategroep, een template en eventueel een variant kiezen. Biedt het zaaktype maar één
    templategroep, of de groep maar één template, dan kiest ZAC die zelf (#45).
-2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, het kanaal
+2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, de variant
    bekend zijn, zodat een voorbeeld nooit een andere variant toont dan die ZAC straks genereert. Een template dat ZAC
    zelf koos, telt even goed.
 3. Binnen enkele seconden opent een dialoog met de PDF, en de zin dat dit een voorbeeld is dat nog niet in de zaak
