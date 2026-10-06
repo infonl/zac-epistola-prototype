@@ -50,7 +50,8 @@ fun EpistolaLocales.preselectedLocale(): String? =
         ?: defaultLocale
 
 fun EpistolaLocales.choose(requestedLocale: String?): String? =
-    requestedLocale?.takeIf { it in locales } ?: preselectedLocale()
+    requestedLocale?.let { requested -> locales.firstOrNull { it.equals(requested, ignoreCase = true) } }
+        ?: preselectedLocale()
 
 /**
  * The language ZAC asks Epistola for, and offers the variants of: the [requestedLocale] when the template has it,

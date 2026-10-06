@@ -308,11 +308,12 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
             } throws EpistolaTemplateNotConfiguredException("fakeMessage")
 
             `when`("its variants are read") {
-                shouldThrow<EpistolaTemplateNotConfiguredException> {
+                val exception = shouldThrow<EpistolaTemplateNotConfiguredException> {
                     epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
                 }
 
-                then("Epistola is not asked about it") {
+                then("the refusal is passed on, and Epistola is not asked about it") {
+                    exception.message shouldBe "fakeMessage"
                     verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any()) }
                 }
             }

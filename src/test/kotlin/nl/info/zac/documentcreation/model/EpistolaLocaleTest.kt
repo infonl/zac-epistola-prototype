@@ -109,6 +109,12 @@ class EpistolaLocaleTest : BehaviorSpec({
                 }
             }
 
+            `when`("British English is requested in other letter case than the template spells it") {
+                then("the template's own spelling is asked for, so its variants stay addressable") {
+                    locales.choose(requestedLocale = "en-gb") shouldBe "en-GB"
+                }
+            }
+
             `when`("no language is requested, or one the template does not have") {
                 then("Dutch is asked for") {
                     listOf(null, "fr-FR").forEach {
