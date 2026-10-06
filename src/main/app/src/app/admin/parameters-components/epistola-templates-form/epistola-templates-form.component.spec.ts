@@ -1039,6 +1039,44 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).toEqual(["epistola.taal.standaard", "Nederlands (Nederland)"]);
     });
 
+    it("offers the languages of the offered templates while a switched off template has no details", async () => {
+      const { user } = await setup({
+        templatesByCatalog: {
+          [VERGUNNINGEN.id]: [
+            BESLUIT_TEMPLATE,
+            { id: "zonder-details", name: "Zonder details" },
+          ],
+        },
+        catalogMapping: {
+          catalogId: VERGUNNINGEN.id,
+          informatieObjectTypeUUID: BESLUIT.uuid,
+          locale: null,
+          templateSettings: [
+            {
+              templateId: "zonder-details",
+              informatieObjectTypeUUID: null,
+              isEnabled: false,
+            },
+          ],
+        },
+      });
+      expect(
+        await screen.findByRole("button", { name: /Zonder details/ }),
+      ).toBeVisible();
+
+      await user.click(languagePicker());
+
+      expect(
+        screen
+          .getAllByRole("option")
+          .map(({ textContent }) => textContent?.trim()),
+      ).toEqual([
+        "epistola.taal.standaard",
+        "Engels (Verenigd Koninkrijk)",
+        "Nederlands (Nederland)",
+      ]);
+    });
+
     it("offers English again once that template is switched off, because no document is generated from it", async () => {
       const { user } = await setup({
         templatesByCatalog: { [VERGUNNINGEN.id]: TEMPLATES },

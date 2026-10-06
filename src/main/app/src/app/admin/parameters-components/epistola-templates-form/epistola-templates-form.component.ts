@@ -128,16 +128,17 @@ export class EpistolaTemplatesFormComponent {
    */
   private readonly catalogLocales = computed(() => {
     const templates = this.catalogTemplatesQuery.data();
-    if (
-      !templates ||
-      this.settledCatalogId() !== this.chosenCatalogId() ||
-      templates.some(({ locales }) => !locales)
-    ) {
+    if (!templates || this.settledCatalogId() !== this.chosenCatalogId()) {
       return undefined;
     }
     const settings = this.chosenTemplateSettings();
-    const [firstLocales = [], ...otherLocales] = templates
-      .filter(({ id }) => settings[id]?.isEnabled ?? true)
+    const enabledTemplates = templates.filter(
+      ({ id }) => settings[id]?.isEnabled ?? true,
+    );
+    if (enabledTemplates.some(({ locales }) => !locales)) {
+      return undefined;
+    }
+    const [firstLocales = [], ...otherLocales] = enabledTemplates
       .map(({ locales }) => locales ?? [])
       .filter((locales) => locales.length);
     return otherLocales

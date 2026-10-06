@@ -292,6 +292,22 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
             }
         }
 
+        given("a request body whose template setting leaves out whether the template is offered") {
+            val catalogMapping = jsonb.fromJson(
+                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null,"locale":null,""" +
+                    """"templateSettings":[{"templateId":"fake-template-1","informatieObjectTypeUUID":null}]}""",
+                RestEpistolaCatalogMapping::class.java
+            )
+
+            `when`("it is validated") {
+                val violations = validator.validate(catalogMapping)
+
+                then("the omission is a violation, instead of switching the template off") {
+                    violations.map { it.propertyPath.toString() } shouldBe listOf("templateSettings[0].isEnabled")
+                }
+            }
+        }
+
         given("a request body with a blank catalog and a template setting without a template") {
             val catalogMapping = createRestEpistolaCatalogMapping(
                 catalogId = "",

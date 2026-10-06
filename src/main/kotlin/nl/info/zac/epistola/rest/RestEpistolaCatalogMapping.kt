@@ -46,7 +46,8 @@ data class RestEpistolaTemplateSetting(
     var informatieObjectTypeUUID: UUID?,
     @get:JsonbProperty("isEnabled")
     @set:JsonbProperty("isEnabled")
-    var isEnabled: Boolean
+    @field:NotNull
+    var isEnabled: Boolean?
 )
 
 /**

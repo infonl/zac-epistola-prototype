@@ -162,7 +162,7 @@ class EpistolaTemplatesService @Inject constructor(
                         .associate {
                             it.templateId to EpistolaTemplateSetting(
                                 informatieObjectTypeUuid = it.informatieObjectTypeUUID,
-                                isEnabled = it.isEnabled
+                                isEnabled = it.isEnabled ?: true
                             )
                         }
                 )
