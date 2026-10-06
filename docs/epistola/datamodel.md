@@ -7,6 +7,15 @@
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
 | Raakt | #2, #3, #6, #9, #52, #51 |
 
+> **6 oktober: één migratie.** De Epistola-migraties `V100` tot en met `V104` zijn samengevoegd tot `V100__epistola.sql`, omdat
+> het prototype nog niet is uitgebracht en een bestaande installatie dus niet hoeft te worden gemigreerd. `V100` maakt nu
+> meteen de eindstand: vier kolommen op `zaaktype_configuration` (ook de taal van het zaaktype, `epistola_locale`) en de tabel `epistola_document` met `kanaal`, `locale` en
+> `catalog_id`, en geen templategroeptabellen meer. Waar dit document, het ontwerp, het testplan en het testrapport
+> `V101` tot en met `V104` noemen, bedoelen ze de stap die nu in `V100` zit; de tekst is een stand van dat moment en niet
+> herschreven. Een database die de oude reeks al had toegepast, moet opnieuw worden aangemaakt: Flyway weigert hem
+> (checksum van `V100`, ontbrekende `V101` tot en met `V104`). De kolomcommentaren van `kanaal` en `catalog_id` zijn bij het
+> samenvoegen gecorrigeerd: `kanaal` is ook leeg na een standaardrender.
+
 De zaaktypeconfiguratietabellen zoals ze er nu staan, en ~~de vier wijzigingen die Epistola nodig heeft. Het
 ontwerp **spiegelt de SmartDocuments-structuur in plaats van hem te generaliseren** — de twee providers
 houden aparte tabellen, zodat een wijziging aan de één de ander niet kan breken.~~ wat Epistola eraan toevoegt.
