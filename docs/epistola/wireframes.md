@@ -170,8 +170,8 @@ flow blijft binnen ZAC en vertrekt nooit naar een externe editor.
 
 > Mockup: [`wireframes/4-foutpaden.html`](wireframes/4-foutpaden.html) (tekent de eerste twee meldingen)
 
-Drie mislukkingen die andere woorden nodig hebben, omdat elke het systeem in een andere toestand achterlaat. De
-teksten zijn die van de gebouwde versie (#8), elk met een eigen foutcode. De overige staan in
+Drie mislukkingen die andere woorden nodig hebben, omdat elke een andere oorzaak heeft en de behandelaar iets anders
+moet weten of doen. De teksten zijn die van de gebouwde versie (#8), elk met een eigen foutcode. De overige staan in
 [§5 van het ontwerp](technisch-functioneel-ontwerp.md#foutafhandeling).
 
 | Situatie | Melding |
