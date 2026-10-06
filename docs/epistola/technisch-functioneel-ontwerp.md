@@ -44,6 +44,11 @@ gebouwde versie noemen Epistola wel (§5).
    *6 oktober:* kiest ook één taal voor het zaaktype, in dezelfde kaart (#51). Alle templates van het zaaktype worden in
    die taal gemaakt. De kaart biedt alleen de talen die elk template van de catalog heeft; zonder keuze geldt Nederlands
    waar het template dat heeft ([§5](#verzoek)).
+   *6 oktober:* de kaart toont elk template van de catalog als item van een accordeon (#51). Het kopje noemt de naam en
+   welk documenttype geldt; het item toont het id, de talen en de varianten, zoals Epistola ze geeft, en laat per template
+   een eigen documenttype kiezen en het template uitzetten. Het documenttype van het zaaktype blijft de standaard en
+   blijft verplicht; een template zonder eigen documenttype gebruikt die. Een template dat uit staat, blijft in Epistola
+   en in de kaart staan, maar *Document maken* biedt het niet meer aan.
 2. **Actie** — op een CMMN-zaak gebruikt de behandelaar de bestaande actie *Document maken*
    (`actie.document.maken`). Die verschijnt alleen wanneer de policy `creeren_document` toestaat
    ([§4](#4--autorisatiemodel)), en is op BPMN-zaken uitgeschakeld met een toelichtende tooltip (#7).
@@ -54,6 +59,9 @@ gebouwde versie noemen Epistola wel (§5).
    *5 oktober:* bij Epistola heeft de dialoog geen veld *Templategroep* meer (#51). Het veld *Template* biedt meteen
    elk template in de catalog van het zaaktype, op naam, en kiest het zelf als er maar één is. Het documenttype is
    dat van het zaaktype. SmartDocuments houdt zijn groepveld.
+   *6 oktober:* het documenttype is dat van het gekozen template, en anders dat van het zaaktype (`override ?: standaard`);
+   de dialoog toont dus het documenttype dat bij het gekozen template hoort. Templates die de beheerder heeft uitgezet,
+   staan niet in de lijst.
    *5 oktober:* heeft het gekozen template varianten voor twee of meer kanalen, dan toont de dialoog ook een keuzelijst
    **Variant** (#53; eerst *Kanaal*) met *Per post* en *Digitaal* (#47). Die staat op het kanaal dat het communicatiekanaal van de zaak
    voorstelt, en de hint noemt dat communicatiekanaal; stelt het niets voor, dan op het kanaal van de standaardvariant.
@@ -93,6 +101,9 @@ gebouwde versie noemen Epistola wel (§5).
    inmiddels een andere catalog heeft; voor een document van vóór `V104` is dat de catalog van `EPISTOLA_CATALOG_ID`
    (#51). Heeft Epistola het template daar niet meer, dan krijgt de gebruiker de melding dat het niet meer bestaat
    ([§5](#foutafhandeling)).
+   *6 oktober:* een nieuwe versie lukt ook voor een template dat de beheerder sindsdien heeft uitgezet: uitzetten
+   verbergt het template alleen in *Document maken*. De nieuwe versie houdt het informatieobject, en dus het
+   documenttype, dat het document al had.
    *5 oktober:* de nieuwe versie vraagt om het kanaal dat bij het document is opgeslagen, zolang het template dat
    kanaal nog heeft, en anders om het kanaal dat het communicatiekanaal nu voorstelt (#47). Is er bij het document geen
    kanaal opgeslagen, omdat er bij stap 3 niets te vragen was, dan kreeg het de standaardvariant, en vraagt ook de
@@ -184,7 +195,7 @@ REST-laag één keer expliciet vertakt en de compiler afdwingt dat beide gevalle
 | `listTemplateGroups()` | `GET sdapi/structure`, geneste boom | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` — een platte lijst; ~~de groepering is van ZAC ([§6](#6--wat-dit-ontwerp-vastlegt-en-wat-het-openlaat))~~ *5 oktober:* de catalog van het zaaktype is de enige groep (#51) |
 | `createDocument(zaak, taskId, templateId, metadata)` | `Outcome.RedirectToWizard(uri)` | `Outcome.Generated(pdf)` — na indienen, pollen en downloaden binnen de aanroep |
 | `downloadDocument(fileId)` | Nodig — de wizard levert het bestand later op | Intern aan de implementatie, niet op de interface |
-| `informatieobjecttypeFor(zaaktype, template)` | Identiek: opgelost uit ZAC's eigen mappingtabel, niet bij de provider | ~~Idem~~ *5 oktober:* ook uit ZAC, maar één per zaaktype en niet per template (#51) |
+| `informatieobjecttypeFor(zaaktype, template)` | Identiek: opgelost uit ZAC's eigen mappingtabel, niet bij de provider | ~~Idem~~ *5 oktober:* ook uit ZAC, maar één per zaaktype en niet per template (#51). *6 oktober:* het eigen documenttype van het template, en anders dat van het zaaktype |
 
 Dat `downloadDocument` maar aan één kant staat, is het eerlijke signaal dat dit twee vormen zijn en geen
 één. Het hoort thuis op de SmartDocuments-implementatie, bereikbaar vanuit de callbackroute, en niet op de
@@ -257,7 +268,10 @@ verantwoordelijkheden. De poort die nu `isSmartDocumentsEnabled` vraagt, vraagt 
 provider. *Niet zo gebouwd; zie het besluit bovenaan deze paragraaf.* Elk endpoint toetst nu zijn eigen
 provider: het SmartDocuments-endpoint `isSmartDocumentsEnabled`, het Epistola-endpoint of Epistola actief is,
 voor het zaaktype aanstaat ~~en het gekozen template aanbiedt~~. *5 oktober:* en een informatieobjecttype heeft. Of het
-template in de catalog van het zaaktype staat, zegt Epistola zelf bij het lezen ervan (#51).
+template in de catalog van het zaaktype staat, zegt Epistola zelf bij het lezen ervan (#51). *6 oktober:* aanbieden,
+voorbeeld en varianten weigeren daarnaast een template dat de beheerder heeft uitgezet, met de melding dat het zaaktype het
+template niet aanbiedt (`EpistolaTemplateNotOfferedException`, gecontroleerd in `EpistolaTemplatesService.readCatalogOfferingTemplate`).
+Alleen een nieuwe versie slaat die controle over.
 
 ---
 
@@ -467,11 +481,11 @@ open voor elke gebruiker.
 | Endpoint | Wat het doet |
 |---|---|
 | `GET epistola-catalogs` | De catalogs van de tenant, zonder `system`, op naam |
-| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de lijst in de beheerkaart |
-| `GET epistola-catalogs/{catalogId}/locales` | *6 oktober:* de talen die elk template van de catalog heeft, als BCP-47-tags uit `system.locale`, voor de keuzelijst *Taal* in de beheerkaart. Leeg als de templates geen taal gemeen hebben, en voor een catalog zonder templates |
-| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog, ~~en~~ het informatieobjecttype *6 oktober:* en de taal van het zaaktype. Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID`, en zonder gekozen taal leeg |
-| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ~~beide~~ *6 oktober:* alle drie op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, een informatieobjecttype dat niet bij het zaaktype hoort, en een taal die geen taalcode is. Een lege taal wist de keuze |
-| `GET {zaaktypeUuid}/epistola-templates` | De templates van de catalog van het zaaktype, elk met het informatieobjecttype van het zaaktype. Leeg als het zaaktype geen Epistola-templates aanbiedt |
+| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart. *6 oktober:* elk met de talen (BCP-47-tags uit `system.locale`) en de kanalen van zijn varianten, uit één leesverzoek per template. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30) en ontbreken talen en kanalen |
+| ~~`GET epistola-catalogs/{catalogId}/locales`~~ | *6 oktober:* vervallen. De keuzelijst *Taal* rekent de gedeelde talen in de kaart zelf uit de talen van de templates die aanstaan |
+| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog, ~~en~~ het informatieobjecttype *6 oktober:* en de taal van het zaaktype, en de instellingen per template (`templateSettings`: `templateId`, `informatieObjectTypeUUID`, `isEnabled`). Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID`, en zonder gekozen taal leeg |
+| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ~~beide~~ *6 oktober:* alle drie op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, een informatieobjecttype dat niet bij het zaaktype hoort, en een taal die geen taalcode is. Een lege taal wist de keuze. *6 oktober:* de lijst `templateSettings` vervangt wat er stond (de beheerkaart stuurt hem elke keer geheel); een informatieobjecttype per template toetst ze zoals dat van het zaaktype, en de instelling van een template dat niet in de gekozen catalog staat, laat ze vallen. Een template dat aanstaat en geen eigen documenttype heeft, krijgt geen rij |
+| `GET {zaaktypeUuid}/epistola-templates` | De templates van de catalog van het zaaktype die aanstaan, elk met zijn informatieobjecttype: het eigen, en anders dat van het zaaktype. Leeg als het zaaktype geen Epistola-templates aanbiedt |
 
 Ze vervangen `GET epistola-templates` en `GET`/`POST {zaaktypeUuid}/epistola-templates-mapping` van #3, die er niet
 meer zijn.
@@ -668,12 +682,19 @@ Er zijn drie, elk voor iets anders:
   informatieobjecttype gaat daarom van één per template naar één per zaaktype, gekozen naast de catalog en bij het
   opslaan getoetst aan de informatieobjecttypen van het zaaktype. Opslaan toetst de catalog aan de live lijst van
   Epistola. Epistola's eigen catalog `system` staat niet in de keuzelijst: daar staan attributen in en geen templates.
+- ***Het documenttype van het zaaktype is de standaard; een template kan er een eigen hebben, en kan uit staan*** (6 oktober, #51,
+  B26 blijft). Standaard biedt het zaaktype elk template van zijn catalog aan, ook een template dat later in de catalog
+  komt. Alleen wat de beheerder uitzet, is verborgen in *Document maken*. Het documenttype van het zaaktype blijft
+  verplicht. Per template staat er alleen een rij (`zaaktype_epistola_template_settings`) als het een eigen documenttype
+  heeft of uit staat. Uitzetten verbergt het template alleen in de keuzelijst: een nieuwe versie van een document dat er
+  al uit gemaakt is, blijft kunnen. Alleen de talen van de templates die aanstaan, bepalen welke talen de beheerder kan
+  kiezen, want uit een template dat uit staat wordt niets gemaakt.
 - ***De taal kiest het zaaktype, niet de behandelaar*** (6 oktober, #51). Eén taal voor alle templates van het zaaktype, in
   de kaart naast de catalog, als kolom `epistola_locale` op `zaaktype_configuration` (`V104`). De keuzelijst biedt alleen talen die
-  elk template van de catalog heeft, zodat geen template van het zaaktype zonder de gekozen taal blijft; templates zonder talen
+  elk template van de catalog heeft ~~, zodat~~ *6 oktober:* dat aanstaat, zodat geen template van het zaaktype zonder de gekozen taal blijft; templates zonder talen
   tellen niet mee. De beheerder mag ook geen taal kiezen, en dan geldt Nederlands waar het template dat heeft. Een
   nieuwe versie houdt de taal van het document zolang het template die heeft. Een nieuwe versie van het zaaktype in ZAC
-  neemt de taal over, zoals de catalog.
+  neemt de taal over, zoals de catalog, en ook de instellingen per template.
 - ***Document maken* heeft voor Epistola geen veld *Templategroep*.** Het veld *Template* biedt de templates van de
   catalog meteen, en kiest het enige zelf ([§1](#1--functioneel-ontwerp), stap 3). SmartDocuments houdt zijn groepveld
   en zijn eigen namen. De dialoog heeft daardoor niet meer bij beide providers dezelfde velden ([wireframes](wireframes.md)).
@@ -683,7 +704,7 @@ Er zijn drie, elk voor iets anders:
   ook vindt als het zaaktype inmiddels een andere catalog heeft. De templatenamen voor als Epistola niet bereikbaar is
   (#30), onthoudt ZAC per catalog.
 - **Bestaande zaaktypen werken na `V104` verder.** Ze houden het informatieobjecttype dat de meeste van hun templates
-  hadden, en geen catalog, dus die van `EPISTOLA_CATALOG_ID`, waar al hun templates uit kwamen. Ze bieden daarna wel elk
+  hadden, en een template met een ander informatieobjecttype houdt dat als eigen documenttype (6 oktober), en geen catalog, dus die van `EPISTOLA_CATALOG_ID`, waar al hun templates uit kwamen. Ze bieden daarna wel elk
   template van die catalog aan, niet alleen de gekozen ([datamodel](datamodel.md)).
 
 ### Beslist bij de bouw van #8, met Symon

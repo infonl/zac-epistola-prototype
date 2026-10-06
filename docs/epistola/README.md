@@ -38,7 +38,7 @@ overgezet, zodat ook wie geen toegang tot claude.ai heeft ze kan lezen.
 | Client | De officiële Jakarta EE-client van Epistola wordt overgenomen, niet zelf gegenereerd |
 | Generatie | Asynchroon: indienen, de job pollen, downloaden — alles binnen de al geauthenticeerde aanroep |
 | Authenticatie | Een API key van de tenant, met de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER`. Sinds contract 1.3.1 is dat Epistola's ondersteunde methode; de twee JWT-methoden zijn experimenteel |
-| ~~Templategroepen~~ Catalog | ~~Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder~~ *5 oktober:* ZAC houdt geen templategroepen meer bij voor Epistola. Elk zaaktype kiest één Epistola-catalog en biedt elk template daarin aan, met één documenttype voor het hele zaaktype (#51) |
+| ~~Templategroepen~~ Catalog | ~~Bestaan in ZAC, niet in Epistola: de beheerder maakt ze zelf en hangt er platte Epistola-templates onder~~ *5 oktober:* ZAC houdt geen templategroepen meer bij voor Epistola. Elk zaaktype kiest één Epistola-catalog en biedt elk template daarin aan, met één documenttype voor het hele zaaktype (#51). *6 oktober:* dat documenttype is de standaard; een template kan een eigen hebben en kan uit staan |
 | Autorisatie | Het bestaande recht `creeren_document` wordt hergebruikt, er komt geen Epistola-specifiek recht |
 | Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee. Datums in ISO 8601 |
 | Templatenaam | Het id is de sleutel en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst in het geheugen, *5 oktober:* per catalog, en toont ze als Epistola niet bereikbaar is (B16) |

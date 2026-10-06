@@ -29,20 +29,22 @@ bij SmartDocuments bouwt de beheerder de groepen zelf op, omdat Epistola er geen
 voor de catalog en een voor het informatieobjecttype, beide één keer voor het hele zaaktype (#51). *6 oktober:* en een
 keuzelijst *Taal*, ook één keer voor het hele zaaktype: de beheerder kiest daar de taal waarin ZAC Epistola om alle
 documenten van het zaaktype vraagt, en de behandelaar kiest geen taal. Daaronder staan de
-templates van de gekozen catalog, ter informatie: het zaaktype biedt ze allemaal aan.
+templates van de gekozen catalog, ~~ter informatie: het zaaktype biedt ze allemaal aan.~~ *6 oktober:* als de items van
+een accordeon: per template ziet de beheerder het id, de talen en de varianten, kiest hij een eigen documenttype en zet hij
+het template in of uit. Het zaaktype biedt elk template aan, behalve wat hij uitzet.
 
 ### Opbouw
 
 | Element | Type | Gedrag |
 |---|---|---|
 | Kaart *Epistola-documenttemplates* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
-| Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder is verborgen zolang hij uit staat |
+| Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder is verborgen zolang hij uit staat. *6 oktober:* zonder zichtbare tekst ernaast; de naam *Documenten maken met Epistola* staat als `aria-label` op de schuifknop |
 | Catalog *(5 oktober, #51)* | `mat-select` | Verplicht. Biedt de catalogs van de tenant op naam, zonder Epistola's eigen `system`. Staat op de opgeslagen catalog, en zonder die op de catalog van `EPISTOLA_CATALOG_ID` |
-| Taal *(6 oktober, #51)* | `mat-select` | Niet verplicht. Biedt de talen die elk template van de gekozen catalog heeft, bij naam in de taal waarin ZAC wordt getoond, zoals *Nederlands (Nederland)* en *Engels (Verenigd Koninkrijk)*, en eerst de keuze *Nederlands waar aangeboden*, die niets opslaat. Templates waarvan de varianten geen taal hebben, tellen niet mee. De hint zegt dat alle templates van het zaaktype in deze taal worden gemaakt; hebben de templates geen taal gemeen, dan staat er *De templates van deze catalog hebben geen taal gemeen, dus er is geen taal te kiezen.* Een andere catalog laadt de lijst opnieuw, en wist een gekozen taal die de nieuwe catalog niet aanbiedt |
+| Taal *(6 oktober, #51)* | `mat-select` | Niet verplicht. Biedt de talen die elk template van de gekozen catalog heeft, bij naam in de taal waarin ZAC wordt getoond, zoals *Nederlands (Nederland)* en *Engels (Verenigd Koninkrijk)*, en eerst de keuze *Nederlands waar aangeboden*, die niets opslaat. Templates waarvan de varianten geen taal hebben, tellen niet mee, en *6 oktober:* templates die uit staan evenmin. De lijst volgt de schuifknoppen in de accordeon meteen. ~~De hint zegt dat alle templates van het zaaktype in deze taal worden gemaakt;~~ Hebben de templates geen taal gemeen, dan staat er *De templates van deze catalog hebben geen taal gemeen, dus er is geen taal te kiezen.* Een andere catalog laadt de lijst opnieuw, en wist een gekozen taal die de nieuwe catalog niet aanbiedt |
 | ~~Templategroep~~ | ~~tekstveld, één niveau~~ | ~~De naam die de beheerder de groep geeft. Verplicht, en uniek binnen het zaaktype, ongeacht hoofdletters en spaties~~ *5 oktober:* vervalt (#51) |
 | ~~Templategroep verwijderen~~ | ~~icoonknop~~ | ~~Verwijdert de groep, met de templates erin~~ *5 oktober:* vervalt |
-| ~~Templatenaam~~ *5 oktober:* Templates in deze catalog | ~~tekst~~ lijst, alleen te lezen | Live opgehaald bij Epistola. ~~Is Epistola niet bereikbaar, dan staat hier de naam van de laatste geslaagde lijst, bewaard in het geheugen van ZAC (#30)~~ *5 oktober:* de namen van de templates in de gekozen catalog, of *Deze catalog heeft geen templates.* De namen uit het geheugen gebruikt alleen *Document maken* (#30) |
-| Documenttype | `mat-select` | Verplicht. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6). *5 oktober:* één voor het zaaktype, niet meer per template (#51) |
+| ~~Templatenaam~~ *5 oktober:* Templates in deze catalog | ~~tekst~~ ~~lijst, alleen te lezen~~ *6 oktober:* `mat-accordion` met één `mat-expansion-panel` per template | Live opgehaald bij Epistola. *6 oktober:* het kopje van een item noemt de naam, en als omschrijving het documenttype dat geldt: het eigen documenttype van het template, *Zaaktype-standaard: Besluit* als het er geen heeft, of *Verborgen bij Document maken* als het uit staat. De inhoud van een item toont het template-id, de talen (bij naam, zoals bij *Taal*) en de varianten (*Per post*, *Digitaal*), met *Geen talen* en *Geen varianten* als het template ze niet heeft; daaronder een `mat-select` *Documenttype*, met als eerste keuze *Zaaktype-standaard*, en een schuifknop *Aangeboden bij Document maken*. Is Epistola niet bereikbaar, dan toont het item alleen de naam, de select en de schuifknop.  ~~Is Epistola niet bereikbaar, dan staat hier de naam van de laatste geslaagde lijst, bewaard in het geheugen van ZAC (#30)~~ *5 oktober:* de namen van de templates in de gekozen catalog, of *Deze catalog heeft geen templates.* De namen uit het geheugen gebruikt alleen *Document maken* (#30) |
+| Documenttype | `mat-select` | Verplicht. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6). *5 oktober:* één voor het zaaktype, niet meer per template (#51). *6 oktober:* het is de standaard van het zaaktype, die een template met een eigen documenttype overschrijft (`override ?: standaard`) |
 | Vertrouwelijkheid | read-only tekst | Afgeleid van het gekozen informatieobjecttype, niet apart in te stellen |
 | ~~Template verwijderen~~ | ~~icoonknop~~ | ~~Haalt het template uit de groep; daarna is het weer te kiezen voor een groep~~ *5 oktober:* vervalt |
 | ~~Template toevoegen~~ | ~~`mat-select` per groep~~ | ~~Biedt alleen de templates die nog in geen enkele groep van dit zaaktype staan~~ *5 oktober:* vervalt |
@@ -72,7 +74,10 @@ templates van de gekozen catalog, ter informatie: het zaaktype biedt ze allemaal
    *5 oktober:* vervallen: het informatieobjecttype hoort bij het zaaktype, niet bij een template of een groep (#51).
 6. **Informatieobjecttype ~~per template~~** *5 oktober:* **per zaaktype**: een `mat-select`, precies zoals
    SmartDocuments het doet. Dit is wat #6 nodig heeft om de PDF in Open Zaak te registreren. Opslaan weigert een type
-   dat niet bij het zaaktype hoort.
+   dat niet bij het zaaktype hoort. *6 oktober:* het is de standaard; een template kan er in zijn accordeonitem een eigen
+   naast zetten. Opslaan weigert ook daar een type dat niet bij het zaaktype hoort. Een template dat de beheerder uitzet
+   en weer aanzet, houdt zijn eigen documenttype zolang de beheerder niet opslaat; opgeslagen wordt alleen een rij voor een
+   template met een eigen documenttype of dat uit staat.
 7. **Vertrouwelijkheidaanduiding is read-only** en afgeleid van het gekozen informatieobjecttype. Geen
    nieuw idee: zo gedraagt de SmartDocuments-rij zich al.
 8. **Opslaan wacht op het zaaktype.** De templateinstellingen worden pas opgeslagen nadat het zaaktype zelf

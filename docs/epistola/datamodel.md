@@ -3,14 +3,14 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31), en met de tabel `epistola_document` in `V101` voor een nieuwe versie van een document (#9). Op 1 oktober uitgebreid met de kolom `kanaal` in `V102` (#47), en op 5 oktober bijgewerkt naar wat een lege `kanaal` betekent. Op 5 oktober uitgebreid met de kolom `locale` in `V103` (#52), en daarna bijgewerkt naar de catalog per zaaktype van #51: `V104` vervangt de templategroepen en de tabel per template van `V100` door twee kolommen op het zaaktype, en onthoudt bij een document de catalog |
+| Stand | Bijgewerkt na het stakeholderoverleg van 21 september 2026, en gemigreerd in `V100` bij de bouw van #3 op 24 september. Op 30 september bijgewerkt naar de templatenamen uit het geheugen (#30) en *template* in plaats van *sjabloon* (#31), en met de tabel `epistola_document` in `V101` voor een nieuwe versie van een document (#9). Op 1 oktober uitgebreid met de kolom `kanaal` in `V102` (#47), en op 5 oktober bijgewerkt naar wat een lege `kanaal` betekent. Op 5 oktober uitgebreid met de kolom `locale` in `V103` (#52), en daarna bijgewerkt naar de catalog per zaaktype van #51: `V104` vervangt de templategroepen en de tabel per template van `V100` door twee kolommen op het zaaktype, en onthoudt bij een document de catalog. Op 6 oktober uitgebreid met de tabel `zaaktype_epistola_template_settings` in `V104`: een eigen documenttype per template, en een template dat uit staat |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
 | Raakt | #2, #3, #6, #9, #52, #51 |
 
 De zaaktypeconfiguratietabellen zoals ze er nu staan, en ~~de vier wijzigingen die Epistola nodig heeft. Het
 ontwerp **spiegelt de SmartDocuments-structuur in plaats van hem te generaliseren** — de twee providers
 houden aparte tabellen, zodat een wijziging aan de één de ander niet kan breken.~~ wat Epistola eraan toevoegt.
-*5 oktober:* sinds `V104` zijn dat ~~drie~~ *6 oktober:* vier kolommen op `zaaktype_configuration` en de tabel `epistola_document` (#51).
+*5 oktober:* sinds `V104` zijn dat ~~drie~~ *6 oktober:* vier kolommen op `zaaktype_configuration`, een tabel met de instellingen per template en de tabel `epistola_document` (#51).
 Epistola spiegelt de templatetabellen van SmartDocuments niet meer, want een zaaktype kiest een catalog en geen
 templates. De twee providers delen nog steeds geen templatetabel, zodat een wijziging aan de één de ander niet kan
 breken.
@@ -21,7 +21,7 @@ Eén diagram in plaats van twee, zodat de wijziging in zijn context zichtbaar is
 templatenaam wordt opgeslagen — alleen het id van de provider. Weergavenamen worden live opgehaald, en
 daarom laat een template dat bovenstrooms verdwijnt een rij achter die nergens meer naar wijst. *5 oktober:* voor
 Epistola staat er per zaaktype alleen nog het id van een catalog, geen template-id (#51). Een template dat uit de catalog
-verdwijnt, laat dan geen rij achter. Het diagram toont de stand na `V103` en `V104`.
+verdwijnt, laat dan geen rij achter. Het diagram toont de stand na `V103` en `V104`. *6 oktober:* `epistola_template_settings` is de tabel `zaaktype_epistola_template_settings`, hier ingekort; ze heeft een rij per template dat afwijkt van het zaaktype.
 
 ```mermaid
 erDiagram
@@ -29,6 +29,7 @@ erDiagram
     zaaktype_configuration ||--o| zaaktype_bpmn : "JOINED"
     zaaktype_configuration ||--o{ sd_template_group : heeft
     zaaktype_configuration ||--o{ sd_template : "directe FK"
+    zaaktype_configuration ||--o{ epistola_template_settings : "instellingen per template"
     sd_template_group ||--o{ sd_template : bevat
     sd_template_group ||--o{ sd_template_group : parent_id
 
@@ -59,6 +60,13 @@ erDiagram
         varchar smartdocuments_id
         bigint sjabloon_groep_id FK
         uuid informatie_object_type_uuid
+    }
+    epistola_template_settings {
+        bigint id PK
+        bigint zaaktype_configuration_id FK
+        varchar epistola_id "template in de catalog"
+        uuid informatie_object_type_uuid "leeg = dat van het zaaktype"
+        boolean is_enabled "NIEUW in V104"
     }
     epistola_document {
         uuid informatieobject_uuid PK "NIEUW, geen FK"
@@ -120,6 +128,25 @@ de tabel zoals `V100` haar maakte.
 `(zaaktype_configuration_id, epistola_id)` is uniek: een template staat hoogstens één keer in een zaaktype
 (zie de ontwerpbesluiten).
 
+### `zaaktype_epistola_template_settings` *(nieuw, `V104`, 6 oktober, #51)*
+
+Wat een zaaktype voor één template van zijn catalog anders instelt dan voor het zaaktype zelf. Er staat alleen een rij
+als het template een eigen documenttype heeft of uit staat; een template zonder rij wordt aangeboden en gebruikt het
+documenttype van het zaaktype, ook een template dat pas later in de catalog komt.
+
+| Kolom | Type | Null | Toelichting |
+|---|---|---|---|
+| `id` | bigint | nee | PK, eigen sequence (`sq_zaaktype_epistola_template_settings`) |
+| `zaaktype_configuration_id` | bigint | nee | FK → `zaaktype_configuration`, `ON DELETE CASCADE` |
+| `epistola_id` | varchar | nee | Identificatie van het template in de catalog van het zaaktype |
+| `informatie_object_type_uuid` | uuid | ja | Het informatieobjecttype waaronder een document uit dit template in Open Zaak komt, in plaats van dat van het zaaktype. Leeg: dat van het zaaktype |
+| `is_enabled` | boolean | nee | Standaard `true`. Of *Document maken* het template aanbiedt. Uitzetten verbergt het alleen daar: een nieuwe versie van een document uit dit template blijft kunnen |
+| `aanmaakdatum` | timestamptz | nee | Wanneer de instelling is opgeslagen |
+
+`(zaaktype_configuration_id, epistola_id)` is uniek. De beheerkaart stuurt bij elke keer opslaan de hele lijst, en de
+backend vervangt wat er stond. De instelling van een template dat niet in de gekozen catalog staat, slaat ze niet op. Een
+nieuwe versie van het zaaktype in ZAC neemt de rijen over.
+
 ### `epistola_document` *(nieuw, `V101`, #9)*
 
 | Kolom | Type | Null | Toelichting |
@@ -149,19 +176,26 @@ Een nieuwe versie van een zaaktype neemt ~~beide kolommen~~ *6 oktober:* alle vi
 
 ### `V104` · van templategroepen naar een catalog per zaaktype *(5 oktober, #51)*
 
-`V104__epistola_catalog_per_zaaktype.sql` doet vier dingen, in deze volgorde:
+`V104__epistola_catalog_per_zaaktype.sql` doet ~~vier~~ *6 oktober:* vijf dingen, in deze volgorde:
 
 1. Het voegt `epistola_catalog_id`, `epistola_informatie_object_type_uuid` en *6 oktober:* `epistola_locale` toe aan `zaaktype_configuration`.
 2. Het geeft elk zaaktype met Epistola-templates het informatieobjecttype dat de meeste van zijn templates hadden, zodat
    de minste documenten van type veranderen. Bij gelijke stand wint het type van het template dat het eerst is
    opgeslagen.
-3. Het verwijdert de twee tabellen van `V100` en hun sequences.
-4. Het voegt `catalog_id` toe aan `epistola_document`.
+3. *6 oktober:* Het maakt `zaaktype_epistola_template_settings` aan, en kopieert uit de tabel per template van `V100` elke
+   rij waarvan het informatieobjecttype afwijkt van dat wat het zaaktype in stap 2 kreeg, met `is_enabled = true`. Een
+   template dat al het gekozen type had, krijgt geen rij. Zo houdt een template zijn eigen documenttype na de upgrade,
+   en verandert er geen document van type. De kopie gebruikt de `aanmaakdatum` van de oude rij en haalt id's uit de
+   nieuwe sequence, in de volgorde van de oude rijen.
+4. Het verwijdert de twee tabellen van `V100` en hun sequences.
+5. Het voegt `catalog_id` toe aan `epistola_document`.
 
-De catalog blijft overal leeg, omdat een Flyway-migratie `EPISTOLA_CATALOG_ID` niet kan lezen. ZAC gebruikt bij een lege
+De catalog blijft overal leeg, omdat een Flyway-migratie `EPISTOLA_CATALOG_ID` niet kan lezen. De template-id's in
+`zaaktype_epistola_template_settings` zijn die van die catalog. ZAC gebruikt bij een lege
 catalog die van `EPISTOLA_CATALOG_ID`, en daar kwam tot `V104` elk template uit, dus een bestaand zaaktype en een bestaand
 document werken na de upgrade zoals ervoor. Eén verschil: een zaaktype dat templates had, biedt daarna elk template van
-die catalog aan, niet alleen de templates die de beheerder had gekozen. Een zaaktype dat Epistola aan had maar geen
+die catalog aan, niet alleen de templates die de beheerder had gekozen. *6 oktober:* wel houdt elk template zijn eigen
+documenttype als dat afweek. Een zaaktype dat Epistola aan had maar geen
 templates, krijgt geen informatieobjecttype, en biedt pas iets aan als de beheerder er een kiest. *6 oktober:* de taal blijft
 ook leeg: een bestaand zaaktype vraagt dus om Nederlands waar het template dat heeft, zoals het deed.
 
@@ -249,7 +283,8 @@ gebouwd **zonder kolom**: `EpistolaTemplatesService` onthoudt in het geheugen de
 lijst uit de catalogus. Is Epistola daarna niet bereikbaar (geen verbinding, of een 5xx), dan leest ZAC de
 mapping met die namen, zodat ~~de beheerkaart en~~ de dialoog de templates ~~blijven~~ blijft tonen. *5 oktober:* ZAC
 onthoudt de namen per catalog, en *Document maken* toont dan de templates van de catalog van het zaaktype (#51). De
-beheerkaart leest de catalogs en hun templates altijd live, zonder terugval.
+beheerkaart leest de catalogs altijd live. *6 oktober:* de templates van een catalog toont ze, als Epistola niet bereikbaar is, met
+de onthouden namen en zonder talen en varianten.
 
 Waarom geen kolom: die zou `V100` aanpassen en daarmee zes gestapelde pull requests herstapelen, en hij zou
 bij het lezen moeten schrijven. De prijs is dat een herstart van ZAC het geheugen leegt. Is Epistola dan nog
@@ -272,4 +307,5 @@ in `nl.info.zac.epistola.templates.model` (#3), en in `V101__epistola_document.s
 `nl.info.zac.epistola.documents.model` (#9, PR #43), uitgebreid in `V102__epistola_document_kanaal.sql` (#47, PR #49).
 *5 oktober:* `V103__epistola_document_locale.sql` (#52) voegt de taal toe aan `epistola_document`, en daarna
 `V104__epistola_catalog_per_zaaktype.sql` (#51) verwijdert de tabellen van `V100` met hun entiteiten, en
-zet de catalog en het informatieobjecttype op `ZaaktypeConfiguration` en de catalog op `EpistolaDocument`.
+zet de catalog en het informatieobjecttype op `ZaaktypeConfiguration` en de catalog op `EpistolaDocument`. *6 oktober:*
+zelfde migratie maakt de tabel met de instellingen per template, met de entiteit `ZaaktypeEpistolaTemplateSettings` in `nl.info.zac.admin.model`.

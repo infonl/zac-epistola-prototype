@@ -19,7 +19,9 @@
         <code>smart-documents-form.component</code>. <em>5 oktober:</em> de beheerder kiest één catalog en één
         documenttype voor het zaaktype, en ziet welke templates de catalog heeft. Tot dan bouwde hij hier zelf
         templategroepen op (#51). <em>6 oktober:</em> en één taal voor alle templates van het zaaktype, uit de talen
-        die elk template van de catalog heeft. De behandelaar kiest geen taal.
+        die elk template van de catalog heeft. De behandelaar kiest geen taal. <em>6 oktober:</em> de templates van de
+        catalog staan als accordeon: per template het id, de talen en de varianten, een eigen documenttype dat dat van
+        het zaaktype overschrijft, en een schuifknop die het template verbergt in Document maken.
       </p>
 
       <div class="frame">
@@ -37,7 +39,7 @@
                   de documenten worden gemaakt, en het documenttype waaronder ze worden opgeslagen.
                 </div>
               </div>
-              <div class="toggle"><i></i></div>
+              <div class="toggle" role="img" aria-label="Documenten maken met Epistola"><i></i></div>
             </div>
             <div class="divider"></div>
             <div class="grid2">
@@ -61,7 +63,7 @@
               <div class="field">
                 <div class="fieldlabel">Documenttype <span class="req">*</span></div>
                 <div class="box">Besluit <i class="caret">▾</i></div>
-                <div class="fieldnote">Eén voor het hele zaaktype</div>
+                <div class="fieldnote">De standaard voor het hele zaaktype; een template kan een eigen kiezen</div>
               </div>
               <div class="field">
                 <div class="fieldlabel">Vertrouwelijkheid</div>
@@ -69,10 +71,52 @@
               </div>
             </div>
             <div class="grp">Templates in deze catalog</div>
-            <div class="row"><span class="name">Besluit evenementenvergunning</span></div>
-            <div class="row"><span class="name">Ontvangstbevestiging aanvraag</span></div>
-            <div class="row"><span class="name">Voornemen tot handhaving</span></div>
-            <div class="fieldnote">Alleen te lezen, live uit Epistola. Het zaaktype biedt ze allemaal aan</div>
+            <div class="acc">
+              <div class="acc-item open">
+                <div class="acc-head">
+                  <span class="name">Besluit evenementenvergunning</span>
+                  <span class="desc">Zaaktype-standaard: Besluit</span>
+                  <i class="caret">▴</i>
+                </div>
+                <div class="acc-body">
+                  <dl class="acc-info">
+                    <dt>Template-id</dt>
+                    <dd>besluit-evenementenvergunning</dd>
+                    <dt>Talen</dt>
+                    <dd>Engels (Verenigd Koninkrijk), Nederlands (Nederland)</dd>
+                    <dt>Varianten</dt>
+                    <dd>Per post, Digitaal</dd>
+                  </dl>
+                  <div class="acc-settings">
+                    <div class="field">
+                      <div class="fieldlabel">Documenttype</div>
+                      <div class="box">Zaaktype-standaard <i class="caret">▾</i></div>
+                    </div>
+                    <div class="acc-switch">
+                      <div class="toggle"><i></i></div>
+                      <span>Aangeboden bij Document maken</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-head">
+                  <span class="name">Ontvangstbevestiging aanvraag</span>
+                  <span class="desc">Bijlage</span>
+                  <i class="caret">▾</i>
+                </div>
+              </div>
+              <div class="acc-item">
+                <div class="acc-head">
+                  <span class="name">Voornemen tot handhaving</span>
+                  <span class="desc">Verborgen bij Document maken</span>
+                  <i class="caret">▾</i>
+                </div>
+              </div>
+            </div>
+            <div class="fieldnote">
+              Live uit Epistola. Elk template staat in Document maken, tenzij de beheerder het uitzet
+            </div>
           </div>
         </div>
       </div>
