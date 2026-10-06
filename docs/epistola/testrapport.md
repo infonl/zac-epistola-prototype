@@ -162,7 +162,7 @@ alleen met unittests gedekt: het weigeren van Open Zaak, en een document zonder 
 
 Twee dingen zijn opgevallen die geen bug van de integratie zijn. Na het herstellen van de verbinding naar Epistola
 slaagde de actie pas na ongeveer een halve minuut, omdat Java het adres zolang bewaart, en het testplan zegt dat nu. En
-onder de melding van TS-40 staat dezelfde algemene regel *An error has occurred.* als bij B-08.
+onder de melding van TS-40 stond dezelfde algemene regel *An error has occurred.* als bij B-08.
 
 ## 4. Gevonden bugs en status
 
@@ -175,13 +175,13 @@ onder de melding van TS-40 staat dezelfde algemene regel *An error has occurred.
 | B-05 | TS-19 | Datums gingen als `dd-MM-yyyy` naar Epistola. Een template dat Epistola's editor maakt (`format: date`, draft-07) liet elke job daardoor mislukken | Hoog | Ja | Gevonden bij de review van #24 en bevestigd met een proef op de testserver. Opgelost in `a56fc2401`, nagegaan in TS-19 |
 | B-06 | TS-33 | Bij een timeout bleef de job bij Epistola lopen, en de melding zei "controleer later" terwijl niets het document later toevoegt. Een fout tijdens het pollen annuleerde de job ook niet | Midden | Ja | Gevonden bij de review van #24 en de tweede Copilot-review. Opgelost in `0d3aa6ca7` en `b440d8f53`, nagegaan met unittests (TS-33) |
 | B-07 | TS-05 | Een template dat het zaaktype aanbood, werd niet geweigerd terwijl de beheerder Epistola voor het zaaktype had uitgezet. De controle uit #27 keek alleen naar de mapping | Midden | Ja | Gevonden bij de bouw van #5. Opgelost in `ce1c8d806`, nagegaan in TS-05 |
-| B-08 | TS-31 | Bij een onbereikbaar Epistola toont ZAC's foutvenster onder de melding nog een algemene regel, *An error has occurred.* Het antwoord draagt geen `exception`-detail, en `fout-afhandeling.service.ts` valt dan terug op die regel | Laag | Ja | Gevonden in ronde 2. Geen gevolgen voor de gegevens, en de melding erboven is juist. Opgelost in #55 ([PR #55](https://github.com/infonl/zac-epistola-prototype/pull/55), `da303e035`, in het gedeelde `FoutAfhandelingService`): het venster herhaalt zijn eigen titel niet meer. Live nagegaan met een geblokkeerd Epistola, niet als testcase herhaald |
+| B-08 | TS-31 | Bij een onbereikbaar Epistola toonde ZAC's foutvenster onder de melding nog een algemene regel, *An error has occurred.* Het antwoord droeg geen `exception`-detail, en `fout-afhandeling.service.ts` viel dan terug op die regel | Laag | Ja | Gevonden in ronde 2. Geen gevolgen voor de gegevens, en de melding erboven is juist. Opgelost in #55 ([PR #55](https://github.com/infonl/zac-epistola-prototype/pull/55), `da303e035`, in het gedeelde `FoutAfhandelingService`): het venster herhaalt zijn eigen titel niet meer. Live nagegaan met een geblokkeerd Epistola, niet als testcase herhaald |
 
 **Aantekening bij TS-31 en B-08.** Volgens [het testplan](testplan.md) (§5.1 en §5.2) slaagt een test alleen zonder onverwachte foutmelding in het
 scherm. TS-31 is als **geslaagd** beoordeeld, en dat is een oordeel dat hier uitdrukkelijk staat. Het verwachte resultaat is volledig bereikt: een
 begrijpelijke melding die zegt dat Epistola niet bereikbaar is, een genereerscherm dat open blijft, niets dat is opgeslagen, en de templates die bij naam
-zichtbaar blijven. De algemene regel *An error has occurred.* onder die melding komt uit ZAC's gedeelde foutvenster (`fout-afhandeling.service.ts`), dat
-hem toont bij elk antwoord zonder detailtekst. Hij is dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, opgelost in #55).
+zichtbaar blijven. De algemene regel *An error has occurred.* onder die melding kwam uit ZAC's gedeelde foutvenster (`fout-afhandeling.service.ts`), dat
+hem toonde bij elk antwoord zonder detailtekst. Hij was dus geen aparte foutmelding van de Epistola-integratie. Hij is wel vastgelegd als B-08 (laag, opgelost in #55).
 Wie het plan strenger leest, telt TS-31 als mislukt. Dan zijn 35 van de 36 testcases geslaagd, en blijft de rest van de uitkomsten gelijk.
 
 ### Bekende beperkingen

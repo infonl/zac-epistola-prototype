@@ -129,9 +129,9 @@ document.
 | Kolom | Type | Null | Toelichting |
 |---|---|---|---|
 | `epistola_ingeschakeld` | boolean | nee | Standaard `false`. Poort per zaaktype, spiegelt `smartdocuments_ingeschakeld`, dat sinds `V94` ook `NOT NULL DEFAULT FALSE` is |
-| `epistola_catalog_id` | varchar | ja | De catalog in Epistola waarvan het zaaktype elk template aanbiedt (#51). Leeg tot de beheerder er een kiest; dan geldt de catalog van `EPISTOLA_CATALOG_ID` |
+| `epistola_catalog_id` | varchar | ja | De catalog in Epistola waarvan het zaaktype elk template aanbiedt (#51). Zolang hij leeg is, geldt de catalog van `EPISTOLA_CATALOG_ID` |
 | `epistola_informatie_object_type_uuid` | uuid | ja | Het informatieobjecttype waaronder elk Epistola-document van het zaaktype in Open Zaak komt (#51). Zolang het leeg is, biedt het zaaktype geen Epistola-templates aan |
-| `epistola_locale` | varchar | ja | De taal waarin ZAC Epistola om elk document van het zaaktype vraagt, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (#51). De kolom heet naar het attribuut, zoals `epistola_document.locale`. De beheerder kiest de taal in de beheerkaart, uit de talen die elk template van de catalog heeft. Leeg tot hij er een kiest, en dan vraagt ZAC om Nederlands waar het template dat heeft. Heeft een template de taal niet, dan geldt dezelfde terugval. De behandelaar kiest geen taal |
+| `epistola_locale` | varchar | ja | De taal waarin ZAC Epistola om elk document van het zaaktype vraagt, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (#51). De kolom heet naar het attribuut, zoals `epistola_document.locale`. De beheerder kiest de taal in de beheerkaart, uit de talen die elk template van de catalog heeft. Zolang hij leeg is, vraagt ZAC om Nederlands waar het template dat heeft. Heeft een template de taal niet, dan geldt dezelfde terugval. De behandelaar kiest geen taal |
 
 Een nieuwe versie van een zaaktype neemt alle vier de kolommen over, zoals `epistola_ingeschakeld`.
 
