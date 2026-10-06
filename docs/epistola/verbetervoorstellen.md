@@ -7,7 +7,7 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Stand | **29 september 2026, bijgewerkt op 30 september, op 1 oktober door Symon nagelezen** (de samenvatting volgt de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders. Op 5 oktober bijgewerkt naar de catalog per zaaktype (#51): VV-12, VV-14, §5 en de verantwoording |
+| Stand | **29 september 2026, bijgewerkt op 30 september, op 1 oktober door Symon nagelezen** (de samenvatting volgt de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders. Op 5 oktober bijgewerkt naar de catalog per zaaktype (#51): VV-12, §5 en de verantwoording. Op 6 oktober opgeschoond: wat is gebouwd staat niet meer als voorstel (VV-14, en in VV-10 het deel over de client), en één voorstel is toegevoegd (VV-16, varianten) |
 
 > **Wat dit document is.** De uitkomst van het prototype, vertaald naar besluiten die Dimpact kan nemen: wat er
 > tussen dit prototype en productiegebruik ligt, wat nu al is opgelost, en welke voorstellen realiseerbaar zijn.
@@ -33,12 +33,12 @@ die ook slagen.
 3. **`https` voor de Epistola-URL** (VV-03): ZAC controleert bij het opstarten dat de URL is ingesteld, maar niet
    dat hij met `https` begint.
 
-Daarnaast zijn er **vijf verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11). De
+Daarnaast zijn er **zes verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11, -16). De
 belangrijkste is een belastingtest (VV-05): een verzoek houdt een thread vast zolang Epistola rendert, bij één
 gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. Er zijn **drie punten
-die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na een besluit over de
-richting (VV-12, VV-13, VV-15). De vierde uitbreiding, een nieuwe versie van een document (VV-14, #9), is op 30
-september gebouwd.
+die van Epistola afhangen** (VV-04, VV-08, VV-10), **drie uitbreidingen** die pas zin hebben na een besluit over de
+richting (VV-12, VV-13, VV-15), en sinds 6 oktober **één voorstel over varianten** (VV-16): ZAC kan alleen op taal en
+kanaal kiezen, en Epistola weigert een verzoek waarbij meer varianten even goed passen.
 
 Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie bewust geaccepteerd met een reden
 (waaronder één dat bij een ander team ligt), en twee omgezet in een voorstel. Zie [§3](#3-het-risicoregister-alle-negen).
@@ -158,7 +158,7 @@ leest. Dat geeft een strakkere allow-list dan een contract declareert en beslist
 `environmentId` om tegen de versie te toetsen die gerenderd wordt. De server doet dat voor `validate` nog niet: op
 30 september gaf de testserver op data met vier fouten alleen de velden `errors` en `valid` terug, en in
 [epistola-suite#978](https://github.com/epistola-app/epistola-suite/issues/978) staat dat onderdeel te wachten op deze
-contractrelease. ZAC's client kent de velden al, want hij gaat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) naar 1.4.0. Zodra de server ze levert, noemt
+contractrelease. ZAC's client kent de velden al, want hij staat sinds [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) op 1.4.0. Zodra de server ze levert, noemt
 de foutmelding bij een contractfout het ontbrekende veld. Nu zegt de melding al dat opnieuw proberen niet helpt (#8); het
 veld noemen is de volgende stap.
 
@@ -166,6 +166,15 @@ veld noemen is de volgende stap.
 *Voorstel.* Laat de SmartDocuments-flow de vertrouwelijkheid van het informatieobjecttype overnemen, zoals de
 uploadformulieren van ZAC. Het is één regel (`DocumentCreationService.kt:236`), maar het ligt buiten dit prototype,
 want SmartDocuments mocht niet van gedrag veranderen (DoD 1). Het is een fout die daar al bestond.
+
+**VV-16 · Varianten kiezen op meer dan taal en kanaal, en een duidelijke melding bij een dubbelzinnige variant** (#50) · S–M · ZAC-team
+*Aanleiding.* Een template mag varianten hebben die op meer verschillen dan taal en kanaal, bijvoorbeeld groot lettertype of
+eenvoudige taal. Proef op 6 oktober met de testtemplate `zac-aanvullende-informatie`: ZAC vraagt Epistola om taal en kanaal, en
+als twee varianten daarvoor even goed passen geeft Epistola `409 Ambiguous Variant`. ZAC toont dan alleen de algemene melding
+*Epistola could not process ZAC's request*. De beheerkaart toont per template alle varianten, maar de behandelaar kan er niet tussen kiezen.
+*Voorstel.* (a) Laat de behandelaar kiezen uit de varianten van het template zelf (eventueel op titel), of laat ZAC de overige
+attributen als voorkeur meesturen. (b) Vertaal `Ambiguous Variant` naar een eigen foutcode die zegt welke varianten botsen.
+Tot dan: de beheerder zet zo'n template uit in de beheerkaart. Het sluit aan op #50.
 
 ### C. Uitbreidingen: later
 
@@ -184,14 +193,6 @@ productkeuze en geen technische.
 **VV-13 · Een document maken vanuit een taak** · S–M · besluit van de stakeholders nodig
 *Nu.* De dialoog opent alleen vanuit de zaak. Het endpoint ondersteunt een taak wel (getest in TS-28).
 *Vraag.* Blijft dit een bekende beperking, of moet het kunnen? Op 28 september geagendeerd, niet beantwoord.
-
-**VV-14 · Een nieuwe versie van een eerder gemaakt document** (#9) · M · **gebouwd op 30 september**
-*Nu.* Gebouwd in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43), nagegaan met TS-36 t/m TS-43 (testrapport, ronde 3).
-De actie *Nieuwe versie genereren* staat op de pagina van een document dat Epistola maakte, en zet de volgende versie van
-hetzelfde informatieobject in Open Zaak. Wat het kostte, week af van de schatting: Open Zaak's versiestroom bestond al, maar ZAC
-moest onthouden welk template een document maakte (`epistola_document`, `V101`). Of die tabel mag blijven, beslissen de
-stakeholders als ze het prototype in ZAC willen opnemen (TFO §6). *5 oktober:* sinds #51 onthoudt ze ook de catalog
-(`V104`), zodat een nieuwe versie het template vindt als het zaaktype naar een andere catalog is overgestapt.
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
 *Voorstel.* Niet beginnen voordat de belastingtest laat zien wat één document kost. Een bulkstroom die een thread
@@ -224,8 +225,8 @@ en proces zichtbaar blijft. De uitwerking hoort in de reflectie.
 Zes voorstellen zijn op 29 september als user story aangemaakt op het bord, in Backlog, met het label `optional` en buiten de
 mijlpaal van het prototype. De overige negen blijven in dit document. Ze zijn organisatorisch (VV-02), een vraag aan of een
 afhankelijkheid van Epistola (VV-04, VV-08, VV-10), een besluit van de stakeholders (VV-13), een wijziging buiten dit
-prototype (VV-11, SmartDocuments), een optioneel restpunt van een opgelost risico (VV-07), staan al op het bord (VV-14 is
-[#9](https://github.com/infonl/zac-epistola-prototype/issues/9)), of hebben pas zin na een ander voorstel (VV-15, na de
+prototype (VV-11, SmartDocuments), een optioneel restpunt van een opgelost risico (VV-07), staan al op het bord (VV-16 is
+[#50](https://github.com/infonl/zac-epistola-prototype/issues/50)), of hebben pas zin na een ander voorstel (VV-15, na de
 belastingtest).
 
 | Voorstel | Story |
@@ -245,7 +246,6 @@ belastingtest).
 | Mag document maken alleen vanuit de zaak blijven, niet vanuit een taak? | Stakeholders | Idem (VV-13) |
 | Rendertimeout en maximum aantal pogingen | Epistola | Nog niet gesteld (VV-04) |
 | Welk contract hoort bij de gerenderde templateversie, en welke velden leest die versie? | Epistola | Nog niet gesteld (VV-10) |
-| Waar horen release notes te staan? | Team | Beantwoord op 30 september: ZAC genereert ze uit de titels van de gemergede pull requests (de stap *Generate release notes* in `build-test-deploy.yml`), dus er is geen bestand nodig. Wat overblijft: de pull request naar de upstream-repository noemt de CMMN-beperking in titel en beschrijving (#7) |
 
 ## 9. Wat al is opgelost, met bewijs
 
@@ -256,7 +256,7 @@ belastingtest).
 | B-03 Contractfout raadt "probeer opnieuw" aan | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; TS-32 opnieuw uitgevoerd op 30 september, geslaagd |
 | TS-35 Gedeeltelijke mislukking: opgeslagen, niet gekoppeld | #8: het informatieobject wordt verwijderd | TS-35 uitgevoerd op 30 september, geslaagd: Open Zaak weigerde de koppeling, het document is verwijderd, en de kopie bij Epistola ook |
 | B-04 tot en met B-07 | Bij de bouw en de reviews | Nagegaan in het testrapport |
-| VV-14 Nieuwe versie van een Epistola-document | #9, [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43) | Live op 30 september met de echte testserver; TS-36 t/m TS-41 handmatig, TS-42 en TS-43 met unittests |
+| Nieuwe versie van een Epistola-document (was VV-14, nu gebouwd) | #9, [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43) | Live op 30 september met de echte testserver; TS-36 t/m TS-41 handmatig, TS-42 en TS-43 met unittests |
 | Templatenamen bij een onbereikbare Epistola | #30, [PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34) | Live op 29 september; TS-31 met de namen uit het geheugen op 30 september, geslaagd |
 
 ## Verantwoording
@@ -268,5 +268,8 @@ Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cach
 informatieobjecttype; `EpistolaTemplateGroup.kt` is weg) en `EpistolaTemplatesService.kt` (biedt alleen bij een
 CMMN-zaaktype templates aan), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),
 `scripts/docker-compose/imports/epistola-wiremock/mappings/` (~~zeven~~ negen mappings sinds #54 en #51), en de chart-README en `.env.example`
-(geen rotatie- of verstrijktekst). De Epistola-kant komt uit de reviews op #24 (contract 1.3.1, Epistola Suite
+(geen rotatie- of verstrijktekst). Op 6 oktober is de lijst opnieuw naast de code gelegd (stapel tot en met #60): er is nog geen controle op `https` (VV-03), geen
+rotatietekst (VV-01), geen opstartcontrole (VV-07), geen waarschuwing bij een vormvrije sectie (VV-09), geen
+integratietest met Epistola als provider (VV-06), geen document vanuit een taak (VV-13) en geen BPMN-ondersteuning (VV-12); de
+client staat wel op 1.4.0 (#42) en een nieuwe versie van een document is gebouwd (#9). De Epistola-kant komt uit de reviews op #24 (contract 1.3.1, Epistola Suite
 `3c92193`) en uit de toets van de wachtrij op 28 september (Epistola Suite `e2484c7`, contract `257770d`).
