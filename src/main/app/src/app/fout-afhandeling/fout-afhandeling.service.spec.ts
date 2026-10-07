@@ -10,6 +10,7 @@ import { TranslateService } from "@ngx-translate/core";
 import { firstValueFrom } from "rxjs";
 import { ReferentieTabelService } from "../admin/referentie-tabel.service";
 import { UtilService } from "../core/service/util.service";
+import { FoutDetailedDialogComponent } from "./dialog/fout-detailed-dialog.component";
 import { FoutAfhandelingService } from "./fout-afhandeling.service";
 
 describe("FoutAfhandelingService", () => {
@@ -61,6 +62,27 @@ describe("FoutAfhandelingService", () => {
     expect(errorMessage).toEqual(
       `${translatedErrorMessage}: ${exceptionMessage}`,
     );
+  });
+
+  it("should open the detailed dialog without details when a server error carries only a message, so it does not repeat the dialog's own title", async () => {
+    const open = jest.spyOn(TestBed.inject(MatDialog), "open");
+    const errorResponse = new HttpErrorResponse({
+      error: { message: "fakeServerErrorMessage" },
+      status: 503,
+    });
+
+    const errorMessage = await firstValueFrom(
+      service.httpErrorAfhandelen(errorResponse),
+    ).catch((r) => r);
+
+    expect(open).toHaveBeenCalledWith(FoutDetailedDialogComponent, {
+      data: {
+        error: translatedErrorMessage,
+        details: undefined,
+        showServerErrorTexts: true,
+      },
+    });
+    expect(errorMessage).toEqual(translatedErrorMessage);
   });
 
   it("should return an observable error message when httpErrorAfhandelen is called with a 400 error", async () => {

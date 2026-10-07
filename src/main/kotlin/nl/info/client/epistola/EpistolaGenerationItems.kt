@@ -21,6 +21,13 @@ import java.time.Duration
 private const val DATA_VALIDATION_FAILED_PREFIX = "Data validation failed:"
 
 /**
+ * Epistola names a field as `<JSON Pointer>: <reason>`. A field at the top of the data has an empty pointer, which
+ * leaves a colon in front of the reason.
+ */
+private fun String.toDataRejectionDetail() =
+    removePrefix(DATA_VALIDATION_FAILED_PREFIX).trim().removePrefix(":").trim()
+
+/**
  * Epistola's timestamps come from its own clock, so only the time between two of them is used: how long the job
  * waited for a render slot. How long ZAC has [waited] in all comes from ZAC's clock, and the difference is how long
  * the job has been rendering. Null for a job that has finished.
@@ -41,7 +48,7 @@ internal fun DocumentGenerationItemDto.toGenerationFailure(generationRequest: St
     errorMessage?.takeIf { it.startsWith(DATA_VALIDATION_FAILED_PREFIX) }?.let {
         EpistolaTemplateDataRejectedException(
             message = "Epistola rejected the data of $generationRequest against the template's contract",
-            detail = it.removePrefix(DATA_VALIDATION_FAILED_PREFIX).trim()
+            detail = it.toDataRejectionDetail()
         )
     } ?: EpistolaDocumentGenerationException(
         message = "Epistola failed to render $generationRequest",

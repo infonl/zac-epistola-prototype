@@ -9,8 +9,9 @@ import {
 } from "@angular/common/http";
 import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { TranslateModule } from "@ngx-translate/core";
+import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { provideQueryClient } from "@tanstack/angular-query-experimental";
+import { firstValueFrom } from "rxjs";
 import { testQueryClient } from "../../setupJest";
 import { AppComponent } from "./app.component";
 import { IdentityService } from "./identity/identity.service";
@@ -44,5 +45,15 @@ describe(AppComponent.name, () => {
         queryKey: identityService.readLoggedInUser().queryKey,
       }),
     );
+  });
+
+  it("should tell the page which language it shows, so that a screen reader reads Dutch text as Dutch", async () => {
+    const translateService = TestBed.inject(TranslateService);
+
+    await firstValueFrom(translateService.use("nl"));
+    expect(document.documentElement.lang).toBe("nl");
+
+    await firstValueFrom(translateService.use("en"));
+    expect(document.documentElement.lang).toBe("en");
   });
 });
