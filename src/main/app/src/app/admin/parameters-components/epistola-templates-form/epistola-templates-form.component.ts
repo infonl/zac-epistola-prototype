@@ -29,7 +29,6 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { injectQuery } from "@tanstack/angular-query-experimental";
-import { InformatieObjectenService } from "src/app/informatie-objecten/informatie-objecten.service";
 import { epistolaVariantLabel } from "src/app/shared/utils/epistola-variant-label";
 import { GeneratedType } from "src/app/shared/utils/generated-types";
 import { EpistolaTemplatesService } from "../../epistola-templates.service";
@@ -61,9 +60,6 @@ export class EpistolaTemplatesFormComponent {
   readonly enabledForZaaktype = input(false);
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
-  private readonly informatieObjectenService = inject(
-    InformatieObjectenService,
-  );
   private readonly translateService = inject(TranslateService);
 
   protected readonly form = new FormGroup({
@@ -87,7 +83,7 @@ export class EpistolaTemplatesFormComponent {
     this.epistolaTemplatesService.getCatalogMappingQuery(this.zaaktypeUuid()),
   );
   protected readonly informatieobjecttypesQuery = injectQuery(() =>
-    this.informatieObjectenService.listInformatieobjecttypesQuery(
+    this.epistolaTemplatesService.listInformatieobjecttypesQuery(
       this.zaaktypeUuid(),
     ),
   );

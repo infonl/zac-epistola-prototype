@@ -53,7 +53,7 @@ import {
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { IdentityService } from "../../identity/identity.service";
 import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
-import { InformatieObjectCreateAttendedComponent } from "../../informatie-objecten/informatie-object-create-attended/informatie-object-create-attended.component";
+import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
 import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectenService } from "../../informatie-objecten/informatie-objecten.service";
 import { ActionsViewComponent } from "../../shared/abstract-view/actions-view-component";
@@ -104,7 +104,7 @@ import { FormioSetupService } from "./formio/formio-setup-service";
     MimetypeToExtensionPipe,
     FormioWrapperComponent,
     InformatieObjectAddComponent,
-    InformatieObjectCreateAttendedComponent,
+    DocumentCreateComponent,
     InformatieObjectLinkComponent,
     ReadMoreComponent,
     SideNavComponent,

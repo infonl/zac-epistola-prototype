@@ -70,6 +70,7 @@ import { StaticTextComponent } from "../../shared/static-text/static-text.compon
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { ZakenService } from "../../zaken/zaken.service";
 import { DocumentDialogService } from "../document-dialog.service";
+import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import {
   EpistolaGenerationDialogComponent,
   EpistolaGenerationDialogData,
@@ -119,6 +120,9 @@ export class InformatieObjectViewComponent
   implements OnInit, AfterViewInit, OnDestroy
 {
   private readonly queryClient = inject(QueryClient);
+  private readonly epistolaDocumentenService = inject(
+    EpistolaDocumentenService,
+  );
 
   readonly indicatiesLayout = IndicatiesLayout;
   infoObject!: GeneratedType<"RestEnkelvoudigInformatieobject">;
@@ -400,7 +404,7 @@ export class InformatieObjectViewComponent
    */
   private loadEpistolaDocument() {
     if (!this.laatsteVersieInfoObject?.rechten?.toevoegenNieuweVersie) return;
-    this.informatieObjectenService
+    this.epistolaDocumentenService
       .readEpistolaDocument(this.infoObject.uuid!)
       .subscribe((epistolaDocument) => {
         this.isEpistolaNewVersionAvailable =
@@ -422,7 +426,7 @@ export class InformatieObjectViewComponent
         disableClose: true,
         width: "560px",
       });
-      return this.informatieObjectenService
+      return this.epistolaDocumentenService
         .createEpistolaDocumentVersion(this.infoObject.uuid!)
         .pipe(
           tap(() => progressDialog.componentInstance.markFinished()),

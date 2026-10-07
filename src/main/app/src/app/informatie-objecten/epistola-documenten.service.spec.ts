@@ -15,11 +15,11 @@ import { UtilService } from "../core/service/util.service";
 import { FoutAfhandelingService } from "../fout-afhandeling/fout-afhandeling.service";
 import { QUERY_CLIENT } from "../shared/http/query-client";
 import { GeneratedType } from "../shared/utils/generated-types";
-import { InformatieObjectenService } from "./informatie-objecten.service";
+import { EpistolaDocumentenService } from "./epistola-documenten.service";
 
-describe(InformatieObjectenService.name, () => {
+describe(EpistolaDocumentenService.name, () => {
   const foutAfhandelen = jest.fn().mockReturnValue(of());
-  let informatieObjectenService: InformatieObjectenService;
+  let epistolaDocumentenService: EpistolaDocumentenService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -33,7 +33,7 @@ describe(InformatieObjectenService.name, () => {
         { provide: UtilService, useValue: fromPartial<UtilService>({}) },
       ],
     });
-    informatieObjectenService = TestBed.inject(InformatieObjectenService);
+    epistolaDocumentenService = TestBed.inject(EpistolaDocumentenService);
   });
 
   describe("readEpistolaVariantenQuery", () => {
@@ -55,7 +55,7 @@ describe(InformatieObjectenService.name, () => {
       const httpTestingController = TestBed.inject(HttpTestingController);
       const read = () =>
         queryClient.query(
-          informatieObjectenService.readEpistolaVariantenQuery(
+          epistolaDocumentenService.readEpistolaVariantenQuery(
             "fakeZaakUuid",
             "fake-template",
           ),
@@ -77,7 +77,7 @@ describe(InformatieObjectenService.name, () => {
 
       await expect(
         TestBed.inject(QUERY_CLIENT).fetchQuery({
-          ...informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
+          ...epistolaDocumentenService.readEpistolaDocumentCreationStatusQuery(
             "fakeZaakUuid",
           ),
           queryFn: () => Promise.reject(error),
@@ -89,7 +89,7 @@ describe(InformatieObjectenService.name, () => {
 
     it("polls every second until a poll fails, and then stops", () => {
       const { refetchInterval } =
-        informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
+        epistolaDocumentenService.readEpistolaDocumentCreationStatusQuery(
           "fakeZaakUuid",
         );
 

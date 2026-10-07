@@ -39,7 +39,7 @@ import { ZaakafhandelParametersService } from "../../admin/zaakafhandel-paramete
 import { BAGService } from "../../bag/bag.service";
 import { WebsocketListener } from "../../core/websocket/model/websocket-listener";
 import { WebsocketService } from "../../core/websocket/websocket.service";
-import { InformatieObjectCreateAttendedComponent } from "../../informatie-objecten/informatie-object-create-attended/informatie-object-create-attended.component";
+import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
 import { KlantenService } from "../../klanten/klanten.service";
 import { NotitiesComponent } from "../../notities/notities.component";
 import { PlanItemsService } from "../../plan-items/plan-items.service";
@@ -72,11 +72,11 @@ const planItemsQuery = (planItems: GeneratedType<"RESTPlanItem">[]) =>
   }) as ReturnType<PlanItemsService["listHumanTaskPlanItemsQuery"]>;
 
 @Component({
-  selector: "zac-informatie-object-create-attended",
+  selector: "zac-document-create",
   standalone: true,
   template: "",
 })
-class InformatieObjectCreateAttendedStubComponent {
+class DocumentCreateStubComponent {
   readonly sideNav = input<MatDrawer>();
   readonly zaak = input<GeneratedType<"RestZaak">>();
   readonly document = output<void>();
@@ -190,17 +190,11 @@ describe(ZaakViewComponent.name, () => {
     })
       .overrideComponent(ZaakViewComponent, {
         remove: {
-          imports: [
-            InformatieObjectCreateAttendedComponent,
-            CaseLocationEditComponent,
-          ],
+          imports: [DocumentCreateComponent, CaseLocationEditComponent],
         },
         add: {
           providers: [{ provide: MatDialog, useValue: dialogMock }],
-          imports: [
-            InformatieObjectCreateAttendedStubComponent,
-            CaseLocationEditStubComponent,
-          ],
+          imports: [DocumentCreateStubComponent, CaseLocationEditStubComponent],
         },
       })
       .compileComponents();
@@ -1039,7 +1033,7 @@ describe(ZaakViewComponent.name, () => {
     const panelsOpenedFromTheMenu = [
       ["actie.ontvangstbevestiging.versturen", "zac-ontvangstbevestiging"],
       ["actie.mail.versturen", "zac-mail-create"],
-      ["actie.document.maken", "zac-informatie-object-create-attended"],
+      ["actie.document.maken", "zac-document-create"],
       ["actie.document.toevoegen", "zac-informatie-object-add"],
       ["actie.document.verzenden", "zac-informatie-verzenden"],
       ["actie.besluit.vastleggen", "zac-besluit-create"],

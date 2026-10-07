@@ -12,7 +12,6 @@ import {
 import { render, screen, waitFor, within } from "@testing-library/angular";
 import userEvent, { UserEvent } from "@testing-library/user-event";
 import { of } from "rxjs";
-import { InformatieObjectenService } from "src/app/informatie-objecten/informatie-objecten.service";
 import { GeneratedType } from "src/app/shared/utils/generated-types";
 import { fromPartial } from "src/test-helpers";
 import { testQueryClient } from "../../../../../setupJest";
@@ -160,17 +159,12 @@ describe(EpistolaTemplatesFormComponent.name, () => {
                 queryKey: ["epistola-catalog-mapping", zaaktypeUuid],
                 queryFn: readCatalogMapping,
               }),
-            storeCatalogMapping,
-          }),
-        },
-        {
-          provide: InformatieObjectenService,
-          useValue: fromPartial<InformatieObjectenService>({
-            listInformatieobjecttypesQuery: (zaakTypeUuid: string) =>
+            listInformatieobjecttypesQuery: (zaaktypeUuid: string) =>
               queryOptions({
-                queryKey: ["informatieobjecttypes", zaakTypeUuid],
+                queryKey: ["informatieobjecttypes", zaaktypeUuid],
                 queryFn: () => Promise.resolve([BESLUIT, BIJLAGE]),
               }),
+            storeCatalogMapping,
           }),
         },
       ],
