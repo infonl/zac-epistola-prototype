@@ -7,8 +7,8 @@ import { Component, computed, inject, signal } from "@angular/core";
 import { MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { injectQuery } from "@tanstack/angular-query-experimental";
 import { GenericDialogComponent } from "../../shared/dialog/generic-dialog/generic-dialog.component";
+import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import { EpistolaGenerationProgressComponent } from "../epistola-generation-progress/epistola-generation-progress.component";
-import { InformatieObjectenService } from "../informatie-objecten.service";
 
 export type EpistolaGenerationDialogData = {
   zaakUuid: string;
@@ -24,14 +24,14 @@ export type EpistolaGenerationDialogData = {
 export class EpistolaGenerationDialogComponent {
   protected readonly data =
     inject<EpistolaGenerationDialogData>(MAT_DIALOG_DATA);
-  private readonly informatieObjectenService = inject(
-    InformatieObjectenService,
+  private readonly epistolaDocumentenService = inject(
+    EpistolaDocumentenService,
   );
 
   protected readonly finished = signal(false);
 
   private readonly statusQuery = injectQuery(() => ({
-    ...this.informatieObjectenService.readEpistolaDocumentCreationStatusQuery(
+    ...this.epistolaDocumentenService.readEpistolaDocumentCreationStatusQuery(
       this.data.zaakUuid,
     ),
     enabled: !this.finished(),

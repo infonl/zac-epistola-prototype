@@ -1,0 +1,130 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<mat-toolbar role="heading" class="gap-16">
+  <mat-icon>note_add</mat-icon>
+  <span class="flex-grow-1">{{ "actie.document.maken" | translate }}</span>
+  <button mat-icon-button (click)="sideNav().close()">
+    <mat-icon>close</mat-icon>
+  </button>
+</mat-toolbar>
+<mat-divider></mat-divider>
+
+<form
+  [formGroup]="form"
+  (submit)="onFormSubmit(form)"
+  (cancel)="sideNav().close()"
+  class="mt-2"
+>
+  <fieldset>
+    @if (templatesError(); as templatesError) {
+      <p role="alert" class="mx-3">
+        {{ "msg.document.templates.niet-geladen" | translate }}
+        {{ templatesError | translate }}
+      </p>
+    }
+    <section class="row">
+      <zac-auto-complete
+        [form]="form"
+        key="template"
+        class="col-12"
+        [options]="templates"
+        optionDisplayValue="name"
+      >
+        <mat-label>{{ "template" | translate }}</mat-label>
+      </zac-auto-complete>
+    </section>
+    @if (variantOptions().length) {
+      <section class="row">
+        <zac-select
+          [form]="form"
+          key="variant"
+          class="col-12"
+          [options]="variantOptions()"
+          [optionDisplayValue]="variantLabel"
+        >
+          <mat-label>{{ "epistola.variant" | translate }}</mat-label>
+          <mat-hint>
+            @if (varianten()?.communicatiekanaal; as communicatiekanaal) {
+              <span
+                [style.visibility]="
+                  isSuggestedVariantChosen() ? null : 'hidden'
+                "
+              >
+                {{
+                  "epistola.variant.hint.communicatiekanaal"
+                    | translate: { communicatiekanaal }
+                }}
+              </span>
+            } @else {
+              {{ "epistola.variant.hint" | translate }}
+            }
+          </mat-hint>
+        </zac-select>
+      </section>
+    }
+    <section class="row">
+      <zac-input key="title" class="col-12" [form]="form">
+        <mat-label>{{ "titel" | translate }}</mat-label>
+      </zac-input>
+      <zac-input key="description" class="col-12" [form]="form">
+        <mat-label>{{ "beschrijving" | translate }}</mat-label>
+      </zac-input>
+    </section>
+    <section class="row">
+      <zac-input
+        [form]="form"
+        class="col-12 col-md-6"
+        key="informationObjectType"
+      >
+        <mat-label>{{ "informatieobjectType" | translate }}</mat-label>
+      </zac-input>
+      <zac-input [form]="form" class="col-12 col-md-6" key="confidentiality">
+        <mat-label>{{ "vertrouwelijkheidaanduiding" | translate }}</mat-label>
+      </zac-input>
+    </section>
+    <section class="row">
+      <zac-input [form]="form" key="format" class="col-12">
+        <mat-label>{{ "formaat" | translate }}</mat-label>
+      </zac-input>
+      <zac-input [form]="form" key="author" class="col-12">
+        <mat-label>{{ "auteur" | translate }}</mat-label>
+      </zac-input>
+    </section>
+  </fieldset>
+  <fieldset>
+    @if (createEpistolaDocumentMutation.isPending() || generationFinished()) {
+      <zac-epistola-generation-progress
+        class="mx-3"
+        [status]="generationStatus()"
+        [finished]="generationFinished()"
+      />
+    }
+    <mat-action-row>
+      <button
+        mat-stroked-button
+        type="button"
+        class="flex-row gap-8"
+        [disabled]="!canPreviewEpistolaDocument"
+        (click)="previewEpistolaDocument()"
+      >
+        @if (previewEpistolaDocumentMutation.isPending()) {
+          <mat-icon>
+            <mat-spinner diameter="18"></mat-spinner>
+          </mat-icon>
+        } @else {
+          <mat-icon>visibility</mat-icon>
+        }
+        {{ "actie.epistola.voorbeeld" | translate }}
+      </button>
+      <zac-form-actions
+        [form]="form"
+        [mutation]="createEpistolaDocumentMutation"
+        submitLabel="actie.genereren"
+        [disableAfterSuccess]="true"
+      />
+    </mat-action-row>
+  </fieldset>
+</form>

@@ -39,7 +39,7 @@ import { WebsocketListener } from "../../core/websocket/model/websocket-listener
 import { WebsocketService } from "../../core/websocket/websocket.service";
 import { IdentityService } from "../../identity/identity.service";
 import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
-import { InformatieObjectCreateAttendedComponent } from "../../informatie-objecten/informatie-object-create-attended/informatie-object-create-attended.component";
+import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
 import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectVerzendenComponent } from "../../informatie-objecten/informatie-object-verzenden/informatie-object-verzenden.component";
 import { KlantKoppelComponent } from "../../klanten/koppel/klanten/klant-koppel/klant-koppel.component";
@@ -97,7 +97,7 @@ import { ZaakInitiatorPanelComponent } from "./zaak-initiator-panel/zaak-initiat
     CaseLocationEditComponent,
     HumanTaskDoComponent,
     InformatieObjectAddComponent,
-    InformatieObjectCreateAttendedComponent,
+    DocumentCreateComponent,
     InformatieObjectLinkComponent,
     InformatieObjectVerzendenComponent,
     KlantKoppelComponent,

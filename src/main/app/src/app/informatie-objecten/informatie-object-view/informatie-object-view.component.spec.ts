@@ -39,6 +39,7 @@ import { ZakenService } from "../../zaken/zaken.service";
 import { EpistolaGenerationDialogComponent } from "../epistola-generation-dialog/epistola-generation-dialog.component";
 import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
+import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat } from "../model/file-format";
 import { InformatieObjectViewComponent } from "./informatie-object-view.component";
@@ -49,6 +50,7 @@ describe(InformatieObjectViewComponent.name, () => {
   let loader: HarnessLoader;
 
   let informatieObjectenService: InformatieObjectenService;
+  let epistolaDocumentenService: EpistolaDocumentenService;
   let zakenService: ZakenService;
 
   const mockActivatedRoute = {
@@ -117,6 +119,7 @@ describe(InformatieObjectViewComponent.name, () => {
     }).compileComponents();
 
     informatieObjectenService = TestBed.inject(InformatieObjectenService);
+    epistolaDocumentenService = TestBed.inject(EpistolaDocumentenService);
     jest
       .spyOn(informatieObjectenService, "readEnkelvoudigInformatieobject")
       .mockReturnValue(of(enkelvoudigInformatieobject));
@@ -256,7 +259,7 @@ describe(InformatieObjectViewComponent.name, () => {
         ),
       );
       const readEpistolaDocument = jest
-        .spyOn(informatieObjectenService, "readEpistolaDocument")
+        .spyOn(epistolaDocumentenService, "readEpistolaDocument")
         .mockReturnValue(
           of(
             fromPartial<GeneratedType<"RestEpistolaDocument">>({
@@ -322,7 +325,7 @@ describe(InformatieObjectViewComponent.name, () => {
     it("should generate the version and show it when clicked", async () => {
       givenADocument();
       const createEpistolaDocumentVersion = jest
-        .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+        .spyOn(epistolaDocumentenService, "createEpistolaDocumentVersion")
         .mockReturnValue(of(undefined));
       const navigate = jest
         .spyOn(TestBed.inject(Router), "navigate")
@@ -388,7 +391,7 @@ describe(InformatieObjectViewComponent.name, () => {
         const { open, close } = givenAProgressDialog();
         const versionCreated = new Subject<void>();
         jest
-          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .spyOn(epistolaDocumentenService, "createEpistolaDocumentVersion")
           .mockReturnValue(versionCreated);
         jest.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
 
@@ -418,7 +421,7 @@ describe(InformatieObjectViewComponent.name, () => {
         const { close, markFinished } = givenAProgressDialog();
         const versionCreated = new Subject<void>();
         jest
-          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .spyOn(epistolaDocumentenService, "createEpistolaDocumentVersion")
           .mockReturnValue(versionCreated);
         jest.spyOn(TestBed.inject(Router), "navigate").mockResolvedValue(true);
 
@@ -439,7 +442,7 @@ describe(InformatieObjectViewComponent.name, () => {
         const { close, markFinished } = givenAProgressDialog();
         const error = new Error("fakeError");
         jest
-          .spyOn(informatieObjectenService, "createEpistolaDocumentVersion")
+          .spyOn(epistolaDocumentenService, "createEpistolaDocumentVersion")
           .mockReturnValue(throwError(() => error));
         const onUnhandledError = jest.fn();
         config.onUnhandledError = onUnhandledError;

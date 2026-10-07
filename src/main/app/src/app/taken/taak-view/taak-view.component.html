@@ -36,7 +36,7 @@
         [task]="taak"
       />
     }
-    <zac-informatie-object-create-attended
+    <zac-document-create
       *ngSwitchCase="'actie.document.maken'"
       [sideNav]="actionsSidenav"
       [zaak]="zaak"
@@ -44,7 +44,7 @@
       [smartDocumentsGroupId]="smartDocumentsGroupId"
       [smartDocumentsTemplateId]="smartDocumentsTemplateId"
       (document)="documentCreated()"
-    ></zac-informatie-object-create-attended>
+    ></zac-document-create>
     <zac-informatie-object-add
       *ngSwitchCase="'actie.document.toevoegen'"
       [sideNav]="actionsSidenav"

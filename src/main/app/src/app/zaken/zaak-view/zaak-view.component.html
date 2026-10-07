@@ -66,12 +66,12 @@
       [sideNav]="actionsSidenav"
       (locatie)="locationSelected()"
     ></zac-case-location-edit>
-    <zac-informatie-object-create-attended
+    <zac-document-create
       *ngSwitchCase="'actie.document.maken'"
       [sideNav]="actionsSidenav"
       [zaak]="zaak"
       (document)="documentCreated()"
-    ></zac-informatie-object-create-attended>
+    ></zac-document-create>
     <zac-informatie-object-add
       *ngSwitchCase="'actie.document.toevoegen'"
       [sideNav]="actionsSidenav"

@@ -45,6 +45,14 @@ export class EpistolaTemplatesService {
     );
   }
 
+  /** The document types a template of this zaaktype can be given. */
+  listInformatieobjecttypesQuery(zaaktypeUuid: string) {
+    return this.zacQueryClient.GET(
+      "/rest/informatieobjecten/informatieobjecttypes/{zaakTypeUuid}",
+      { path: { zaakTypeUuid: zaaktypeUuid } },
+    );
+  }
+
   storeCatalogMapping(
     zaaktypeUuid: string,
     catalogMapping: PostBody<"/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-catalog-mapping">,
