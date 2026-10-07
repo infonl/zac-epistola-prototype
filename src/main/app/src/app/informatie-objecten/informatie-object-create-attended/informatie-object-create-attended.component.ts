@@ -89,14 +89,14 @@ type TemplateGroupOption = {
   templates: TemplateOption[];
 };
 
-const KANAAL_LABELS: Record<string, string> = {
-  post: "epistola.kanaal.post",
-  digitaal: "epistola.kanaal.digitaal",
+const VARIANT_LABELS: Record<string, string> = {
+  post: "epistola.variant.post",
+  digitaal: "epistola.variant.digitaal",
 };
 
-/** A disabled control is left out of the form's validity, so the picker's wait for the kanalen has to be checked here. */
-const kanalenLookupFinished: ValidatorFn = (form) =>
-  form.get("kanaal")?.disabled ? { kanalenLookupPending: true } : null;
+/** A disabled control is left out of the form's validity, so the picker's wait for the variants has to be checked here. */
+const variantenLookupFinished: ValidatorFn = (form) =>
+  form.get("variant")?.disabled ? { variantenLookupPending: true } : null;
 
 @Component({
   selector: "zac-informatie-object-create-attended",
@@ -166,29 +166,29 @@ export class InformatieObjectCreateAttendedComponent
       Validators.maxLength(50),
     ]),
     taskId: this.formBuilder.control<string | null>(null),
-    kanaal: this.formBuilder.control<string | null>(null),
+    variant: this.formBuilder.control<string | null>(null),
   });
 
   protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
   protected templates: TemplateOption[] = [];
   protected readonly templateGroupsError = signal<string | null>(null);
 
-  protected readonly kanalen =
-    signal<GeneratedType<"RestEpistolaKanalen"> | null>(null);
-  protected readonly kanaalOptions = computed(() => {
-    const kanalen = this.kanalen()?.kanalen ?? [];
-    return kanalen.length > 1 ? kanalen : [];
+  protected readonly varianten =
+    signal<GeneratedType<"RestEpistolaVarianten"> | null>(null);
+  protected readonly variantOptions = computed(() => {
+    const varianten = this.varianten()?.varianten ?? [];
+    return varianten.length > 1 ? varianten : [];
   });
-  protected readonly kanaalLabel = (kanaal: string) =>
-    KANAAL_LABELS[kanaal] ?? kanaal;
-  private readonly chosenKanaal = toSignal(
-    this.form.controls.kanaal.valueChanges,
+  protected readonly variantLabel = (variant: string) =>
+    VARIANT_LABELS[variant] ?? variant;
+  private readonly chosenVariant = toSignal(
+    this.form.controls.variant.valueChanges,
     { initialValue: null },
   );
-  protected readonly isSuggestedKanaalChosen = computed(
+  protected readonly isSuggestedVariantChosen = computed(
     () =>
-      !!this.chosenKanaal() &&
-      this.chosenKanaal() === this.kanalen()?.voorgesteldKanaal,
+      !!this.chosenVariant() &&
+      this.chosenVariant() === this.varianten()?.voorgesteldeVariant,
   );
 
   private readonly epistolaTemplatesService = inject(EpistolaTemplatesService);
@@ -259,15 +259,15 @@ export class InformatieObjectCreateAttendedComponent
   }
 
   /**
-   * A preview in another variant than the one that is generated would mislead, so it waits for the kanalen of the
-   * chosen template, and for a kanaal where the template asks for one.
+   * A preview in another variant than the one that is generated would mislead, so it waits for the variants of the
+   * chosen template, and for a variant where the template asks for one.
    */
   protected get canPreviewEpistolaDocument() {
-    const { template, kanaal } = this.form.controls;
+    const { template, variant } = this.form.controls;
     return (
       !!template.value &&
-      kanaal.enabled &&
-      kanaal.valid &&
+      variant.enabled &&
+      variant.valid &&
       !this.createEpistolaDocumentMutation.isPending() &&
       !this.previewEpistolaDocumentMutation.isPending()
     );
@@ -362,16 +362,16 @@ export class InformatieObjectCreateAttendedComponent
       });
 
     if (this.usesEpistola) {
-      this.form.addValidators(kanalenLookupFinished);
+      this.form.addValidators(variantenLookupFinished);
       this.form.controls.template.valueChanges
         .pipe(
           takeUntil(this.destroy$),
-          tap(() => this.awaitKanalen()),
+          tap(() => this.awaitVarianten()),
           switchMap((template) =>
             template?.id
               ? from(
                   this.queryClient.query(
-                    this.informatieObjectenService.readEpistolaKanalenQuery(
+                    this.informatieObjectenService.readEpistolaVariantenQuery(
                       this.zaak.uuid,
                       template.id,
                     ),
@@ -380,7 +380,7 @@ export class InformatieObjectCreateAttendedComponent
               : EMPTY,
           ),
         )
-        .subscribe((kanalen) => this.offerKanalen(kanalen));
+        .subscribe((varianten) => this.offerVarianten(varianten));
     }
 
     templateGroupsFetcher
@@ -405,22 +405,24 @@ export class InformatieObjectCreateAttendedComponent
       });
   }
 
-  /** Hiding the picker until another template is chosen and its kanalen arrive would make the form below it jump. */
-  private awaitKanalen() {
-    const { kanaal } = this.form.controls;
-    kanaal.setValue(null);
-    kanaal.disable();
+  /** Hiding the picker until another template is chosen and its variants arrive would make the form below it jump. */
+  private awaitVarianten() {
+    const { variant } = this.form.controls;
+    variant.setValue(null);
+    variant.disable();
   }
 
-  private offerKanalen(kanalen: GeneratedType<"RestEpistolaKanalen"> | null) {
-    this.kanalen.set(kanalen);
-    const { kanaal } = this.form.controls;
-    const isChoiceOffered = this.kanaalOptions().length > 0;
-    kanaal.setValidators(isChoiceOffered ? Validators.required : null);
-    kanaal.setValue(
-      isChoiceOffered ? (kanalen?.voorgesteldKanaal ?? null) : null,
+  private offerVarianten(
+    varianten: GeneratedType<"RestEpistolaVarianten"> | null,
+  ) {
+    this.varianten.set(varianten);
+    const { variant } = this.form.controls;
+    const isChoiceOffered = this.variantOptions().length > 0;
+    variant.setValidators(isChoiceOffered ? Validators.required : null);
+    variant.setValue(
+      isChoiceOffered ? (varianten?.voorgesteldeVariant ?? null) : null,
     );
-    kanaal.enable();
+    variant.enable();
   }
 
   private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
@@ -459,7 +461,7 @@ export class InformatieObjectCreateAttendedComponent
         values.template!.id,
         values.title!,
         values.description,
-        values.kanaal,
+        values.variant,
       );
       return;
     }
@@ -491,7 +493,7 @@ export class InformatieObjectCreateAttendedComponent
   }
 
   protected previewEpistolaDocument() {
-    const { template, kanaal } = this.form.getRawValue();
+    const { template, variant } = this.form.getRawValue();
     if (!template) return;
 
     this.previewEpistolaDocumentMutation.mutate(
@@ -499,7 +501,7 @@ export class InformatieObjectCreateAttendedComponent
         zaakUuid: this.zaak.uuid,
         taskId: this.taak?.id,
         templateId: template.id,
-        kanaal,
+        variant,
       },
       {
         onSuccess: (pdf) =>
@@ -519,7 +521,7 @@ export class InformatieObjectCreateAttendedComponent
     templateId: string,
     title: string,
     description?: string | null,
-    kanaal?: string | null,
+    variant?: string | null,
   ) {
     this.generatingForZaakUuid.set(this.zaak.uuid);
     this.createEpistolaDocumentMutation.mutate(
@@ -529,7 +531,7 @@ export class InformatieObjectCreateAttendedComponent
         templateId,
         title,
         description,
-        kanaal,
+        variant,
       },
       {
         onSuccess: () => {

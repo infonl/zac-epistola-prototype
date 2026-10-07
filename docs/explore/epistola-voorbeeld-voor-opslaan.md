@@ -25,9 +25,9 @@ toepassing van het endpoint, dus het botst niet met besluit B5 (de preview niet 
 
 ## 2. Wat een behandelaar ziet
 
-1. *Document maken*, een templategroep, een template en eventueel een kanaal kiezen. Biedt het zaaktype maar één
+1. *Document maken*, een templategroep, een template en eventueel een variant kiezen. Biedt het zaaktype maar één
    templategroep, of de groep maar één template, dan kiest ZAC die zelf (#45).
-2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, het kanaal
+2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, de variant
    bekend zijn, zodat een voorbeeld nooit een andere variant toont dan die ZAC straks genereert. Een template dat ZAC
    zelf koos, telt even goed.
 3. Binnen enkele seconden opent een dialoog met de PDF, en de zin dat dit een voorbeeld is dat nog niet in de zaak
@@ -92,7 +92,7 @@ dag opnieuw ingericht, omdat de tenant elke dag wordt gereset.
   de exception van de client als oorzaak meekreeg en die de reden in zijn eigen bericht herhaalt. Dat strijdt met de afspraak dat die
   tekst nooit in het log komt. De afwijzing heeft nu geen oorzaak. Dit is bewezen met de test op de echte client, maar niet
   opnieuw live bekeken, omdat daarvoor de image opnieuw gebouwd en de gebruiker opnieuw ingelogd moet worden.
-- **Niet gecontroleerd:** de stand na de rebase op #45 in een draaiende ZAC, de variantkeuze in de browser met de kanaalkiezer
+- **Niet gecontroleerd:** de stand na de rebase op #45 in een draaiende ZAC, de variantkeuze in de browser met de kiezer *Variant*
   (alleen via het endpoint en in de specs), een document bij een taak, en meer dan één gebruiker tegelijk.
 
 ## 6. Open punten, en wat ik bewust niet deed
