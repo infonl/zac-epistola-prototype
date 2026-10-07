@@ -7,12 +7,7 @@
 | Opdrachtgever | Team Geneva · Hanneke van de Horst |
 | Periode | 9 september – 9 oktober 2026 |
 | Bronnen | Examenafspraken v5 (getekend) · projectbeschrijving *PRJ-Epistola integration in ZAC* |
-| Stand | Afgestemd met de stakeholders op 21 september 2026 en de feedback verwerkt. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/5xw7jszczk9b3DDAYQfVAH`, dat niet meer wordt bijgewerkt. Op 5 oktober bijgewerkt naar het besluit van die dag: een Epistola-catalog per zaaktype in plaats van templategroepen in ZAC (#51) |
-
-> **Over deze versie.** De tekst is die van het document dat de stakeholders op 21 september zagen, in het Engels
-> zoals het toen geschreven is. Wat sindsdien is veranderd, staat er met een datum bij: doorgehaald waar een
-> uitspraak niet meer klopt, en de nieuwe stand ernaast. De oude tekst blijft staan, omdat hij laat wat er toen is
-> afgesproken.
+| Stand | Afgestemd met de stakeholders op 21 september 2026, met de feedback verwerkt. Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober |
 
 What the client wants from the Epistola integration, what counts as done, what falls outside a user story, and in
 which order it gets built.
@@ -36,18 +31,14 @@ system. §5 records what that distinction costs.
 
 ### Afbakening
 
-**Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of ~~the available Epistola
-templates and template groups~~ *5 October:* the Epistola catalog whose templates the zaaktype offers, and the document
-type they are stored under (#51); generation, storage in Open Zaak and linking to the zaak; the admin and behandelaar
-frontends; authorisation; error handling; test execution and knowledge transfer.
+**Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of the Epistola catalog whose
+templates the zaaktype offers, the language of its documents, and the document type they are stored under, with an own
+type per template and the option to switch a template off (#51); generation, storage in Open Zaak and linking to the
+zaak; a new version of a generated document (the optional DoD 11, #9); the admin and behandelaar frontends;
+authorisation; error handling; test execution and knowledge transfer.
 
 **Buiten scope:** BPMN zaken; output formats other than PDF; batch generation; migrating existing SmartDocuments
-templates; production hardening of the credential model; ~~and the optional document-versioning story, which the
-DoD itself marks optional~~.
-
-> *1 October 2026: the optional document-versioning story (DoD 11, #9) was built after all, on 30 September, in
-> [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43), and tested in round 3 of the test report
-> (TS-36 to TS-43).*
+templates; and production hardening of the credential model.
 
 ## 2. Definition of Done
 
@@ -57,34 +48,28 @@ The eleven requirements from the examenafspraken, restated and traced to the boa
 source documents differs, the signed examenafspraken is leading — the projectbeschrijving lists ten because it folds
 the template-groups requirement into the per-zaaktype one.
 
-| # | Requirement | Issue | Status on 21 Sep | Status on 1 Oct |
-|---|---|---|---|---|
-| 1 | Configurable through environment variables with three values — SmartDocuments, Epistola, or none. Both at once is impossible. Documented, validated, and does not break the existing SmartDocuments flow. | #2 | In review | Done |
-| 2 | The prototype supports CMMN zaken only; the limitation is explicitly visible in documentation and in the user interface. | #7 | Backlog | Done |
-| 3 | Epistola integration is configurable per zaaktype — which templates are available for zaken of that type. | #3 | Ready | Done |
-| 4 | An authorised user can generate a PDF from a CMMN zaak. Other formats are not supported. | #5, #11 | Backlog | Done |
-| 5 | The generated document contains zaakspecifieke data per the chosen template. At minimum the same zaakdata fields as SmartDocuments. | #4 | In review | Done |
-| 6 | ZAC stores the generated PDF in Open Zaak and shows a clear error message when storage fails. | #6, #8 | Backlog | Done |
-| 7 | ZAC links the stored document to the zaak; the zaakdetailpagina shows metadata and a preview. | #6 | Backlog | Done |
-| 8 | The agreed test cases — configuratie, autorisatie, creatie, datamapping, Open Zaak-opslag, zaakkoppeling, preview, foutafhandeling — are executed and recorded, including known limitations. | #18, #19 | Backlog | #18 Done; #19 In review (test report in [PR #41](https://github.com/infonl/zac-epistola-prototype/pull/41)) |
-| 9 | The beheerder can set the available Epistola **templategroepen and templates** per zaaktype. ~~The groups are ZAC's own; Epistola keeps templates flat.~~ *5 October: see the note below.* | #3 | Ready | Done |
-| 10 | Main lessons learned, recommendations and follow-up steps documented on the Confluence wiki page. | #10 | Backlog | In review (the page exists; the final demo is still to come) |
-| 11 | *Optional:* a new version of a document previously created through Epistola can be created and displayed per the document-detail requirements. | #9 | Optioneel | In review (built in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)) |
+| # | Requirement | Issue | Status |
+|---|---|---|---|
+| 1 | Configurable through environment variables with three values — SmartDocuments, Epistola, or none. Both at once is impossible. Documented, validated, and does not break the existing SmartDocuments flow. | #2 | Done |
+| 2 | The prototype supports CMMN zaken only; the limitation is explicitly visible in documentation and in the user interface. | #7 | Done |
+| 3 | Epistola integration is configurable per zaaktype — which templates are available for zaken of that type. | #3 | Done |
+| 4 | An authorised user can generate a PDF from a CMMN zaak. Other formats are not supported. | #5, #11 | Done |
+| 5 | The generated document contains zaakspecifieke data per the chosen template. At minimum the same zaakdata fields as SmartDocuments. | #4 | Done |
+| 6 | ZAC stores the generated PDF in Open Zaak and shows a clear error message when storage fails. | #6, #8 | Done |
+| 7 | ZAC links the stored document to the zaak; the zaakdetailpagina shows metadata and a preview. | #6 | Done |
+| 8 | The agreed test cases — configuratie, autorisatie, creatie, datamapping, Open Zaak-opslag, zaakkoppeling, preview, foutafhandeling — are executed and recorded, including known limitations. | #18, #19 | Done (test report in [PR #41](https://github.com/infonl/zac-epistola-prototype/pull/41)) |
+| 9 | The beheerder can set the available Epistola **templategroepen and templates** per zaaktype. See the note below. | #3 | Done |
+| 10 | Main lessons learned, recommendations and follow-up steps documented on the Confluence wiki page. | #10 | In review (the page exists; the final demo is on Monday 12 October) |
+| 11 | *Optional:* a new version of a document previously created through Epistola can be created and displayed per the document-detail requirements. | #9 | Done (built in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)) |
 
-> **Besluit op DoD-item 9 — 21 september.** "Templategroepen" assumes a group structure, and Epistola has none. Its
-> published contract models templates as flat within a tenant, with *variants* selected by *attributes* — the same
-> letter in another form — and *catalogs* as installable packages. ~~Neither is a grouping a beheerder would recognise.~~
->
-> ~~**The groups therefore live in ZAC.** The beheerder creates them and hangs flat Epistola templates underneath,
-> which costs one column on the per-zaaktype table that already exists. The requirement is met on ZAC's side rather
-> than mapped onto a concept the provider does not have, and #3 is unblocked.~~
-
-> *5 October 2026: the stakeholders reversed this decision at the overleg of 5 October (#51): the catalog is the
-> grouping. ZAC keeps no template groups for Epistola any more: each zaaktype chooses one Epistola catalog, and offers
-> every template in it. For
-> **DoD 9**, the catalog takes the place of the template group, and the templates are those in the catalog. For
-> **DoD 3**, the templates available for a zaaktype are those of its catalog; the beheerder chooses the catalog, not the
-> templates. The document type moves from one per template to one per zaaktype, chosen next to the catalog.*
+> **Besluit op DoD-item 9 — 5 oktober (B26, #51).** "Templategroepen" assumes a group structure, and Epistola has none.
+> Its published contract models templates as flat within a tenant, with *variants* selected by *attributes* — the same
+> letter in another form — and *catalogs* as installable packages. The stakeholders decided that the catalog is the
+> grouping: ZAC keeps no template groups for Epistola, and each zaaktype chooses one Epistola catalog and offers every
+> template in it. For **DoD 9**, the catalog takes the place of the template group, and the templates are those in the
+> catalog. For **DoD 3**, the templates available for a zaaktype are those of its catalog; the beheerder chooses the
+> catalog, not the templates. The document type is set for the zaaktype, next to the catalog; a template can have an own
+> type and can be switched off.
 
 ## 3. Doelen
 
@@ -131,22 +116,18 @@ new one is missing.
 
 - Authorisation is enforced server-side on the generation endpoint, not by hiding a button.
 - Credentials are stored as Kubernetes Secrets, never in a values file or in git. Epistola is reached with a static
-  API key for the prototype; its lack of expiry and rotation is a recorded risk ~~with OAuth as the production path~~
-  (#16 §3, #20 R1).
-  *24 September: since Epistola's contract 1.3.1 the API key is its supported method, also for production, and OAuth
-  is experimental. What ZAC lacks is a written rotation procedure (VV-01, #35).*
+  API key, which is Epistola's supported method, also for production. ZAC has no written rotation procedure for it
+  (#16 §3, #20 R1, VV-01, #35).
 - No unauthenticated inbound endpoints are added; no case-identifying data in URLs.
-- Transport to Epistola is HTTPS.
-  *1 October: assumed, not enforced. ZAC checks at startup that the URL is set and well-formed, but not that it
-  starts with `https` (R9, VV-03, #36).*
+- Transport to Epistola is HTTPS: assumed, not enforced. ZAC checks at startup that the URL is set and well-formed, but
+  not that it starts with `https` (R9, VV-03, #36).
 
 ### Common Ground
 
 - Zaakdata is read from Open Zaak at generation time; no copy is kept in ZAC.
-- The generated PDF lives in the registry, not in ZAC's database.
-  *1 October: for a new version of a document (#9), ZAC remembers which template made each Epistola document, in the
-  table `epistola_document` (migration `V101`), and since #47 the kanaal ZAC asked Epistola for (`V102`). It holds no
-  content, title, status or zaak; see the [datamodel](datamodel.md).*
+- The generated PDF lives in the registry, not in ZAC's database. For a new version of a document (#9), ZAC remembers
+  which template made each Epistola document, with its catalog and the kanaal and language ZAC asked for, in the table
+  `epistola_document`. It holds no content, title, status or zaak; see the [datamodel](datamodel.md).
 - The integration is API-first and the provider is replaceable by configuration.
 
 ### Kwaliteit
@@ -177,7 +158,7 @@ Throughput is explicitly not a goal — one user, one document.
 | Backend | Kotlin, Jakarta EE, WildFly (bootable JAR), JDK 25 | Java that is touched gets converted to Kotlin |
 | Dependency injection | Weld CDI, constructor injection | Not field injection |
 | Frontend | Angular, TypeScript strict, TanStack Query | Jest + Testing Library, accessibility-first selectors |
-| Persistentie | PostgreSQL, Flyway migraties | Only configuration is stored for this integration. *1 October: plus, since #9, which template made each Epistola document (`V101`)* |
+| Persistentie | PostgreSQL, Flyway migraties | The configuration of the integration, and which template made each Epistola document (`epistola_document`, #9) |
 | Workflow | Flowable — CMMN in scope, BPMN out | |
 | Autorisatie | Keycloak (OIDC) + Open Policy Agent | Rego policies, reusing `creeren_document` |
 | Integraties | Open Zaak (ZGW), BRP, KvK, Objecten, Epistola | Clients generated from OpenAPI, or the vendor's own |
@@ -207,18 +188,18 @@ of the stakeholder review of this document.
 |---|---|---|
 | Must have | #12, #13, #14, #15, #16, #2, #3, #4, #5, #6, #7, #8, #11, #18, #19, #10, #20, #21, #22, #23 | Every DoD item except the optional one, plus the four named deliverables and the B1-K2 activities. Nothing here can be dropped without failing a requirement. |
 | Should have | #17 | Code quality, version control and the onderlinge codereview. Assessed, and the practice matters, but the prototype would still function without the review having happened. |
-| Could have | #9 | New version of an Epistola document — the DoD itself marks it optional. *Built on 30 September (PR #43).* |
-| Won't have | — | BPMN support; batch generation; the collect-based background collector; ~~OAuth client credentials~~; ~~template caching~~; migration of existing SmartDocuments templates. All recorded as verbetervoorstellen in #20. *1 October: OAuth is experimental since contract 1.3.1 and no longer an alternative. Caching the template name was asked for at the meeting of 28 September and built in #30.* |
+| Could have | #9 | New version of an Epistola document — the DoD itself marks it optional. Built in PR #43. |
+| Won't have | — | BPMN support; batch generation; the collect-based background collector; migration of existing SmartDocuments templates. All recorded as verbetervoorstellen in #20. |
 
-*5 October: two extras were built beyond the DoD, and are not in the rows above because they are no requirement:
-#44, the progress of a generation shown as steps ([PR #46](https://github.com/infonl/zac-epistola-prototype/pull/46)),
-and #47, a template's variant chosen by kanaal ([PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)).
-By decision B25 of 1 October they get no test case in [the test plan](testplan.md#versie); their evidence is the unit
-and integration tests and the live checks in their PRs.*
+Two extras beyond the DoD are not in the rows above, because they are no requirement: #44, the progress of a generation
+shown as steps ([PR #46](https://github.com/infonl/zac-epistola-prototype/pull/46)), and #47, a template's variant
+chosen by kanaal ([PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)). By decision B25 of 1 October they
+get no test case in [the test plan](testplan.md#versie); their evidence is the unit and integration tests and the live
+checks in their PRs.
 
-~~Board totals: 22 issues, 70 estimate points across werkprocessen B1-K1-W1 through W5 and B1-K2-W1 through W3.~~
-*1 October: 30 items on the board. #30 and #31 came from the meeting of 28 September, and #35 to #40 from the
-improvement proposals (#20), as optional Backlog.*
+Board: the 22 planned issues (#2 to #23, 70 estimate points) across werkprocessen B1-K1-W1 through W5 and B1-K2-W1
+through W3, plus follow-up items, such as #30 and #31 from the overleg of 28 September and #35 to #40 from the
+improvement proposals (#20).
 
 > **Twee tegenstrijdigheden tussen bord en DoD.**
 >
@@ -229,9 +210,8 @@ improvement proposals (#20), as optional Backlog.*
 > **#8 is P1 but part of DoD item 6.** "A clear error message when storage fails" is inside the same requirement as
 > storing the document at all. The error handling cannot be deferred past #6 without leaving item 6 half-met.
 >
-> **Decided at the overleg of 21 September:** the priorities stay as they are (see #21). The DoD items are unchanged
-> by that, so both issues are still needed to meet them. *1 October: both were built and merged on 30 September
-> (#7 in PR #33, #8 in PR #32), so DoD items 2 and 6 are met.*
+> **Decided at the overleg of 21 September:** the priorities stay as they are (see #21). Both issues are still needed
+> to meet DoD items 2 and 6, and both are built and merged (#7 in PR #33, #8 in PR #32).
 
 ## 7. Werkwijze
 
@@ -240,9 +220,8 @@ improvement proposals (#20), as optional Backlog.*
 - **Weekly demo** to the available stakeholders, showing progress and inviting feedback; a final demo of the working
   prototype to all stakeholders and assessors (#22).
 - **Weekly overleg** with Team Geneva and Hanneke van de Horst on progress, acceptance criteria and blockers (#21).
-  Open questions accumulate on the issues and are taken there.
-  *1 October: in the weeks of 9 and 14 September there was no overleg. From 21 September it is weekly: 21 and 28
-  September, and Monday 5 October as the last one ~~, still to come~~ *(held; 5 October)*. The final demo is on Monday 12 October.*
+  Open questions accumulate on the issues and are taken there. The overleg took place on 21 and 28 September and on
+  Monday 5 October, the last one; the weeks of 9 and 14 September had none. The final demo is on Monday 12 October.
 - **Retrospective** at the end, with the notulen as a deliverable (#23).
 - **Verification runs locally** — unit tests for every change, integration tests for anything touching startup or
   CDI. The fork's CI is deliberately disabled: without the upstream secrets its jobs fail for reasons unrelated to
@@ -256,14 +235,12 @@ The two criteria on #13 that writing alone could not meet have both been met. Th
 presented at the overleg of 21 September, with their intent, scope and acceptance criteria, and this document was
 reviewed with the stakeholders and their feedback processed.
 
-Where the overleg changed the plan, the outcome sits where it applies: ~~the template groups live in ZAC (§2), and~~ the
-board priorities of #7 and #8 stay as they are (§6). All decisions of that overleg are kept together on #21.
-
-*5 October: the overleg of 5 October reversed the template groups of 21 September: ZAC keeps none for Epistola, and
-each zaaktype chooses an Epistola catalog instead (#51, the note under §2).*
+Where the overleggen of 21 September and 5 October changed the plan, the outcome sits where it applies: the catalog a
+zaaktype chooses is the grouping of its templates (§2), and the board priorities of #7 and #8 stay as they are (§6).
+All decisions of the overleggen are kept together on #21.
 
 ---
 
 Sources: *SD Examenafspraken v5 — signed* (projectdoel, DoD, werkprocessen, afnamecondities) and *PRJ-Epistola
 integration in ZAC — detailed description* (overall plan, tooling, process). Technical statements are grounded in the
-fork at `aaaa52506` and in [epistola-app/epistola-contract](https://github.com/epistola-app/epistola-contract).
+examenfork and in [epistola-app/epistola-contract](https://github.com/epistola-app/epistola-contract).

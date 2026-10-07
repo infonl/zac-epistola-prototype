@@ -7,7 +7,7 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Stand | **29 september 2026, bijgewerkt op 30 september, op 1 oktober door Symon nagelezen** (de samenvatting volgt de indeling van §4). Op 30 september gespiegeld naar de Confluence-pagina (#10, sectie 6). Nog niet gedeeld met de stakeholders. Op 5 oktober bijgewerkt naar de catalog per zaaktype (#51): VV-12, VV-14, §5 en de verantwoording |
+| Stand | **6 oktober 2026** (de samenvatting volgt de indeling van §4). Op 1 oktober door Symon nagelezen. De Confluence-pagina (#10, sectie 6) spiegelt de stand van 30 september. Nog niet gedeeld met de stakeholders |
 
 > **Wat dit document is.** De uitkomst van het prototype, vertaald naar besluiten die Dimpact kan nemen: wat er
 > tussen dit prototype en productiegebruik ligt, wat nu al is opgelost, en welke voorstellen realiseerbaar zijn.
@@ -33,12 +33,12 @@ die ook slagen.
 3. **`https` voor de Epistola-URL** (VV-03): ZAC controleert bij het opstarten dat de URL is ingesteld, maar niet
    dat hij met `https` begint.
 
-Daarnaast zijn er **vijf verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11). De
+Daarnaast zijn er **zes verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11, -16). De
 belangrijkste is een belastingtest (VV-05): een verzoek houdt een thread vast zolang Epistola rendert, bij één
-gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. Er zijn **drie punten
-die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na een besluit over de
-richting (VV-12, VV-13, VV-15). De vierde uitbreiding, een nieuwe versie van een document (VV-14, #9), is op 30
-september gebouwd.
+gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. VV-16 gaat over varianten: ZAC
+kan alleen op taal en kanaal kiezen, en Epistola weigert een verzoek waarbij meer varianten even goed passen. Er zijn
+verder **drie punten die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na
+een besluit over de richting (VV-12, VV-13, VV-15).
 
 Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie bewust geaccepteerd met een reden
 (waaronder één dat bij een ander team ligt), en twee omgezet in een voorstel. Zie [§3](#3-het-risicoregister-alle-negen).
@@ -67,7 +67,7 @@ verwijzing naar [§4](#4-de-verbetervoorstellen)), of **geaccepteerd** (met de r
 | R1 | Statische API key: geen attributie per medewerker, en ZAC kan zijn sleutel niet zelf roteren | **Voorstel** VV-01, VV-08 | Middel, niet meer blokkerend. Contract 1.3.1 maakt de API key Epistola's ondersteunde methode, ook voor productie, met verval en intrekking. Er is nergens beschreven hoe een sleutel wordt vernieuwd. Het opgeslagen document draagt wel de naam van de behandelaar als auteur (`EpistolaDocumentCreationService.kt`); Epistola ziet alleen de installatie |
 | R2 | Helm-chart kon de Epistola-instellingen niet leveren | **Opgelost** | #2, op `main` sinds PR #1. De sleutel is een Kubernetes Secret, de rest ConfigMap-entries, allemaal in de chart-README |
 | R3 | Persoonsgegevens uit de BRP staan in het applicatielog door de standaard-logniveaus | **Geaccepteerd voor dit project** | Buiten de scope van dit prototype en dit team: het loggen van BRP-verkeer wordt door een ander team beheerd. Het staat hier omdat het productiegebruik met echte burgergegevens raakt |
-| R4 | Geen verwerkersovereenkomst met Epistola | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie | Besloten op 21 september: ~~Epistola draait lokaal, dus er is geen tweede partij en Dimpact is zelf verwerkingsverantwoordelijke. Dat geldt alleen zolang beide voorwaarden gelden.~~ *Rechtgezet op 1 oktober:* het prototype, de tests en de einddemo draaien tegen Epistola's gehoste testserver, niet tegen een lokale Epistola. Er is toch geen overeenkomst nodig, omdat er alleen testgegevens heen gaan: de zaken uit de lokale testomgeving en de fictieve personen uit de BRP-mock. Dat geldt zolang het testgegevens zijn. De bewaartermijn is gecorrigeerd: in de broncode van Epistola Suite leest geen code `documents.retention-days: 30`, een document blijft tot zijn maandpartitie na drie maanden wordt verwijderd |
+| R4 | Geen verwerkersovereenkomst met Epistola | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie | Besloten op 21 september: voor het prototype is geen overeenkomst nodig. Het prototype, de tests en de einddemo draaien tegen Epistola's gehoste testserver, niet tegen een lokale Epistola, maar er gaan alleen testgegevens heen: de zaken uit de lokale testomgeving en de fictieve personen uit de BRP-mock. Dat geldt zolang het testgegevens zijn. De bewaartermijn is drie tot vier maanden: in de broncode van Epistola Suite leest geen code `documents.retention-days: 30`, een document blijft tot zijn maandpartitie na drie maanden wordt verwijderd |
 | R5 | Startformuliergegevens gingen ongefilterd naar Epistola | **Opgelost** (#4), restpunt **voorstel** VV-09 | De payload wordt recursief afgestemd op het JSON Schema van het gekozen template, ook waar het schema extra eigenschappen toelaat. Een template zonder schema wordt geweigerd. Een template mag een sectie als vormvrij object vragen: besloten op 28 september als keuze van de templatebouwer |
 | R6 | Vertrouwelijkheidaanduiding stond hard op `OPENBAAR` | **Opgelost** voor Epistola (#6), **voorstel** VV-11 voor SmartDocuments | Het Epistola-document krijgt de vertrouwelijkheid van zijn informatieobjecttype; op 25 september eind-tot-eind nagegaan met een zaakvertrouwelijk type. De SmartDocuments-flow codeert nog steeds `OPENBAAR` (`DocumentCreationService.kt:236`) |
 | R7 | De providerabstractie is alleen op configuratieniveau | **Geaccepteerd**, met reden | Versmald in #5: elke provider heeft een eigen endpoint dat zijn eigen provider toetst, achter één dialoog. De gedeelde interface uit het ontwerp is er niet. Bij twee providers is dat structuur die te vroeg wordt gekocht; zie [§5](#5-bewust-niet-voorgesteld) |
@@ -88,10 +88,8 @@ oude ingetrokken. Geef de sleutel alleen de rollen `DOCUMENT_GENERATOR` en `CONT
 *Waarom realiseerbaar.* Het is documentatie en een uitgiftebesluit; er verandert niets in de code.
 
 **VV-02 · Verwerkersovereenkomst, verwerkingsregister en de echte bewaartermijn** (R4) · organisatie, geen code
-*Probleem.* ~~Zolang Epistola lokaal draait, is Dimpact zelf verwerkingsverantwoordelijk. Zodra een gehoste Epistola
-of echte zaakgegevens meespelen, vervalt die uitzondering.~~ Zolang er alleen testgegevens naar Epistola gaan, verwerkt
-Epistola geen persoonsgegevens van echte mensen en is er geen overeenkomst nodig (rechtgezet op 1 oktober: het
-prototype draait tegen Epistola's gehoste testserver). Zodra echte zaakgegevens meespelen, vervalt die uitzondering.
+*Probleem.* Zolang er alleen testgegevens naar Epistola gaan, verwerkt Epistola geen persoonsgegevens van echte mensen
+en is er geen overeenkomst nodig. Zodra echte zaakgegevens meespelen, vervalt die uitzondering.
 *Voorstel.* Sluit een overeenkomst volgens artikel 28 AVG die de bewaartermijn noemt die Epistola werkelijk
 toepast (drie tot vier maanden, niet dertig dagen), subverwerkers en locatie. Voeg een vermelding toe aan het
 verwerkingsregister en laat de functionaris gegevensbescherming dit bevestigen.
@@ -127,8 +125,8 @@ toevoegde, is daar al een eerste stap naar.
 **VV-06 · Een Epistola-stand-in in de integratietests** · S–M · ZAC-team
 *Aanleiding.* De integratietests draaien met SmartDocuments en kunnen de Epistola-routes niet aanroepen; die zijn
 alleen met unittests, de live-check en de hand getest.
-*Voorstel.* Gebruik de WireMock-mappings die er al zijn (`scripts/docker-compose/imports/epistola-wiremock/`, ~~zeven~~
-negen stuks sinds het voorbeeld (#54) en de catalogs (#51), gestart met `-W`) voor een tweede integratietestrun met Epistola als provider. Dan lopen het endpoint en de
+*Voorstel.* Gebruik de WireMock-mappings die er al zijn (`scripts/docker-compose/imports/epistola-wiremock/`,
+negen stuks, gestart met `-W`) voor een tweede integratietestrun met Epistola als provider. Dan lopen het endpoint en de
 dialoog ook in de pipeline, en hangen de tests niet meer af van een testtenant die dagelijks wordt gereset.
 
 **VV-07 · Een controle bij het opstarten op bereikbaarheid en tenant** (R8) · S · ZAC-team
@@ -158,7 +156,7 @@ leest. Dat geeft een strakkere allow-list dan een contract declareert en beslist
 `environmentId` om tegen de versie te toetsen die gerenderd wordt. De server doet dat voor `validate` nog niet: op
 30 september gaf de testserver op data met vier fouten alleen de velden `errors` en `valid` terug, en in
 [epistola-suite#978](https://github.com/epistola-app/epistola-suite/issues/978) staat dat onderdeel te wachten op deze
-contractrelease. ZAC's client kent de velden al, want hij gaat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) naar 1.4.0. Zodra de server ze levert, noemt
+contractrelease. ZAC's client kent de velden al, want hij staat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) op 1.4.0. Zodra de server ze levert, noemt
 de foutmelding bij een contractfout het ontbrekende veld. Nu zegt de melding al dat opnieuw proberen niet helpt (#8); het
 veld noemen is de volgende stap.
 
@@ -167,31 +165,31 @@ veld noemen is de volgende stap.
 uploadformulieren van ZAC. Het is één regel (`DocumentCreationService.kt:236`), maar het ligt buiten dit prototype,
 want SmartDocuments mocht niet van gedrag veranderen (DoD 1). Het is een fout die daar al bestond.
 
+**VV-16 · Varianten kiezen op meer dan taal en kanaal, en een duidelijke melding bij een dubbelzinnige variant** (#50) · S–M · ZAC-team
+*Aanleiding.* Een template mag varianten hebben die op meer verschillen dan taal en kanaal, bijvoorbeeld groot lettertype of
+eenvoudige taal. Proef met de testtemplate `zac-aanvullende-informatie`: ZAC vraagt Epistola om taal en kanaal, en
+als twee varianten daarvoor even goed passen geeft Epistola `409 Ambiguous Variant`. ZAC toont dan alleen de algemene melding
+*Epistola could not process ZAC's request*. De beheerkaart toont per template alle varianten, maar de behandelaar kan er niet tussen kiezen.
+*Voorstel.* (a) Laat de behandelaar kiezen uit de varianten van het template zelf (eventueel op titel), of laat ZAC de overige
+attributen als voorkeur meesturen. (b) Vertaal `Ambiguous Variant` naar een eigen foutcode die zegt welke varianten botsen.
+Tot dan: de beheerder zet zo'n template uit in de beheerkaart. Het sluit aan op #50.
+
 ### C. Uitbreidingen: later
 
 **VV-12 · Ondersteuning voor BPMN-zaken** · M · besluit van het ZAC-team over de richting
 *Nu.* Alleen CMMN. Sinds #7 is de beperking zichtbaar (uitgeschakelde actie met toelichting) en weigert de backend
 een BPMN-zaak met een eigen foutcode.
-*Wat er wél al is.* ~~De templategroepen hangen aan de basisklasse `ZaaktypeConfiguration`, niet aan de CMMN-variant,~~
-*5 oktober:* de catalog en het informatieobjecttype staan op de basisklasse `ZaaktypeConfiguration` (#51), niet op de
-CMMN-variant, dus het datamodel staat het al toe. De payloadbouw bevat niets CMMN-specifieks.
+*Wat er wél al is.* De catalog en het informatieobjecttype staan op de basisklasse `ZaaktypeConfiguration` (#51), niet
+op de CMMN-variant, dus het datamodel staat het al toe. De payloadbouw bevat niets CMMN-specifieks.
 *Wat ontbreekt.* (1) De beheerkaart bestaat alleen in het CMMN-bewerkscherm. (2) Bij een BPMN-configuratie is
-Epistola nooit "ingeschakeld voor het zaaktype". (3) De backend-controle moet weg. *5 oktober:* ook het opslaan van de
-catalog vraagt sinds #51 een CMMN-zaaktype. (4) Een besluit *waar* een
+Epistola nooit "ingeschakeld voor het zaaktype". (3) De backend-controle moet weg: ook het opslaan van de
+catalog vraagt een CMMN-zaaktype (#51). (4) Een besluit *waar* een
 behandelaar in een procesgestuurde zaak een document maakt, want ZAC verbergt daar al veel acties. Dat vierde is een
 productkeuze en geen technische.
 
 **VV-13 · Een document maken vanuit een taak** · S–M · besluit van de stakeholders nodig
 *Nu.* De dialoog opent alleen vanuit de zaak. Het endpoint ondersteunt een taak wel (getest in TS-28).
 *Vraag.* Blijft dit een bekende beperking, of moet het kunnen? Op 28 september geagendeerd, niet beantwoord.
-
-**VV-14 · Een nieuwe versie van een eerder gemaakt document** (#9) · M · **gebouwd op 30 september**
-*Nu.* Gebouwd in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43), nagegaan met TS-36 t/m TS-43 (testrapport, ronde 3).
-De actie *Nieuwe versie genereren* staat op de pagina van een document dat Epistola maakte, en zet de volgende versie van
-hetzelfde informatieobject in Open Zaak. Wat het kostte, week af van de schatting: Open Zaak's versiestroom bestond al, maar ZAC
-moest onthouden welk template een document maakte (`epistola_document`, `V101`). Of die tabel mag blijven, beslissen de
-stakeholders als ze het prototype in ZAC willen opnemen (TFO §6). *5 oktober:* sinds #51 onthoudt ze ook de catalog
-(`V104`), zodat een nieuwe versie het template vindt als het zaaktype naar een andere catalog is overgestapt.
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
 *Voorstel.* Niet beginnen voordat de belastingtest laat zien wat één document kost. Een bulkstroom die een thread
@@ -202,7 +200,7 @@ per document vasthoudt, herhaalt het probleem uit VV-05 op grotere schaal.
 | Onderwerp | Reden |
 |---|---|
 | Een gedeelde `DocumentCreationProvider`-interface (R7) | Met twee providers is het structuur die te vroeg wordt gekocht. Bij een derde provider wel doen, met een sealed uitkomst zoals het ontwerp beschreef |
-| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id had `V100` en alle PR's erboven geraakt en schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het ~~een nieuwe migratie van één kolom~~ *5 oktober:* een tabel met de namen per catalog, want sinds `V104` is er geen rij per template meer om een kolom aan toe te voegen (#51) |
+| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het een tabel met de namen per catalog, want er is geen rij per template om een kolom aan toe te voegen (#51) |
 | `preview` gebruiken voor het dossierdocument | Geen PDF/A, rate-limited, niet opgeslagen (besluit B5) |
 | Een eigen provider-onafhankelijke templatetaal | Buiten scope. Namen en variabelen volgen Epistola, niet SmartDocuments (besluit van 28 september) |
 
@@ -224,8 +222,8 @@ en proces zichtbaar blijft. De uitwerking hoort in de reflectie.
 Zes voorstellen zijn op 29 september als user story aangemaakt op het bord, in Backlog, met het label `optional` en buiten de
 mijlpaal van het prototype. De overige negen blijven in dit document. Ze zijn organisatorisch (VV-02), een vraag aan of een
 afhankelijkheid van Epistola (VV-04, VV-08, VV-10), een besluit van de stakeholders (VV-13), een wijziging buiten dit
-prototype (VV-11, SmartDocuments), een optioneel restpunt van een opgelost risico (VV-07), staan al op het bord (VV-14 is
-[#9](https://github.com/infonl/zac-epistola-prototype/issues/9)), of hebben pas zin na een ander voorstel (VV-15, na de
+prototype (VV-11, SmartDocuments), een optioneel restpunt van een opgelost risico (VV-07), staan al op het bord (VV-16 is
+[#50](https://github.com/infonl/zac-epistola-prototype/issues/50)), of hebben pas zin na een ander voorstel (VV-15, na de
 belastingtest).
 
 | Voorstel | Story |
@@ -245,7 +243,6 @@ belastingtest).
 | Mag document maken alleen vanuit de zaak blijven, niet vanuit een taak? | Stakeholders | Idem (VV-13) |
 | Rendertimeout en maximum aantal pogingen | Epistola | Nog niet gesteld (VV-04) |
 | Welk contract hoort bij de gerenderde templateversie, en welke velden leest die versie? | Epistola | Nog niet gesteld (VV-10) |
-| Waar horen release notes te staan? | Team | Beantwoord op 30 september: ZAC genereert ze uit de titels van de gemergede pull requests (de stap *Generate release notes* in `build-test-deploy.yml`), dus er is geen bestand nodig. Wat overblijft: de pull request naar de upstream-repository noemt de CMMN-beperking in titel en beschrijving (#7) |
 
 ## 9. Wat al is opgelost, met bewijs
 
@@ -256,17 +253,16 @@ belastingtest).
 | B-03 Contractfout raadt "probeer opnieuw" aan | #8, [PR #32](https://github.com/infonl/zac-epistola-prototype/pull/32) | Live op 29 september; TS-32 opnieuw uitgevoerd op 30 september, geslaagd |
 | TS-35 Gedeeltelijke mislukking: opgeslagen, niet gekoppeld | #8: het informatieobject wordt verwijderd | TS-35 uitgevoerd op 30 september, geslaagd: Open Zaak weigerde de koppeling, het document is verwijderd, en de kopie bij Epistola ook |
 | B-04 tot en met B-07 | Bij de bouw en de reviews | Nagegaan in het testrapport |
-| VV-14 Nieuwe versie van een Epistola-document | #9, [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43) | Live op 30 september met de echte testserver; TS-36 t/m TS-41 handmatig, TS-42 en TS-43 met unittests |
+| Nieuwe versie van een Epistola-document | #9, [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43) | Live op 30 september met de echte testserver; TS-36 t/m TS-41 handmatig, TS-42 en TS-43 met unittests |
 | Templatenamen bij een onbereikbare Epistola | #30, [PR #34](https://github.com/infonl/zac-epistola-prototype/pull/34) | Live op 29 september; TS-31 met de namen uit het geheugen op 30 september, geslaagd |
 
 ## Verantwoording
 
 Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cache` (PR #34, gestapeld op #33 en #32):
 `EpistolaSettings.kt` (geen controle van het schema, R9), `DocumentCreationService.kt:236` (`OPENBAAR`, R6),
-`EpistolaDocumentCreationService.kt` (auteur van het opgeslagen document), ~~`EpistolaTemplateGroup.kt` (hangt aan
-`ZaaktypeConfiguration`)~~ *5 oktober:* `ZaaktypeConfiguration.kt` (draagt sinds #51 de catalog en het
-informatieobjecttype; `EpistolaTemplateGroup.kt` is weg) en `EpistolaTemplatesService.kt` (biedt alleen bij een
+`EpistolaDocumentCreationService.kt` (auteur van het opgeslagen document), `ZaaktypeConfiguration.kt` (draagt de catalog en het
+informatieobjecttype, #51) en `EpistolaTemplatesService.kt` (biedt alleen bij een
 CMMN-zaaktype templates aan), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),
-`scripts/docker-compose/imports/epistola-wiremock/mappings/` (~~zeven~~ negen mappings sinds #54 en #51), en de chart-README en `.env.example`
+`scripts/docker-compose/imports/epistola-wiremock/mappings/` (negen mappings), en de chart-README en `.env.example`
 (geen rotatie- of verstrijktekst). De Epistola-kant komt uit de reviews op #24 (contract 1.3.1, Epistola Suite
 `3c92193`) en uit de toets van de wachtrij op 28 september (Epistola Suite `e2484c7`, contract `257770d`).

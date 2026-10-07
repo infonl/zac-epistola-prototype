@@ -7,31 +7,21 @@
 | Bouwt op | #14 ontwerp · #2 provider-abstractie |
 | Gaat naar | #20 verbetervoorstellen · #10 Confluence |
 | Basis | De fork op `aeb888cc2` |
-| Stand | Versie 3 van 21 september 2026, na het stakeholderoverleg van die dag. Op 1 oktober 2026 overgezet naar deze repository vanuit het artifact `claude.ai/artifact/ToejYJC7dHnRBfq7RjSoHV`, dat niet meer wordt bijgewerkt |
-
-> **Over deze versie.** De tekst is versie 3 zoals die op 21 september is geschreven, in het Engels. Wat sindsdien is
-> veranderd, staat er met een datum bij: doorgehaald waar een uitspraak niet meer klopt, en de nieuwe stand ernaast.
-> De belangrijkste wijzigingen: contract 1.3.1 van Epistola maakte de API key op 24 september de ondersteunde methode
-> (R1 niet meer blokkerend), de bewaartermijn is drie tot vier maanden en niet dertig dagen, en op 1 oktober is de
-> redenering bij R4 rechtgezet: het prototype draait tegen Epistola's gehoste testserver, niet tegen een lokale
-> Epistola, en dat er geen verwerkersovereenkomst nodig is, komt doordat er alleen testgegevens heen gaan. Het
-> risicoregister heeft een kolom met de stand van 1 oktober; [de verbetervoorstellen](verbetervoorstellen.md) §3 geven
-> elk risico zijn uitkomst.
+| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, met contract en client 1.4.0 van Epistola |
 
 Why the Epistola document creation integration is defensible against Common Ground, the AVG and ZAC's own security
-practice — and what would still have to change before it could carry real citizen data. Version 3 — the
-authentication, verwerker and retention questions answered by the stakeholder meeting of 21 September, and the risk
-register updated to match.
+practice — and what would still have to change before it could carry real citizen data. [The improvement
+proposals](verbetervoorstellen.md) §3 give each risk in §5 its outcome.
 
 ## Het oordeel in het kort
 
 | § | Onderwerp | Oordeel | Kort |
 |---|---|---|---|
 | §1 | Common Ground | Onderbouwd | The integration adds no copy of zaakdata. Case data is read from Open Zaak and person data from the BRP at generation time; the PDF is stored in the registry, not in ZAC. |
-| §2 | AVG en privacy | Opgelost in #4 | The BSN never reaches the document provider — it is a lookup key only. The one unbounded payload, the citizen's submitted form, is now allow-listed against the template's schema (#4). |
-| §3 | Token-afhandeling | Bewuste keuze | A static API key, on a par with BRP and SmartDocuments and weaker than ZGW. A self-signed JWT and OAuth client credentials are recorded as the rejected alternatives, ~~OAuth as the production path~~. *24 Sep: OAuth is experimental since contract 1.3.1.* |
+| §2 | AVG en privacy | Opgelost in #4 | The BSN never reaches the document provider — it is a lookup key only. The one unbounded payload, the citizen's submitted form, is allow-listed against the template's schema (#4). |
+| §3 | Token-afhandeling | Bewuste keuze | A static API key, on a par with BRP and SmartDocuments and weaker than ZGW. A self-signed JWT and OAuth client credentials are recorded as the rejected alternatives; contract 1.3.1 marks both as experimental. |
 | §4 | Logging | Niet bevestigd | Cannot be confirmed as asked. ZAC's shipped configuration writes the BSN to the application log at `INFO`, and document creation triggers exactly that call. |
-| §5 | Risico's richting productie | ~~3 blokkerend~~ | Nine risks recorded. ~~Two closed and one narrowed since, leaving three that block production use with real data.~~ All carried into #20. *1 Oct: four resolved, three accepted with a reason, two turned into a proposal; see §5.* |
+| §5 | Risico's richting productie | Vier opgelost | Nine risks recorded and carried into #20: four resolved, three accepted with a reason, two turned into a proposal. |
 
 ## 1. Common Ground
 
@@ -48,25 +38,25 @@ Nothing about the case is cached for document creation. Every generation reads t
 or the KvK, and the task from Flowable — all at the moment the behandelaar presses the button. A stale document is
 therefore impossible by construction, not by cache invalidation.
 
-The datamodel in #14 confirms this from the other side: the integration adds two mapping tables and one flag on
-`zaaktype_configuration`, and no table that holds zaakdata. The generated PDF is an `EnkelvoudigInformatieObject` in
-Open Zaak's Documenten API, linked through a `ZaakInformatieObject`; versioning is Open Zaak's `versie` field rather
-than ZAC state. ZAC stores the configuration, the registry stores the record.
+The datamodel in #14 confirms this from the other side: the integration adds four columns on
+`zaaktype_configuration`, a table with the settings per template and the table `epistola_document`, and no table that
+holds zaakdata. The generated PDF is an `EnkelvoudigInformatieObject` in Open Zaak's Documenten API, linked through a
+`ZaakInformatieObject`; versioning is Open Zaak's `versie` field rather than ZAC state. ZAC stores the configuration,
+the registry stores the record.
 
-*1 October: for a new version of a document (#9), ZAC now also remembers which template made each Epistola document,
-in the table `epistola_document` (migration `V101`). It holds the informatieobject, the template and, since #47, the
-kanaal ZAC asked Epistola for (`V102`), and no content, title, status or zaak, so the versions themselves are still
-Open Zaak's `versie` field. Whether ZAC may keep that table is for the stakeholders to decide if they take the
-prototype into ZAC.*
+For a new version of a document (#9), ZAC remembers which template made each Epistola document, in the table
+`epistola_document`. It holds the informatieobject, the template and its catalog, the kanaal (#47) and the language
+(#52) ZAC asked Epistola for, and no content, title, status or zaak, so the versions themselves are still Open Zaak's
+`versie` field. Whether ZAC may keep that table is for the stakeholders to decide if they take the prototype into ZAC.
 
 ### API-first
 
 Every external system ZAC talks to has its client generated from an OpenAPI specification under
-`src/main/resources/api-specs/` — bag, brp, klanten, kvk, or, pabc, zgw. Epistola should be the eighth, and it is —
-by a route this section did not anticipate. Epistola publishes a Jakarta EE client generated from its own contract,
-built for exactly ZAC's stack and carrying no runtime dependencies, so #4 adopted that rather than generating a ninth
-client from a specification ZAC would have to keep in step. The house rule is "generated from the contract, never
-hand-rolled"; the vendor had already done the generating. Recorded as a decision on #14.
+`src/main/resources/api-specs/` — bag, brp, klanten, kvk, or, pabc, zgw. Epistola is the eighth integration, by a
+different route. Epistola publishes a Jakarta EE client generated from its own contract, built for exactly ZAC's stack
+and carrying no runtime dependencies, so #4 adopted that rather than generating a client from a specification ZAC
+would have to keep in step. The house rule is "generated from the contract, never hand-rolled"; the vendor had already
+done the generating. Recorded as a decision on #14.
 
 ### Vervangbaarheid
 
@@ -74,15 +64,11 @@ hand-rolled"; the vendor had already done the generating. Recorded as a decision
 that refuses contradictory combinations. An installation can move from SmartDocuments to Epistola, or run neither,
 without a code change.
 
-Stated precisely, though: today that abstraction is configuration-level only. `DocumentCreationService` still
-injects `SmartDocumentsService` directly, and the REST endpoint still gates on
-`zaaktypeConfigurationService.isSmartDocumentsEnabled(...)`. ~~The polymorphic interface that #2's title promises is
-#4's work, and until it lands the claim is "one provider is selected by configuration", not "two providers sit
-behind one interface".~~
-
-*1 October: no shared interface was built. In #5 each provider got its own endpoint, which checks its own provider,
-behind one dialog (`create-document-attended` for SmartDocuments, `epistola/create-document` for Epistola). With two
-providers a shared interface is structure bought too early; R7 is accepted with that reason.*
+Stated precisely, though: that abstraction is configuration-level only. There is no shared interface. Each provider
+has its own endpoint, which checks its own provider, behind one dialog (`create-document-attended` for
+SmartDocuments, `epistola/create-document` for Epistola). The claim is "one provider is selected by configuration",
+not "two providers sit behind one interface". With two providers a shared interface is structure bought too early; R7
+is accepted with that reason.
 
 > **Twee eerlijke kanttekeningen.** ZAC does maintain a Solr index containing zaakdata, which is duplication in the
 > strict Common Ground reading. It is pre-existing, it serves search, and this integration neither extends nor depends
@@ -102,7 +88,7 @@ Epistola's template variables. The table below is that payload, field by field.
 
 | Veld | Bron | Persoonsgegeven | Naar provider | Opmerking |
 |---|---|---|---|---|
-| burgerservicenummer | Rol op de zaak (ZRC) | ~~Bijzonder~~ Wettelijk identificatienummer *(1 Oct: the BSN is a national identification number under article 87 AVG and article 46 UAVG, not a special category under article 9)* | **Nee** | Used only as the BRP lookup key. It is never placed in `AanvragerData`, so it does not leave ZAC toward the document engine. |
+| burgerservicenummer | Rol op de zaak (ZRC) | Wettelijk identificatienummer (artikel 87 AVG en artikel 46 UAVG), geen bijzondere categorie onder artikel 9 | **Nee** | Used only as the BRP lookup key. It is never placed in `AanvragerData`, so it does not leave ZAC toward the document engine. |
 | naam, straat, huisnummer, postcode, woonplaats | BRP (Haal Centraal) | Ja | Ja | The resolved NAW of the initiator. This is the whole of what the provider receives about a natural person. |
 | geslacht, geboorte, indicatieCurateleRegister | BRP response | Ja | Nee | Retrieved by the shared BRP client's fixed field set, then discarded. Received but never mapped — see finding P2. |
 | bedrijfsgegevens vestiging / rechtspersoon | KvK | Soms | Ja | Company data is not persoonsgegevens, except for an eenmanszaak, where it identifies a person. |
@@ -118,23 +104,20 @@ field list is the code's.*
 ### P1 — The submitted form data is forwarded whole · *Opgelost in #4*
 
 `getAanvraaggegevens` flattens the citizen's submitted form into a `Map<String, Any>` and hands it over as
-`StartformulierData.data`. Nothing filters it. Whatever the formulier collected — a BSN, a telephone number, a
-free-text motivation, a medical circumstance — is shared with the document engine whether the chosen template uses it
-or not.
+`StartformulierData.data`. The shared builder does not filter it, so on the SmartDocuments path whatever the
+formulier collected — a BSN, a telephone number, a free-text motivation, a medical circumstance — is shared with the
+document engine whether the chosen template uses it or not.
 
-That was the one place where the integration was meaningfully weaker than it needed to be, and it was also the
-easiest to improve. **#4 has done so.** The template's JSON Schema is the allow-list: only declared variables are
-sent, the filter recurses into nested objects, and it applies even where a schema would permit additional properties.
-A template declaring no schema is refused rather than treated as permitting everything. The Epistola path is therefore
+The Epistola path filters it (#4). The template's JSON Schema is the allow-list: only declared variables are sent, the
+filter recurses into nested objects, and it applies even where a schema would permit additional properties. A
+template declaring no schema is refused rather than treated as permitting everything. The Epistola path is therefore
 *better* on dataminimalisatie than the SmartDocuments path it copies.
 
-One boundary is left open deliberately and is recorded in a test: a template that declares a section as a free-form
-object (`type: object`, without `properties`) gives the filter nothing to narrow to, and receives it whole. That is
-the template author asking for the whole bag rather than a hole in the filter — but it is the one remaining route by
-which unreviewed startformulier data reaches a document, and it ~~needs a stakeholder decision~~.
-
-*28 September: decided by the stakeholders. A free-form section is allowed, as the template author's explicit choice
-(B17); a warning in the admin card is a proposal (VV-09, #39).*
+One boundary is deliberate and recorded in a test: a template that declares a section as a free-form object
+(`type: object`, without `properties`) gives the filter nothing to narrow to, and receives it whole. That is the
+template author asking for the whole bag rather than a hole in the filter, and the stakeholders decided on 28
+September that it is allowed, as the template author's explicit choice (B17). It is the one route by which unreviewed
+startformulier data reaches a document; a warning in the admin card is a proposal (VV-09, #39).
 
 `ProductaanvraagService.kt:122` · `DocumentCreationDataService.kt:166–177`
 
@@ -177,31 +160,21 @@ one.
 instruction, for the gemeente's purpose, with no purpose of its own, and it determines neither the means nor the ends
 of the processing. On that reading it is a **verwerker** and the gemeente remains verwerkingsverantwoordelijke — the
 same relationship the gemeente already has with SmartDocuments. A verwerkersovereenkomst under article 28 AVG is
-therefore **required before any production use**, and it has to settle retention: Epistola keeps request data for
-~~roughly **30 days**~~ for technical reasons, which is a term the agreement needs to name rather than inherit.
+therefore **required before any production use**, and it has to settle retention: Epistola keeps a
+generated document for three to four months, because it stays until its month partition is dropped, after three
+months. That is a term the agreement needs to name rather than inherit.
 
-*24 September: Epistola Suite's source code reads no 30-day setting. A generated document stays until its month
-partition is dropped, after three months, so three to four months in all.*
+**The prototype needs no verwerkersovereenkomst, because only test data goes to Epistola.** The prototype, its tests
+and the final demo run against Epistola's hosted test server (`demo.epistola.app`), so data does leave the local
+environment, but what goes there is the zaken in the local test environment and the fictitious persons of the BRP
+mock (`ghcr.io/brp-api/personen-mock`). Epistola processes no persoonsgegevens of real people. The condition is the
+data, not where Epistola runs. An agreement with Epistola is a production matter, not one for now.
 
-~~**The prototype needs no verwerkersovereenkomst, because there is no second party to hold one with.** Epistola runs
-locally alongside the rest of the stack, so Dimpact is verwerkingsverantwoordelijke *and* operator of the processing;
-nothing leaves the local environment.~~ The BRP side is the official mock (`ghcr.io/brp-api/personen-mock`), whose
-persons are synthetic, so no real persoonsgegevens are processed either. ~~A local installation also makes the 30-day
-retention configurable, which removes it as a question for the prototype.~~ An agreement with Epistola is a
-production matter, not one for now.
-
-*1 October, corrected: the prototype, its tests and the final demo do not run against a local Epistola but against
-Epistola's hosted test server (`demo.epistola.app`), so data does leave the local environment. **The prototype still
-needs no verwerkersovereenkomst, because only test data goes there:** the zaken in the local test environment and the
-fictitious persons of the BRP mock. Epistola processes no persoonsgegevens of real people. The condition is therefore
-the data, not where Epistola runs.*
-
-That reasoning holds only while ~~both conditions hold~~ the data is test data. ~~If a demo is ever given against a
-hosted Epistola, or with real case data,~~ The moment real case data is involved, Epistola becomes a verwerker
-~~again~~ and the agreement comes first.
+That reasoning holds only while the data is test data. The moment real case data is involved, Epistola becomes a
+verwerker and the agreement comes first.
 
 This is a reasoned position, not a legal opinion. It should be confirmed by the gemeente's functionaris
-gegevensbescherming — the conclusion is theirs to draw, and the question this document still cannot answer is listed
+gegevensbescherming — the conclusion is theirs to draw, and the question this document cannot answer is listed
 in §6.
 
 ## 3. Token-afhandeling en credentials
@@ -210,11 +183,9 @@ in §6.
 
 #2 requires one authentication mechanism to be chosen and the rejected ones recorded as out of scope. **The choice is
 the static API key** — `EPISTOLA_CLIENT_API_KEY` alongside `EPISTOLA_TENANT_ID`, both validated at startup.
-Epistola's contract offers two alternatives, a self-signed JWT and OAuth 2.0 client credentials; both are out of scope
-for the prototype, ~~with OAuth named as the production path~~. This section is that record, and the argument for it.
-
-*24 September: Epistola's contract 1.3.1 (21 September) makes API keys the supported method, also for production, and
-marks both JWT methods as experimental. OAuth is no longer the production path.*
+Epistola's contract offers two alternatives, a self-signed JWT and OAuth 2.0 client credentials. Contract 1.3.1 (21
+September) makes API keys the supported method, also for production, and marks both alternatives as experimental, so
+both are out of scope and neither is a production path. This section is that record, and the argument for it.
 
 ZAC already contains three credential patterns, which is a more useful comparison than a textbook one:
 
@@ -223,20 +194,18 @@ ZAC already contains three credential patterns, which is a more useful compariso
 | Open Zaak (ZGW) | JWT per request, HMAC-signed with `ZGW_API_SECRET` | Per request | Ja — `user_id` en `user_representation` als claim | Secret in Kubernetes Secret; token exists only in memory |
 | BRP | Statische API key plus protocolleringheaders | Onbeperkt | Ja — via de gebruikersheader | Kubernetes Secret |
 | SmartDocuments | Statische Basic-credential, plus een `Username`-header | Onbeperkt | Deels — header, niet ondertekend | Kubernetes Secret |
-| Epistola *(nieuw)* | Statische API key, per geregistreerde consumer uitgegeven door een Epistola-beheerder | ~~Onbeperkt~~ *Met vervaldatum, sinds contract 1.3.1* | Nee — één geregistreerde consumer, geen persoon | Kubernetes Secret |
+| Epistola *(nieuw)* | Statische API key, per geregistreerde consumer uitgegeven door een Epistola-beheerder | Met vervaldatum (contract 1.3.1) | Nee — één geregistreerde consumer, geen persoon | Kubernetes Secret |
 
 The ZGW row is the in-house gold standard: a per-request, signed token that names the acting employee, so Open Zaak's
 audit trail attributes every write to a person rather than to "ZAC". Epistola sits with BRP and SmartDocuments rather
 than with ZGW — a long-lived secret in a Kubernetes Secret, naming a system and not a person. That is the house norm
-for a third-party integration, and it is still the weakest of the four on ~~lifetime and~~ attribution.
+for a third-party integration, and it is the weakest of the four on attribution.
 
 ### Waarom de API key gekozen is
 
-- **It is the mechanism that is stable today.** ~~The contract marks `apiKeyAuth` `x-deprecated: true`, which records
-  where Epistola intends to go — OAuth — rather than an announced removal.~~ There is no withdrawal date, and none is
-  expected on a horizon that reaches this prototype. A deprecation marker is a statement of direction; a vendor's
-  actual intent is not in their contract and has to be asked for, which is what the stakeholder meeting did.
-  *24 September: since contract 1.3.1 only the old `X-API-Key` header is marked deprecated, not API keys as such.*
+- **It is Epistola's supported method.** Contract 1.3.1 makes API keys the supported method, also for production. Only
+  the old `X-API-Key` header is marked deprecated, and the Jakarta client sends the key in `Authorization`, so that
+  marking does not touch ZAC.
 - **It matches ZAC's existing pattern for a third-party integration.** BRP and SmartDocuments are both a long-lived
   secret in a Kubernetes Secret. An operator deploying Epistola does what they already do, and the deployment story
   needs no new concept.
@@ -255,42 +224,34 @@ for a third-party integration, and it is still the weakest of the four on ~~life
 
 ### Wat het mechanisme feitelijk niet doet
 
-Stated plainly, so that nobody mistakes the prototype for a production posture. ~~The key **does not expire**, so a
-copy taken from a log, a shell history or a backup stays valid until someone notices.~~ It **has no rotation
-procedure** — rotating it means issuing a new key at Epistola and redeploying the secret, with no overlap window,
-which is a step nobody has written down. ~~It **cannot be revoked per use**, only reissued wholesale.~~ And it **names
-no person**: every generation reaches Epistola as the same registered consumer, so Epistola's own logs cannot tell one
-behandelaar from another, and enforcement stays entirely ZAC's (§4 of #14).
+Stated plainly, so that nobody mistakes the prototype for a production posture. The key **has no rotation
+procedure** in ZAC — rotating it means issuing a new key at Epistola and redeploying the secret, with no overlap
+window, which is a step nobody has written down (VV-01, #35). And it **names no person**: every generation reaches
+Epistola as the same registered consumer, so Epistola's own logs cannot tell one behandelaar from another, and
+enforcement stays entirely ZAC's (§4 of #14; VV-08). Epistola's own API keys have an expiry date and can be revoked
+(contract 1.3.1).
 
-*24 September: since contract 1.3.1 Epistola's API keys have an expiry date and can be revoked. What remains is the
-missing rotation procedure in ZAC (VV-01, #35) and the attribution to a person (VV-08).*
-
-Those ~~four~~ together are R1, and R1 ~~blocks production~~ is *Middel* since 24 September. It is a deliberate,
-recorded trade for a prototype running against ~~a local Epistola~~ Epistola's test server with synthetic data, not an
-oversight — but the trade only holds while ~~both of those conditions hold~~ the data stays synthetic.
+Those two together are R1, which is *Middel* and no longer blocks production. It is a deliberate, recorded trade for
+a prototype running against Epistola's test server with synthetic data, not an oversight — but the trade only holds
+while the data stays synthetic.
 
 `EPISTOLA_TENANT_ID` is not a secret but it is an access scope: startup rejects anything that is not a valid tenant
-slug, which closes the typo case, ~~but a well-formed identifier belonging to another tenant is still accepted~~.
-*24 September: an API key belongs to one tenant, so any other tenant id answers `403` on every call (checked against
-three other tenants). R8 is resolved.*
+slug, which closes the typo case. An API key belongs to one tenant, so any other tenant id answers `403` on every
+call (checked against three other tenants). R8 is resolved.
 
 ### Wat productie zou vereisen
 
-- ~~**OAuth 2.0 client credentials against an IdP**, which is where Epistola is heading and what its deprecation
-  marker is pointing at. That answers expiry, rotation and revocation in one move, at the cost of ZAC supplying its own
-  token filter and cache. It is the single largest item in the verbetervoorstellen (#20).~~
-  *24 September: not needed. The API key is Epistola's supported method, with expiry and revocation.*
 - Per-request user attribution, modelled on the ZGW JWT: a claim naming the acting employee so that Epistola's audit
   trail matches Open Zaak's. No mechanism Epistola offers provides this today, which is why enforcement remains ZAC's
-  responsibility alone. *Now VV-08, dependent on Epistola.*
-- ~~Until OAuth lands,~~ A documented rotation procedure for the key, with an owner and an interval. *VV-01, #35.*
+  responsibility alone. *VV-08, dependent on Epistola.*
+- A documented rotation procedure for the key, with an owner and an interval. *VV-01, #35.*
 - TLS enforced rather than assumed — `EPISTOLA_CLIENT_MP_REST_URL` validated as `https` at startup, next to the
   existing presence and format checks. *VV-03, #36.*
 - A startup connectivity check that resolves the tenant and logs its name, so a well-formed but wrong tenant id is
-  visible at boot rather than in a document. *Optional since R8 was resolved; VV-07.*
+  visible at boot rather than in a document. *Optional, because R8 is resolved; VV-07.*
 
-Helm chart support was on this list and is **done**: the credential is a Kubernetes Secret and the remaining settings
-are ConfigMap entries, documented in the chart README (#2).
+Helm chart support is **done**: the credential is a Kubernetes Secret and the remaining settings are ConfigMap
+entries, documented in the chart README (#2).
 
 > **Wat het Epistola-ontwerp juist weghaalt.** The SmartDocuments flow is an attended wizard in a second browser tab,
 > and it costs four things that the Epistola design does not need. Because Epistola generates server-to-server and
@@ -361,30 +322,26 @@ configuration finding, and it belongs in the risk register rather than in an err
 
 *Acceptatiecriterium 5 · gaat naar #20*
 
-The first four columns are the register as it stood on 21 September; the last column is the outcome on 1 October,
-as [the improvement proposals](verbetervoorstellen.md) §3 record it.
+The last column is the outcome of each risk, as [the improvement proposals](verbetervoorstellen.md) §3 record it.
 
-| Id | Risico | Ernst | Wat productie vereist | Stand 1 oktober |
+| Id | Risico | Ernst | Wat productie vereist | Stand |
 |---|---|---|---|---|
-| R1 | A static credential: no expiry, no rotation procedure, no revocation short of reissuing, and no per-user attribution — Epistola sees one registered consumer, not the behandelaar. | Blokkerend | OAuth 2.0 client credentials, which answers expiry, rotation and revocation together, plus a signed claim naming the acting employee modelled on ZAC's ZGW JWT. Until then, enforcement stays ZAC's responsibility and Epistola's log attributes to "ZAC". | **Voorstel**, *Middel*. Since contract 1.3.1 the API key is Epistola's supported method, with expiry and revocation. Left: a rotation procedure (VV-01, #35) and attribution per employee (VV-08) |
+| R1 | A static credential. Epistola's API key has an expiry date and can be revoked (contract 1.3.1), but ZAC has no rotation procedure for it, and Epistola sees one registered consumer, not the behandelaar. | Middel | A rotation procedure for the key, plus a signed claim naming the acting employee modelled on ZAC's ZGW JWT. Until then, enforcement stays ZAC's responsibility and Epistola's log attributes to "ZAC". | **Voorstel**, *Middel*, no longer blocking: the API key is Epistola's supported method. A rotation procedure (VV-01, #35) and attribution per employee (VV-08) |
 | R2 | Epistola settings could not be delivered the way every other ZAC secret is, because the chart had no Epistola entries. **Opgelost in #2.** | Opgelost | Nothing further. `EPISTOLA_CLIENT_API_KEY` is a Kubernetes Secret; URL, tenant and generation timeout are ConfigMap entries, documented in the chart README. | **Opgelost** |
-| R3 | BRP request and response logged at `INFO` by shipped defaults, putting the BSN and address in the application log on every generation for a natural person. | Blokkerend | `brpApi.logLevel: OFF` in production values, verified in the testrapport; log statement rewritten to print query type rather than query object. | **Geaccepteerd** voor dit project: logging of BRP traffic is handled by another team |
-| R4 | No verwerkersovereenkomst with Epistola. **Niet van toepassing op het prototype**: ~~Epistola runs locally, so there is no second party (§2)~~ only test data goes to Epistola (§2, corrected 1 October). Retention is now known — ~~roughly 30 days, and configurable on a local installation~~ three to four months. | Blokkerend | Article 28 agreement naming the ~~30-day~~ retention, sub-processors and location, plus a verwerkingsregister entry. Confirmation by the FG. Applies the moment ~~a hosted Epistola or~~ real case data is involved. | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie |
-| R5 | The citizen's submitted form data is forwarded to the provider as an unfiltered map (P1). **Opgelost in #4.** *Was Hoog.* | Laag | Done: the payload is allow-listed against the template's JSON Schema, recursively. One boundary remains — a template declaring a section as a free-form object receives it whole. Needs a stakeholder decision. | **Opgelost**; the free-form section was allowed on 28 September (B17), a warning is VV-09 (#39) |
-| R6 | `vertrouwelijkheidaanduiding` is hardcoded to `OPENBAAR` on the generated document, so a besluit containing someone's NAW is filed as public. | Hoog | Derive it from the zaak or the informatieobjecttype. Already an acceptance criterion on #6; recorded here because it is a privacy defect, not only a data defect. | **Opgelost** for Epistola in #6 (from the informatieobjecttype); **voorstel** VV-11 for SmartDocuments, which still sets `OPENBAAR` |
-| R7 | The provider abstraction is configuration-level only; the generation endpoint still gates on `isSmartDocumentsEnabled`. Still true after #4. | Middel | A provider interface with both implementations behind it, and a gate that asks the active provider rather than SmartDocuments. Now scoped to #5. | **Geaccepteerd**: in #5 each provider got its own endpoint behind one dialog; a shared interface is too early with two providers |
-| R8 | A wrong `EPISTOLA_TENANT_ID` silently points an installation at another tenant's templates. **Deels opgelost in #4**: startup rejects anything that is not a valid tenant slug. *Was Middel.* | Laag | A startup connectivity check that resolves the tenant and logs its name, so a well-formed but wrong identifier is visible at boot rather than in a document. | **Opgelost**: a key belongs to one tenant, so another tenant id gives `403`. Optional remainder VV-07 |
+| R3 | BRP request and response logged at `INFO` by shipped defaults, putting the BSN and address in the application log on every generation for a natural person. | Blokkerend | `brpApi.logLevel: OFF` in production values; log statement rewritten to print query type rather than query object. | **Geaccepteerd** voor dit project: logging of BRP traffic is handled by another team |
+| R4 | No verwerkersovereenkomst with Epistola. **Niet van toepassing op het prototype**: only test data goes to Epistola (§2). Epistola keeps a document for three to four months. | Blokkerend | Article 28 agreement naming the retention, sub-processors and location, plus a verwerkingsregister entry. Confirmation by the FG. Applies the moment real case data is involved. | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie |
+| R5 | The citizen's submitted form data is forwarded to the provider as an unfiltered map (P1). **Opgelost in #4.** | Laag | Done: the payload is allow-listed against the template's JSON Schema, recursively. A template declaring a section as a free-form object receives it whole; that is the template author's call (B17). | **Opgelost**; the free-form section was allowed on 28 September (B17), a warning is VV-09 (#39) |
+| R6 | `vertrouwelijkheidaanduiding` is hardcoded to `OPENBAAR` on the generated document, so a besluit containing someone's NAW is filed as public. | Hoog | Derive it from the zaak or the informatieobjecttype. An acceptance criterion on #6; recorded here because it is a privacy defect, not only a data defect. | **Opgelost** for Epistola in #6 (from the informatieobjecttype); **voorstel** VV-11 for SmartDocuments, which sets `OPENBAAR` |
+| R7 | The provider abstraction is configuration-level only: there is no shared interface, and each provider has its own endpoint that checks its own provider. | Middel | A provider interface with both implementations behind it, which is worth building with a third provider. | **Geaccepteerd**: in #5 each provider got its own endpoint behind one dialog; a shared interface is too early with two providers |
+| R8 | A wrong `EPISTOLA_TENANT_ID` could point an installation at another tenant's templates. Startup rejects anything that is not a valid tenant slug (#4). | Laag | Optional: a startup connectivity check that resolves the tenant and logs its name, so a well-formed but wrong identifier is visible at boot rather than in a document. | **Opgelost**: a key belongs to one tenant, so another tenant id gives `403`. Optional remainder VV-07 |
 | R9 | Transport security for the Epistola endpoint is assumed rather than enforced. | Laag | Validate that `EPISTOLA_CLIENT_MP_REST_URL` uses `https`, alongside the existing presence check. | **Voorstel** VV-03 (#36) |
 
-~~**R1, R3 and R4 block production use with real citizen data** — and of the three only R3 is an outright defect. R1
-is a recorded trade the stakeholders made deliberately, and R4 does not arise while Epistola runs locally.~~ R2 and R5
-have been closed since this register was first written and R8 narrowed; the original wording is kept in the risk
-column rather than deleted, because how a risk was closed is the material #20 is asking for. R6 is a defect a
-production release would have to carry a waiver for. R7 to R9 are hardening.
+R3 and R4 are marked *Blokkerend* for production use with real citizen data, and of the two only R3 is an outright
+defect. R3 is handled by another team, and R4 does not arise while only test data goes to Epistola. R2, R5 and R8 are
+closed, and R6 is closed for Epistola. R1 is *Middel*, and R7 and R9 are hardening.
 
-*1 October: what still stands between the prototype and production is in §1 of the improvement proposals: the
-agreements with Epistola and the organisation (VV-02), key management (VV-01) and `https` for the Epistola URL
-(VV-03).*
+What still stands between the prototype and production is in §1 of the improvement proposals: the agreements with
+Epistola and the organisation (VV-02), key management (VV-01) and `https` for the Epistola URL (VV-03).
 
 ## 6. Beantwoord in het overleg, en wat nog open staat
 
@@ -393,30 +350,24 @@ agreements with Epistola and the organisation (VV-02), key management (VV-01) an
 ### Beantwoord op 21 september
 
 **Does Epistola retain the request payload, the generated PDF, or both — and for how long?**
-~~Roughly 30 days, for technical reasons. On a locally installed Epistola that term is configurable, which is why R4
-does not bite for the prototype.~~ For production it is a term the verwerkersovereenkomst has to name.
-*24 September: three to four months; see §2.*
+A generated document stays for three to four months (§2). For production it is a term the verwerkersovereenkomst has
+to name.
 
 **Is a test tenant with non-production templates available for the prototype and the demo?**
-The question falls away: there is no external tenant at all. The prototype and the final demo run against the test
-server ~~and a local Epistola, which is also what keeps the §2 position standing~~. *1 October: what keeps the §2
-position standing is that only test data goes there.*
+Yes. The prototype and the final demo run against Epistola's hosted test server (`demo.epistola.app`), with a tenant of
+its own that holds only test templates, so no production tenant is involved. What keeps the §2 position standing is
+that only test data goes there.
 
 **Who holds the agreement with Epistola — Dimpact centrally, or each gemeente separately?**
-For the prototype, neither: ~~Dimpact is itself verwerkingsverantwoordelijke because the processing does not leave
-its own environment~~ no persoonsgegevens of real people are processed (§2, corrected 1 October). Who holds a
-production agreement is a production question.
+For the prototype, neither: no persoonsgegevens of real people are processed (§2). Who holds a production agreement
+is a production question.
 
 ### Nog open
 
 **Does the doelbinding already configured per zaaktype cover BRP consultation for document creation, or is that a
 separate doel?** A question for the privacy officer, and not blocking. If it is separate, the zaaktype BRP parameters
-need a third value alongside zoekWaarde and raadpleegWaarde. *30 September: a question for when the stakeholders want
-to use the prototype; it was not put on the agenda of 5 October.*
-
-~~**Does a template that declares a section as a free-form object have to be refused, or is that the template author's
-call?** The one remaining route by which unreviewed startformulier data reaches a document (P1, R5). Recorded in a
-test; needs a stakeholder decision.~~ *Decided on 28 September: the template author's call (B17).*
+need a third value alongside zoekWaarde and raadpleegWaarde. It is a question for when the stakeholders want to use
+the prototype; it was not put on the agenda of 5 October.
 
 ### Voorgestelde wijzigingen op het bord
 
@@ -426,10 +377,7 @@ test; needs a stakeholder decision.~~ *Decided on 28 September: the template aut
   the selected template's JSON Schema (R5).
 - **#8** — add the L2 logging rule verbatim as a criterion, so the error handler is written against it rather than
   reviewed against it.
-- **#18** — add a negative scenario that asserts no BSN appears in the application log after a generation for a
-  natural-person initiator (R3).
-- **#20** — R1 through R9 transfer, with R2 and R5 marked closed, R1 and R8 narrowed, and the original wording
-  retained beside each.
+- **#20** — R1 through R9 transfer, each with its outcome (R2, R5 and R8 closed, R1 on *Middel*).
 
 ---
 
