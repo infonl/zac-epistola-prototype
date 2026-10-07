@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
-// The height of a filled mat-form-field. Rows align to the top, so an error under one field does not move
-// the others, and the text and buttons beside a field are centred on the field itself.
-@field-height: 56px;
-
 mat-card {
   margin: 5px 0;
 }
@@ -15,24 +11,10 @@ mat-card {
   margin: 10px 0;
 }
 
-.template-group {
-  gap: 8px;
-  padding: 16px 0;
-  border-bottom: 1px solid #d8d8d8;
-}
-
-.template-group-header,
-.template {
+.epistola-settings {
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 16px;
-
-  .mat-mdc-icon-button {
-    margin-top: ((@field-height - 48px) / 2);
-  }
-}
-
-.template {
-  padding-left: 16px;
 
   // Wide enough for "Vertrouwelijkheidaanduiding" as an unfloated label, which needs about 215px.
   mat-form-field {
@@ -40,17 +22,64 @@ mat-card {
   }
 }
 
-.template-name {
-  display: flex;
-  align-items: center;
-  min-height: @field-height;
-}
-
-.add-template {
-  margin-left: 16px;
-  width: 270px;
-}
-
-.add-template-group {
+.catalog-templates {
   margin-top: 16px;
+
+  h3 {
+    margin: 0 0 8px;
+  }
+}
+
+.template-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+
+  dt {
+    font-weight: 500;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.template-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  .variant-default,
+  .variant-attribute {
+    padding: 0 8px;
+    border: 1px solid var(--mat-sys-outline-variant, #c4c7c5);
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 22px;
+  }
+
+  .variant-default {
+    background: var(--mat-sys-secondary-container, #e8def8);
+  }
+}
+
+.template-settings {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  mat-form-field {
+    width: 270px;
+  }
 }

@@ -8,16 +8,48 @@ import java.util.UUID
 
 fun createRestEpistolaTemplate(
     id: String = "fake-template-id",
-    name: String = "fakeTemplateName"
-) = RestEpistolaTemplate(id = id, name = name)
+    name: String = "fakeTemplateName",
+    locales: List<String>? = null,
+    kanalen: List<String>? = null,
+    variants: List<RestEpistolaVariant>? = null
+) = RestEpistolaTemplate(id = id, name = name, locales = locales, kanalen = kanalen, variants = variants)
 
-fun createRestMappedEpistolaTemplate(
+fun createRestEpistolaVariant(
+    id: String = "fake-variant-id",
+    title: String = "fakeVariantTitle",
+    isDefault: Boolean = false,
+    attributes: List<RestEpistolaVariantAttribute> = emptyList()
+) = RestEpistolaVariant(id = id, title = title, isDefault = isDefault, attributes = attributes)
+
+fun createRestEpistolaTemplateSetting(
+    templateId: String = "fake-template-id",
+    informatieObjectTypeUUID: UUID? = null,
+    isEnabled: Boolean = true
+) = RestEpistolaTemplateSetting(
+    templateId = templateId,
+    informatieObjectTypeUUID = informatieObjectTypeUUID,
+    isEnabled = isEnabled
+)
+
+fun createRestEpistolaCatalog(
+    id: String = "fake-catalog-id",
+    name: String = "fakeCatalogName"
+) = RestEpistolaCatalog(id = id, name = name)
+
+fun createRestEpistolaCatalogMapping(
+    catalogId: String = "fake-catalog-id",
+    informatieObjectTypeUUID: UUID? = UUID.randomUUID(),
+    locale: String? = null,
+    templateSettings: List<RestEpistolaTemplateSetting> = emptyList()
+) = RestEpistolaCatalogMapping(
+    catalogId = catalogId,
+    informatieObjectTypeUUID = informatieObjectTypeUUID,
+    locale = locale,
+    templateSettings = templateSettings
+)
+
+fun createRestOfferedEpistolaTemplate(
     id: String = "fake-template-id",
     name: String = "fakeTemplateName",
     informatieObjectTypeUUID: UUID = UUID.randomUUID()
-) = RestMappedEpistolaTemplate(id = id, name = name, informatieObjectTypeUUID = informatieObjectTypeUUID)
-
-fun createRestMappedEpistolaTemplateGroup(
-    name: String = "fakeTemplateGroupName",
-    templates: List<RestMappedEpistolaTemplate> = listOf(createRestMappedEpistolaTemplate())
-) = RestMappedEpistolaTemplateGroup(name = name, templates = templates)
+) = RestOfferedEpistolaTemplate(id = id, name = name, informatieObjectTypeUUID = informatieObjectTypeUUID)

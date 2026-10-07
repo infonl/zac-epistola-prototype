@@ -5,6 +5,7 @@
 package nl.info.client.epistola
 
 import app.epistola.client.jakarta.EpistolaRestClients
+import app.epistola.client.jakarta.api.CatalogsApi
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.identity.ClientIdentity
@@ -49,6 +50,11 @@ class EpistolaClientProducer @Inject constructor(
     @ApplicationScoped
     @EpistolaClient
     fun templatesApi(): TemplatesApi = restClients().api(TemplatesApi::class.java)
+
+    @Produces
+    @ApplicationScoped
+    @EpistolaClient
+    fun catalogsApi(): CatalogsApi = restClients().api(CatalogsApi::class.java)
 
     private fun restClients(): EpistolaRestClients =
         EpistolaRestClients.builder()

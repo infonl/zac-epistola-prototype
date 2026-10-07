@@ -25,8 +25,8 @@ toepassing van het endpoint, dus het botst niet met besluit B5 (de preview niet 
 
 ## 2. Wat een behandelaar ziet
 
-1. *Document maken*, een templategroep, een template en eventueel een variant kiezen. Biedt het zaaktype maar één
-   templategroep, of de groep maar één template, dan kiest ZAC die zelf (#45).
+1. *Document maken*, een template en eventueel een variant kiezen. Bij Epistola is er geen templategroep meer: de
+   templates komen uit de catalog van het zaaktype (#51). Heeft die catalog maar één template, dan kiest ZAC dat zelf.
 2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, de variant
    bekend zijn, zodat een voorbeeld nooit een andere variant toont dan die ZAC straks genereert. Een template dat ZAC
    zelf koos, telt even goed.

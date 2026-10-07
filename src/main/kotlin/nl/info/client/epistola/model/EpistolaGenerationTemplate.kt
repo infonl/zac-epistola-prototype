@@ -10,12 +10,12 @@ import app.epistola.client.jakarta.model.VariantSummaryDto
 
 /**
  * The variant attribute by which ZAC asks Epistola for a template's variant. A template author defines it in the
- * catalog ZAC uses, so a variant carries it as `<catalog>.kanaal`.
+ * template's own catalog, so a variant carries it as `<catalog>.kanaal`.
  */
 const val EPISTOLA_KANAAL_ATTRIBUTE = "kanaal"
 
 /** Epistola's own catalog, which every tenant has and which defines the locale attribute. */
-private const val SYSTEM_CATALOG = "system"
+const val SYSTEM_CATALOG = "system"
 private const val LOCALE_ATTRIBUTE = "locale"
 
 /**
@@ -28,7 +28,20 @@ private const val LOCALE_KEY = "$SYSTEM_CATALOG.$LOCALE_ATTRIBUTE"
 data class EpistolaGenerationTemplate(
     val dataContract: Any?,
     val kanalen: EpistolaKanalen,
-    val locales: EpistolaLocales = EpistolaLocales()
+    val locales: EpistolaLocales = EpistolaLocales(),
+    val variants: List<EpistolaVariant> = emptyList()
+)
+
+/**
+ * A variant of a template, as Epistola names it. The [attributes] are in the order a reader expects: the language
+ * first, then the kanaal, then the others by key. The keys are those of the attributes without the catalog that
+ * defines them, so `system.locale` is `locale` and `<catalog>.kanaal` is `kanaal`.
+ */
+data class EpistolaVariant(
+    val id: String,
+    val title: String,
+    val isDefault: Boolean,
+    val attributes: Map<String, String> = emptyMap()
 )
 
 /**
@@ -80,6 +93,31 @@ fun TemplateDto.toEpistolaLocales(catalogId: String): EpistolaLocales {
             },
         defaultLocale = defaultVariant?.locale
     )
+}
+
+fun TemplateDto.toEpistolaVariants(catalogId: String) = variants.orEmpty().map { it.toEpistolaVariant(catalogId) }
+
+@Suppress("DEPRECATION")
+private fun VariantSummaryDto.toEpistolaVariant(catalogId: String) = EpistolaVariant(
+    id = slug ?: id,
+    title = title,
+    isDefault = isDefault == true,
+    attributes = attributes.orEmpty()
+        .map { (key, value) -> key.withoutCatalog(catalogId) to value }
+        .sortedWith(compareBy({ attributeRank(it.first) }, { it.first }))
+        .toMap()
+)
+
+private fun String.withoutCatalog(catalogId: String) = when {
+    this == LOCALE_KEY -> LOCALE_ATTRIBUTE
+    startsWith("$catalogId.") -> removePrefix("$catalogId.")
+    else -> this
+}
+
+private fun attributeRank(key: String) = when (key) {
+    LOCALE_ATTRIBUTE -> 0
+    EPISTOLA_KANAAL_ATTRIBUTE -> 1
+    else -> 2
 }
 
 private val VariantSummaryDto.locale get() = attributes?.get(LOCALE_KEY)?.takeIf { it.isNotBlank() }

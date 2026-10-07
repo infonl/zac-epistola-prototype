@@ -16,35 +16,54 @@ export class EpistolaTemplatesService {
   private readonly zacQueryClient = inject(ZacQueryClient);
   private readonly queryClient = inject(QueryClient);
 
-  listTemplatesQuery() {
+  listCatalogsQuery() {
     return this.zacQueryClient.GET(
-      "/rest/zaakafhandelparameters/epistola-templates",
+      "/rest/zaakafhandelparameters/epistola-catalogs",
     );
   }
 
-  getTemplatesMappingQuery(zaaktypeUuid: string) {
+  /** Each template with the languages and variants Epistola gives it, which are absent while Epistola cannot be asked. */
+  listCatalogTemplatesQuery(catalogId: string) {
     return this.zacQueryClient.GET(
-      "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-templates-mapping",
+      "/rest/zaakafhandelparameters/epistola-catalogs/{catalogId}/templates",
+      { path: { catalogId } },
+    );
+  }
+
+  getCatalogMappingQuery(zaaktypeUuid: string) {
+    return this.zacQueryClient.GET(
+      "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-catalog-mapping",
       { path: { zaaktypeUuid } },
     );
   }
 
-  storeTemplatesMapping(
+  /** The templates a zaak of this zaaktype can generate a document from. */
+  listOfferedTemplatesQuery(zaaktypeUuid: string) {
+    return this.zacQueryClient.GET(
+      "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-templates",
+      { path: { zaaktypeUuid } },
+    );
+  }
+
+  storeCatalogMapping(
     zaaktypeUuid: string,
-    templateGroups: PostBody<"/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-templates-mapping">,
+    catalogMapping: PostBody<"/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-catalog-mapping">,
   ) {
     return this.zacHttpClient
       .POST(
-        "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-templates-mapping",
-        templateGroups,
+        "/rest/zaakafhandelparameters/{zaaktypeUuid}/epistola-catalog-mapping",
+        catalogMapping,
         { path: { zaaktypeUuid } },
       )
       .pipe(
-        tap(() =>
-          this.queryClient.invalidateQueries({
-            queryKey: this.getTemplatesMappingQuery(zaaktypeUuid).queryKey,
-          }),
-        ),
+        tap(() => {
+          void this.queryClient.invalidateQueries({
+            queryKey: this.getCatalogMappingQuery(zaaktypeUuid).queryKey,
+          });
+          void this.queryClient.invalidateQueries({
+            queryKey: this.listOfferedTemplatesQuery(zaaktypeUuid).queryKey,
+          });
+        }),
       );
   }
 }

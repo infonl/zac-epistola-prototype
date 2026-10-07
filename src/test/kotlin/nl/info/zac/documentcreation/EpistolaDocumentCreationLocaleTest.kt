@@ -38,8 +38,10 @@ import nl.info.zac.documentcreation.model.createData
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.documents.model.createEpistolaDocument
+import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import java.util.UUID
 
+private const val FAKE_CATALOG_ID = "fake-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 
@@ -96,10 +98,11 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             val askedVariant = AskedVariant()
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal, locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = FAKE_FILE_NAME,
@@ -122,7 +125,12 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             `when`("a document is created") {
                 val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
 
-                epistolaDocumentCreationService.createDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID, fileName = FAKE_FILE_NAME)
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME
+                )
 
                 then("Dutch is asked for, in the variant the communicatiekanaal suggests, as the behandelaar chooses no language") {
                     askedVariant.locales.single() shouldBe "nl-NL"
@@ -135,6 +143,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "en-GB"
@@ -151,6 +160,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     variant = "digitaal",
@@ -168,6 +178,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "fr-FR"
@@ -175,6 +186,99 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 then("Dutch is asked for instead") {
                     askedVariant.locales.single() shouldBe "nl-NL"
+                }
+            }
+        }
+
+        given("a template with Dutch variants by post and digitally and an English one by post, in a zaaktype set to English") {
+            val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+
+            `when`("a document is created") {
+                val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
+
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME,
+                    zaaktypeLocale = "en-GB"
+                )
+
+                then("English is asked for, in the only variant it has, rather than Dutch digitally") {
+                    askedVariant.locales.single() shouldBe "en-GB"
+                    askedVariant.kanalen.single() shouldBe "post"
+                }
+            }
+
+            `when`("a document is created, and the zaaktype is set to a language the template does not have") {
+                val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
+
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME,
+                    zaaktypeLocale = "fr-FR"
+                )
+
+                then("Dutch is asked for, as without a language for the zaaktype") {
+                    askedVariant.locales.single() shouldBe "nl-NL"
+                    askedVariant.kanalen.single() shouldBe "digitaal"
+                }
+            }
+
+            `when`("a document is generated again in Dutch, the language it was generated in") {
+                val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
+
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME,
+                    taal = "nl-NL",
+                    zaaktypeLocale = "en-GB"
+                )
+
+                then("Dutch is asked for again, as the stored language wins while the template has it") {
+                    askedVariant.locales.single() shouldBe "nl-NL"
+                }
+            }
+
+            `when`("a document is generated again in a language the template no longer has") {
+                val askedVariant = givenATemplate(zaak, createDutchAndEnglishLocales())
+
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME,
+                    taal = "fr-FR",
+                    zaaktypeLocale = "en-GB"
+                )
+
+                then("the language of the zaaktype is asked for") {
+                    askedVariant.locales.single() shouldBe "en-GB"
+                }
+            }
+        }
+
+        given("a template whose variants carry no language, in a zaaktype set to English") {
+            val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+
+            `when`("a document is created") {
+                val askedVariant = givenATemplate(zaak, EpistolaLocales())
+
+                epistolaDocumentCreationService.createDocument(
+                    zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    fileName = FAKE_FILE_NAME,
+                    zaaktypeLocale = "en-GB"
+                )
+
+                then("no language is asked for, as the template has none to choose between") {
+                    askedVariant.locales.single() shouldBe null
+                    askedVariant.kanalen.single() shouldBe "digitaal"
                 }
             }
         }
@@ -187,6 +291,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 epistolaDocumentCreationService.createDocument(
                     zaak = zaak,
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     fileName = FAKE_FILE_NAME,
                     taal = "en-GB"
@@ -203,7 +308,8 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
     context("storing an Epistola document in the zaak's dossier") {
         fun givenADocumentGeneratedIn(
             zaak: Zaak,
-            locales: EpistolaLocales
+            locales: EpistolaLocales,
+            zaaktypeLocale: String? = null
         ): Pair<ZaakInformatieObject, CapturingSlot<EnkelvoudigInformatieObjectCreateLockRequest>> {
             val loggedInUser = createLoggedInUser()
             val informatieObjectTypeUuid = UUID.randomUUID()
@@ -217,15 +323,20 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
-                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } returns informatieObjectTypeUuid
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
+            } returns OfferedEpistolaCatalog(
+                catalogId = FAKE_CATALOG_ID,
+                informatieObjectTypeUuid = informatieObjectTypeUuid,
+                locale = zaaktypeLocale
+            )
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns "123443210"
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen(), locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = "fakeTitle.pdf",
@@ -270,11 +381,79 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
                             kanaal = null,
                             locale = "en-GB"
                         )
                     }
+                }
+            }
+        }
+
+        given("a template with Dutch and English variants, in a zaaktype set to English") {
+            val zaak = createZaak()
+
+            `when`("a document is created and stored, and the variants of the template are read") {
+                val (zaakInformatieObject, createLockRequestSlot) = givenADocumentGeneratedIn(
+                    zaak = zaak,
+                    locales = EpistolaLocales(
+                        kanalenByLocale = mapOf("nl-NL" to EpistolaKanalen(), "en-GB" to EpistolaKanalen()),
+                        defaultLocale = "nl-NL"
+                    ),
+                    zaaktypeLocale = "en-GB"
+                )
+
+                epistolaDocumentCreationService.createAndStoreDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    title = "fakeTitle",
+                    description = null
+                )
+                val varianten = epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+
+                then("the informatieobject is registered in English, the language of the zaaktype") {
+                    createLockRequestSlot.captured.taal shouldBe "eng"
+                }
+
+                and("the language ZAC asked Epistola for is remembered with the template") {
+                    verify(exactly = 1) {
+                        epistolaDocumentRepository.createEpistolaDocument(
+                            informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            catalogId = FAKE_CATALOG_ID,
+                            templateId = FAKE_TEMPLATE_ID,
+                            kanaal = null,
+                            locale = "en-GB"
+                        )
+                    }
+                }
+
+                and("the variants are offered in that same language") {
+                    varianten.locale shouldBe "en-GB"
+                }
+            }
+        }
+
+        given("a template with Dutch and English variants, in a zaaktype without a language") {
+            val zaak = createZaak()
+
+            `when`("the variants of the template are read") {
+                every { epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any()) } returns
+                    OfferedEpistolaCatalog(catalogId = FAKE_CATALOG_ID, informatieObjectTypeUuid = UUID.randomUUID())
+                every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
+                    EpistolaGenerationTemplate(
+                        dataContract = TEMPLATE_SCHEMA,
+                        kanalen = EpistolaKanalen(),
+                        locales = EpistolaLocales(
+                            kanalenByLocale = mapOf("nl-NL" to EpistolaKanalen(), "en-GB" to EpistolaKanalen()),
+                            defaultLocale = "en-GB"
+                        )
+                    )
+
+                val varianten = epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+
+                then("they are offered in Dutch, as ZAC preselects it") {
+                    varianten.locale shouldBe "nl-NL"
                 }
             }
         }
@@ -300,6 +479,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
+                            catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
                             kanaal = null,
                             locale = null
@@ -311,17 +491,30 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
     }
 
     context("creating a document, and later a new version of it") {
-        fun givenTheZaaksDossier(zaak: Zaak, zaakInformatieObject: ZaakInformatieObject) {
+        fun givenTheZaaksDossier(
+            zaak: Zaak,
+            zaakInformatieObject: ZaakInformatieObject,
+            zaaktypeLocaleOnCreation: String?,
+            zaaktypeLocaleOnNewVersion: String?
+        ) {
             val informatieObjectTypeUuid = UUID.randomUUID()
             val informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid()
+            fun offeredCatalog(locale: String?) = OfferedEpistolaCatalog(
+                catalogId = FAKE_CATALOG_ID,
+                informatieObjectTypeUuid = informatieObjectTypeUuid,
+                locale = locale
+            )
             every {
-                epistolaTemplatesService.readInformatieobjecttypeUuid(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } returns informatieObjectTypeUuid
+                epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any())
+            } returns offeredCatalog(zaaktypeLocaleOnCreation)
             every {
-                epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
-            } just runs
+                epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+            } returns offeredCatalog(zaaktypeLocaleOnNewVersion)
             every { ztcClientService.readInformatieobjecttype(informatieObjectTypeUuid) } returns createInformatieObjectType()
             every { configurationService.readBronOrganisatie() } returns "123443210"
+            val loggedInUser = createLoggedInUser()
+            every { loggedInUserInstance.get() } returns loggedInUser
+            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
             every {
                 enkelvoudigInformatieObjectUpdateService.createZaakInformatieobjectForZaak(
                     zaak = zaak,
@@ -338,8 +531,37 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
             } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
         }
 
-        fun createDocumentAndThenANewVersion(zaak: Zaak, locales: EpistolaLocales): Pair<AskedVariant, List<String?>> {
-            val loggedInUser = createLoggedInUser()
+        fun givenTheEpistolaDocumentIsStoredAndFound(
+            informatieObjectUUID: UUID,
+            storedKanalen: MutableList<String?>,
+            storedLocales: MutableList<String?>
+        ) {
+            every {
+                epistolaDocumentRepository.createEpistolaDocument(
+                    informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    kanaal = captureNullable(storedKanalen),
+                    locale = captureNullable(storedLocales)
+                )
+            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, catalogId = FAKE_CATALOG_ID)
+            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
+                createEpistolaDocument(
+                    informatieObjectUUID = informatieObjectUUID,
+                    catalogId = FAKE_CATALOG_ID,
+                    templateId = FAKE_TEMPLATE_ID,
+                    kanaal = storedKanalen.single(),
+                    locale = storedLocales.single()
+                )
+            }
+        }
+
+        fun createDocumentAndThenANewVersion(
+            zaak: Zaak,
+            locales: EpistolaLocales,
+            zaaktypeLocaleOnCreation: String? = null,
+            zaaktypeLocaleOnNewVersion: String? = zaaktypeLocaleOnCreation
+        ): Pair<AskedVariant, List<String?>> {
             val askedVariant = AskedVariant()
             val storedKanalen = mutableListOf<String?>()
             val storedLocales = mutableListOf<String?>()
@@ -350,13 +572,17 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                 fileName = "fakeTitle.pdf",
                 content = "fakePdfContent".toByteArray()
             )
-            givenTheZaaksDossier(zaak, zaakInformatieObject)
-            every { loggedInUserInstance.get() } returns loggedInUser
-            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, null) } returns createData()
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
+            givenTheZaaksDossier(
+                zaak = zaak,
+                zaakInformatieObject = zaakInformatieObject,
+                zaaktypeLocaleOnCreation = zaaktypeLocaleOnCreation,
+                zaaktypeLocaleOnNewVersion = zaaktypeLocaleOnNewVersion
+            )
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
                 EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal, locales = locales)
             every {
                 epistolaClientService.generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = any(),
                     fileName = "fakeTitle.pdf",
@@ -366,22 +592,7 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
                     onJobStatus = any()
                 )
             } answers { generatedDocument.copy(kanaal = askedVariant.kanalen.last(), locale = askedVariant.locales.last()) }
-            every {
-                epistolaDocumentRepository.createEpistolaDocument(
-                    informatieObjectUUID = informatieObjectUUID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    kanaal = captureNullable(storedKanalen),
-                    locale = captureNullable(storedLocales)
-                )
-            } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, templateId = FAKE_TEMPLATE_ID)
-            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
-                createEpistolaDocument(
-                    informatieObjectUUID = informatieObjectUUID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    kanaal = storedKanalen.single(),
-                    locale = storedLocales.single()
-                )
-            }
+            givenTheEpistolaDocumentIsStoredAndFound(informatieObjectUUID, storedKanalen, storedLocales)
             every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
 
             epistolaDocumentCreationService.createAndStoreDocument(
@@ -413,6 +624,28 @@ class EpistolaDocumentCreationLocaleTest : BehaviorSpec({
 
                 and("the document stores Dutch") {
                     storedLocales shouldBe listOf("nl-NL")
+                }
+            }
+        }
+
+        given("a template with Dutch variants by post and digitally and an English one by post, in a zaaktype set to English") {
+            val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
+
+            `when`("a document is created, and the zaaktype is set to Dutch before a new version of it is generated") {
+                val (askedVariant, storedLocales) = createDocumentAndThenANewVersion(
+                    zaak = zaak,
+                    locales = createDutchAndEnglishLocales(),
+                    zaaktypeLocaleOnCreation = "en-GB",
+                    zaaktypeLocaleOnNewVersion = "nl-NL"
+                )
+
+                then("the new version asks for English again, as the stored language wins while the template has it") {
+                    askedVariant.locales shouldBe listOf("en-GB", "en-GB")
+                    askedVariant.kanalen shouldBe listOf("post", "post")
+                }
+
+                and("the document stores English") {
+                    storedLocales shouldBe listOf("en-GB")
                 }
             }
         }

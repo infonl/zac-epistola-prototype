@@ -38,7 +38,8 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
     val epistolaClientService = EpistolaClientService(
         generationApi = generationApi,
         templatesApi = templatesApi,
-        epistolaSettings = createEpistolaSettings(tenantId = FAKE_TENANT_ID, catalogId = FAKE_CATALOG_ID)
+        catalogsApi = mockk(),
+        epistolaSettings = createEpistolaSettings(tenantId = FAKE_TENANT_ID, catalogId = "fake-default-catalog")
     )
 
     fun createApiException(status: Int, body: String? = null) = ApiException(
@@ -59,6 +60,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val preview = epistolaClientService.previewDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie"))
                 )
@@ -99,6 +101,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made for the digital kanaal") {
                 epistolaClientService.previewDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = emptyMap(),
                     kanaal = "digitaal"
@@ -120,6 +123,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made for the digital kanaal in Dutch") {
                 epistolaClientService.previewDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = emptyMap(),
                     kanaal = "digitaal",
@@ -146,7 +150,11 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaTemplateDataRejectedException = shouldThrow<EpistolaTemplateDataRejectedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(
+                        catalogId = FAKE_CATALOG_ID,
+                        templateId = FAKE_TEMPLATE_ID,
+                        data = emptyMap()
+                    )
                 }
 
                 then("the behandelaar learns which field the template misses, without the colon that an empty path leaves in front") {
@@ -164,7 +172,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaTemplateDataRejectedException = shouldThrow<EpistolaTemplateDataRejectedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("the behandelaar gets the rejection that a failed generation would have given, at once") {
@@ -191,7 +199,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("it is a failed request, which the behandelaar can do nothing about") {
@@ -206,7 +214,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("it is a failed request as well") {
@@ -225,7 +233,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("it is a failed request as well") {
@@ -239,7 +247,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("the behandelaar is told to try again in a few minutes") {
@@ -253,7 +261,7 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
 
             `when`("a preview is made") {
                 val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaClientService.previewDocument(templateId = FAKE_TEMPLATE_ID, data = emptyMap())
+                    epistolaClientService.previewDocument(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID, data = emptyMap())
                 }
 
                 then("the behandelaar learns that the configured template no longer exists") {

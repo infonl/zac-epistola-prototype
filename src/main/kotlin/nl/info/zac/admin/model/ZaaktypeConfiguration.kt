@@ -22,6 +22,7 @@ import jakarta.persistence.Table
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import nl.info.zac.database.flyway.FlywayIntegrator.Companion.SCHEMA
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.util.AllOpen
 import java.time.ZonedDateTime
 import java.util.UUID
@@ -74,6 +75,17 @@ abstract class ZaaktypeConfiguration {
     @Column(name = "epistola_ingeschakeld")
     var isEpistolaEnabled: Boolean = false
 
+    /** While null, ZAC uses the catalog of `EPISTOLA_CATALOG_ID`; once the beheerder chooses a catalog, ZAC uses that one. */
+    @Column(name = "epistola_catalog_id")
+    var epistolaCatalogId: String? = null
+
+    /** While null, ZAC asks for Dutch where the template has it; once the beheerder chooses a language, ZAC asks for that one. */
+    @Column(name = "epistola_locale")
+    var epistolaLocale: String? = null
+
+    @Column(name = "epistola_informatie_object_type_uuid")
+    var epistolaInformatieobjecttypeUuid: UUID? = null
+
     @field:NotNull
     @Column(name = "creatiedatum", nullable = false)
     var creatiedatum: ZonedDateTime? = null
@@ -109,7 +121,41 @@ abstract class ZaaktypeConfiguration {
     )
     var zaaktypeCompletionParameters: MutableSet<ZaaktypeCompletionParameters>? = null
 
+    // The set is necessary for Hibernate when you have more than one eager collection on an entity.
+    @OneToMany(
+        mappedBy = "zaaktypeConfiguration",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.EAGER,
+        orphanRemoval = true
+    )
+    var epistolaTemplateSettings: MutableSet<ZaaktypeEpistolaTemplateSettings> = mutableSetOf()
+
     abstract fun getConfigurationType(): ZaaktypeConfigurationType
+
+    fun readEpistolaTemplateSettings(): Map<String, EpistolaTemplateSetting> =
+        epistolaTemplateSettings.associate {
+            it.epistolaId to EpistolaTemplateSetting(
+                informatieObjectTypeUuid = it.informatieObjectTypeUUID,
+                isEnabled = it.isEnabled
+            )
+        }
+
+    /** A template whose setting is the default has none stored, so that one added to its catalog later is offered. */
+    fun replaceEpistolaTemplateSettings(desired: Map<String, EpistolaTemplateSetting>) {
+        val desiredNonDefault = desired.filterValues { !it.isDefault }
+        epistolaTemplateSettings.removeIf { it.epistolaId !in desiredNonDefault }
+        desiredNonDefault.forEach { (epistolaId, setting) ->
+            val templateSettings = epistolaTemplateSettings.firstOrNull { it.epistolaId == epistolaId }
+                ?: ZaaktypeEpistolaTemplateSettings().apply {
+                    zaaktypeConfiguration = this@ZaaktypeConfiguration
+                    this.epistolaId = epistolaId
+                    creationDate = ZonedDateTime.now()
+                    epistolaTemplateSettings.add(this)
+                }
+            templateSettings.informatieObjectTypeUUID = setting.informatieObjectTypeUuid
+            templateSettings.isEnabled = setting.isEnabled
+        }
+    }
 
     fun getBetrokkeneParameters(): ZaaktypeBetrokkeneParameters =
         zaaktypeBetrokkeneParameters ?: ZaaktypeBetrokkeneParameters()

@@ -661,7 +661,7 @@ Deze actie maakt het mogelijk om een document met sjablonen in een documentcreat
 
 1 In een zaak kies je actie *Document maken*
 
-2 Kies de sjabloongroep en daarvan het sjabloon van het te maken document en vul de titel in en als gewenst een beschrijving
+2 Kies de templategroep en daarvan het template van het te maken document en vul de titel in en als gewenst een beschrijving. Met Epistola is er geen templategroep: je kiest meteen een template uit de templates van het zaaktype (een template dat de beheerder heeft uitgezet, staat er niet bij), en is er maar één, dan is die al gekozen
 
 3 Pas als gewenst de creatiedatum en behandelaar aan
 
@@ -1371,7 +1371,7 @@ De metadata van een document kunnen aangepast worden. Hierdoor ontstaat een nieu
 
 Een document dat met Epistola is gemaakt, kan opnieuw worden gegenereerd met de zaakgegevens zoals die nu zijn. Dat wordt een nieuwe versie van hetzelfde document. De eerdere versies blijven bewaard en zijn met de &lt; en &gt; pijltjes te bekijken.
 
-De actie is er alleen bij een document dat met Epistola is gemaakt en bij één zaak hoort, zolang Epistola de documentcreatieapplicatie is. Hoort het template niet meer bij het zaaktype, dan krijg je bij het genereren een melding en blijft de huidige versie zoals ze was. Net als bij *Metadata bewerken* kan dit alleen als de zaak open is en de status van het document niet ‘Definitief’ is. Je hebt ook het recht nodig om voor deze zaak documenten te maken.
+De actie is er alleen bij een document dat met Epistola is gemaakt en bij één zaak hoort, zolang Epistola de documentcreatieapplicatie is. De nieuwe versie wordt gemaakt met hetzelfde template uit dezelfde catalog in Epistola, ook als het zaaktype inmiddels een andere catalog gebruikt. Staat Epistola niet meer aan voor het zaaktype, of bestaat het template niet meer in die catalog, dan krijg je bij het genereren een melding en blijft de huidige versie zoals ze was. Net als bij *Metadata bewerken* kan dit alleen als de zaak open is en de status van het document niet ‘Definitief’ is. Je hebt ook het recht nodig om voor deze zaak documenten te maken.
 
 **Stappen**
 

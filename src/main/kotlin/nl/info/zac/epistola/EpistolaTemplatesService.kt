@@ -11,8 +11,11 @@ import jakarta.transaction.Transactional.TxType.REQUIRED
 import jakarta.transaction.Transactional.TxType.SUPPORTS
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
+import nl.info.client.epistola.model.EpistolaGenerationTemplate
+import nl.info.client.epistola.model.SYSTEM_CATALOG
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
+import nl.info.zac.admin.ZaaktypeCmmnConfigurationBeheerService
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.admin.exception.ZaaktypeConfigurationNotFoundException
 import nl.info.zac.admin.model.ZaaktypeConfiguration
@@ -22,40 +25,45 @@ import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import nl.info.zac.epistola.exception.EpistolaCmmnOnlyException
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
+import nl.info.zac.epistola.exception.EpistolaTemplateNotOfferedException
+import nl.info.zac.epistola.model.EpistolaTemplateSetting
+import nl.info.zac.epistola.model.OfferedEpistolaCatalog
+import nl.info.zac.epistola.rest.RestEpistolaCatalog
+import nl.info.zac.epistola.rest.RestEpistolaCatalogMapping
 import nl.info.zac.epistola.rest.RestEpistolaTemplate
-import nl.info.zac.epistola.rest.RestMappedEpistolaTemplateGroup
-import nl.info.zac.epistola.rest.toEpistolaTemplateGroup
+import nl.info.zac.epistola.rest.RestEpistolaTemplateSetting
+import nl.info.zac.epistola.rest.RestOfferedEpistolaTemplate
+import nl.info.zac.epistola.rest.toRestEpistolaCatalog
 import nl.info.zac.epistola.rest.toRestEpistolaTemplate
-import nl.info.zac.epistola.rest.toRestMappedEpistolaTemplateGroup
+import nl.info.zac.epistola.rest.toRestEpistolaVariant
 import nl.info.zac.epistola.rest.validate
-import nl.info.zac.epistola.templates.EpistolaTemplateGroupRepository
-import nl.info.zac.epistola.templates.model.copyTo
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
 
 /**
- * The Epistola templates a zaaktype offers, arranged in template groups. Epistola keeps its templates flat,
- * so the groups belong to ZAC: the beheerder names them and puts templates in them.
+ * The Epistola templates a zaaktype offers: every template of the one catalog the beheerder chose for it. Epistola
+ * groups its templates in catalogs, so ZAC keeps no grouping of its own.
  *
- * Only the template id is stored. Its name is read from Epistola each time, the same way ZAC handles
- * SmartDocuments templates, so a template renamed in Epistola never shows a stale name.
+ * Only the catalog's id is stored. Its templates and their names are read from Epistola each time, the same way ZAC
+ * handles SmartDocuments templates, so a template added to or renamed in the catalog shows without a step in ZAC.
  *
- * The names of the last successful listing are kept in memory, and used only to read the mapping while Epistola
- * cannot be reached. A restart empties them; the mapping then fails as it does without them.
+ * The names of the last successful listing of each catalog are kept in memory, and used only to list a zaaktype's
+ * templates while Epistola cannot be reached. A restart empties them; the listing then fails as it does without them.
  */
 @ApplicationScoped
 @Transactional(SUPPORTS)
 @NoArgConstructor
 @AllOpen
+@Suppress("TooManyFunctions")
 class EpistolaTemplatesService @Inject constructor(
     private val epistolaClientService: EpistolaClientService,
-    private val epistolaTemplateGroupRepository: EpistolaTemplateGroupRepository,
     private val zaaktypeConfigurationService: ZaaktypeConfigurationService,
+    private val zaaktypeCmmnConfigurationBeheerService: ZaaktypeCmmnConfigurationBeheerService,
     private val ztcClientService: ZtcClientService,
     private val documentCreationProviderConfiguration: DocumentCreationProviderConfiguration
 ) {
@@ -63,145 +71,242 @@ class EpistolaTemplatesService @Inject constructor(
         private val LOG = Logger.getLogger(EpistolaTemplatesService::class.java.name)
     }
 
-    private val lastReadTemplateNames = AtomicReference<ReadTemplateNames?>(null)
+    private val lastReadTemplateNames = ConcurrentHashMap<String, ReadTemplateNames>()
 
     /**
      * Empty when Epistola is not the active provider. Epistola's settings are only validated when it is, so
      * reaching the client in any other configuration would fail.
      *
-     * Every successful listing replaces the names kept for the fallback, so a template Epistola has dropped
-     * cannot come back from it.
+     * Epistola's own catalog is left out: it holds the attributes every tenant shares, and no templates.
      */
-    fun listTemplates(): List<RestEpistolaTemplate> =
+    fun listCatalogs(): List<RestEpistolaCatalog> =
         if (isEpistolaActive()) {
-            epistolaClientService.listTemplates()
-                .map { it.toRestEpistolaTemplate() }
+            epistolaClientService.listCatalogs()
+                .map { it.toRestEpistolaCatalog() }
+                .filterNot { it.id == SYSTEM_CATALOG }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-                .also { templates ->
-                    lastReadTemplateNames.set(
-                        ReadTemplateNames(namesById = templates.associate { it.id to it.name }, readAt = Instant.now())
-                    )
-                }
         } else {
             emptyList()
         }
 
-    fun readTemplateMapping(zaaktypeUuid: UUID): List<RestMappedEpistolaTemplateGroup> =
-        readStoredTemplateGroups(zaaktypeUuid).takeIf { it.isNotEmpty() }?.let { templateGroups ->
-            val templateNamesById = readTemplateNamesById()
-            templateGroups
-                .map { it.toRestMappedEpistolaTemplateGroup(templateNamesById) }
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-        }.orEmpty()
+    /**
+     * Empty when Epistola is not the active provider, as [listCatalogs] is.
+     *
+     * Each template carries its languages, kanalen and variants, read from Epistola with one request per template. While
+     * Epistola cannot be reached the templates come by the names of the last listing, and without those details.
+     */
+    fun listTemplates(catalogId: String): List<RestEpistolaTemplate> =
+        if (isEpistolaActive()) {
+            val templateNames = readTemplateNames(catalogId)
+            val generationTemplates = if (templateNames.isRemembered) {
+                emptyMap()
+            } else {
+                readGenerationTemplates(catalogId = catalogId, templateIds = templateNames.namesById.keys)
+            }
+            templateNames.namesById.map { (id, name) ->
+                RestEpistolaTemplate(
+                    id = id,
+                    name = name,
+                    locales = generationTemplates[id]?.locales?.locales?.sorted(),
+                    kanalen = generationTemplates[id]?.kanalen?.kanalen,
+                    variants = generationTemplates[id]?.variants?.map { it.toRestEpistolaVariant() }
+                )
+            }
+        } else {
+            emptyList()
+        }
+
+    /** The catalog is the one ZAC uses for the zaaktype, also while the beheerder has not chosen one. */
+    fun readCatalogMapping(zaaktypeUuid: UUID): RestEpistolaCatalogMapping {
+        assertEpistolaIsActive()
+        val zaaktypeConfiguration = zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
+        return RestEpistolaCatalogMapping(
+            catalogId = zaaktypeConfiguration?.epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
+            informatieObjectTypeUUID = zaaktypeConfiguration?.epistolaInformatieobjecttypeUuid,
+            locale = zaaktypeConfiguration?.epistolaLocale,
+            templateSettings = zaaktypeConfiguration?.readEpistolaTemplateSettings().orEmpty()
+                .map { (templateId, templateSetting) ->
+                    RestEpistolaTemplateSetting(
+                        templateId = templateId,
+                        informatieObjectTypeUUID = templateSetting.informatieObjectTypeUuid,
+                        isEnabled = templateSetting.isEnabled
+                    )
+                }
+                .sortedBy(RestEpistolaTemplateSetting::templateId)
+        )
+    }
 
     @Transactional(REQUIRED)
-    fun storeTemplateMapping(zaaktypeUuid: UUID, templateGroups: List<RestMappedEpistolaTemplateGroup>) {
-        if (!isEpistolaActive()) {
-            throw EpistolaTemplateMappingException("Epistola is not the active document creation provider.")
-        }
-        val zaaktypeConfiguration = readZaaktypeConfiguration(zaaktypeUuid)
-        templateGroups.validate(
-            availableTemplateIds = listTemplates().mapTo(mutableSetOf()) { it.id },
+    fun storeCatalogMapping(zaaktypeUuid: UUID, catalogMapping: RestEpistolaCatalogMapping) {
+        assertEpistolaIsActive()
+        val zaaktypeCmmnConfiguration = zaaktypeCmmnConfigurationBeheerService.readZaaktypeCmmnConfiguration(zaaktypeUuid)
+            ?: throw ZaaktypeConfigurationNotFoundException(
+                "No CMMN zaaktype configuration found for zaaktype UUID '$zaaktypeUuid'"
+            )
+        catalogMapping.validate(
+            availableCatalogIds = listCatalogs().mapTo(mutableSetOf()) { it.id },
             informatieobjecttypeUuids = ztcClientService.readZaaktype(zaaktypeUuid).informatieobjecttypen
                 .mapTo(mutableSetOf()) { it.extractUuid() }
         )
-        LOG.fine { "Storing ${templateGroups.size} Epistola template groups for zaaktype '$zaaktypeUuid'" }
-        epistolaTemplateGroupRepository.replaceTemplateGroups(
-            zaaktypeConfiguration = zaaktypeConfiguration,
-            templateGroups = templateGroups.map { it.toEpistolaTemplateGroup(zaaktypeConfiguration) }
+        LOG.fine { "Storing Epistola catalog '${catalogMapping.catalogId}' for zaaktype '$zaaktypeUuid'" }
+        val templateIdsInCatalog = epistolaClientService.listTemplates(catalogMapping.catalogId)
+            .mapTo(mutableSetOf()) { it.toRestEpistolaTemplate().id }
+        zaaktypeCmmnConfigurationBeheerService.storeZaaktypeCmmnConfiguration(
+            zaaktypeCmmnConfiguration.apply {
+                epistolaCatalogId = catalogMapping.catalogId
+                epistolaInformatieobjecttypeUuid = catalogMapping.informatieObjectTypeUUID
+                epistolaLocale = catalogMapping.locale?.takeIf(String::isNotBlank)
+                replaceEpistolaTemplateSettings(
+                    catalogMapping.templateSettings
+                        .filter { it.templateId in templateIdsInCatalog }
+                        .associate {
+                            it.templateId to EpistolaTemplateSetting(
+                                informatieObjectTypeUuid = it.informatieObjectTypeUUID,
+                                isEnabled = it.isEnabled ?: true
+                            )
+                        }
+                )
+            }
         )
     }
 
     /**
-     * Copies from the stored mapping without asking Epistola, and whichever provider is active, so publishing
-     * a new version of a zaaktype does not depend on Epistola being reachable.
+     * Empty when [readOfferedCatalog] would refuse, so that *Document maken* lists nothing to generate from. A template
+     * the beheerder switched off is left out, and each template names the informatieobjecttype its document is stored
+     * under: its own, or else the zaaktype's.
      */
-    @Transactional(REQUIRED)
-    fun copyTemplateMapping(previousZaaktypeUuid: UUID, newZaaktypeUuid: UUID) {
-        val previousTemplateGroups = zaaktypeConfigurationService.readZaaktypeConfiguration(previousZaaktypeUuid)
-            ?.let(epistolaTemplateGroupRepository::listTemplateGroups)
-            .orEmpty()
-        if (previousTemplateGroups.isEmpty()) return
-
-        val newZaaktypeConfiguration = readZaaktypeConfiguration(newZaaktypeUuid)
-        LOG.fine { "Copying Epistola template groups from zaaktype '$previousZaaktypeUuid' to '$newZaaktypeUuid'" }
-        epistolaTemplateGroupRepository.replaceTemplateGroups(
-            zaaktypeConfiguration = newZaaktypeConfiguration,
-            templateGroups = previousTemplateGroups.map { it.copyTo(newZaaktypeConfiguration) }
-        )
-    }
+    fun listOfferedTemplates(zaaktypeUuid: UUID): List<RestOfferedEpistolaTemplate> =
+        findOfferedCatalog(zaaktypeUuid)?.let { offeredCatalog ->
+            readTemplateNames(offeredCatalog.catalogId).namesById
+                .filterKeys(offeredCatalog::isOffered)
+                .map { (id, name) ->
+                    RestOfferedEpistolaTemplate(
+                        id = id,
+                        name = name,
+                        informatieObjectTypeUUID = offeredCatalog.informatieObjectTypeUuidOf(id)
+                    )
+                }
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        }.orEmpty()
 
     /**
-     * A template the zaaktype does not offer is refused, and so is every template while the beheerder has
-     * switched Epistola off for the zaaktype, so a behandelaar can only generate what the beheerder offers.
-     * Every template of a zaaktype that is not CMMN is refused too, with a message that says why.
+     * A zaaktype offers the templates of its catalog only while Epistola is the active provider, the beheerder has
+     * switched Epistola on for it and has chosen the informatieobjecttype its documents are stored under. Whether a
+     * template is in the catalog is for Epistola to say, when the template is read from it.
      *
      * @throws EpistolaCmmnOnlyException when Epistola is the active provider and the zaaktype is not a CMMN one
-     * @throws EpistolaTemplateNotConfiguredException when the zaaktype does not offer the template
+     * @throws EpistolaTemplateNotConfiguredException when the zaaktype offers no Epistola templates
      */
-    fun readInformatieobjecttypeUuid(zaaktypeUuid: UUID, templateId: String): UUID {
+    fun readOfferedCatalog(zaaktypeUuid: UUID): OfferedEpistolaCatalog {
         val zaaktypeConfiguration = zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
-        val isNotCmmn = zaaktypeConfiguration != null && zaaktypeConfiguration.getConfigurationType() != CMMN
-        if (isEpistolaActive() && isNotCmmn) {
+        if (isEpistolaActive() && zaaktypeConfiguration != null && zaaktypeConfiguration.getConfigurationType() != CMMN) {
             throw EpistolaCmmnOnlyException(
                 "Creating a document with Epistola is limited to zaken with a CMMN zaaktype; " +
                     "zaaktype '$zaaktypeUuid' is not a CMMN zaaktype."
             )
         }
-        return zaaktypeConfiguration
-            ?.takeIf { isEpistolaActive() && it.isEpistolaEnabled }
-            ?.let(epistolaTemplateGroupRepository::listTemplateGroups)
-            .orEmpty()
-            .flatMap { it.templates }
-            .firstOrNull { it.epistolaId == templateId }
-            ?.informatieObjectTypeUUID
-            ?: throw EpistolaTemplateNotConfiguredException(
-                "Epistola template '$templateId' is not configured for zaaktype '$zaaktypeUuid'."
-            )
+        return zaaktypeConfiguration?.toOfferedCatalog()
+            ?: throw EpistolaTemplateNotConfiguredException("Zaaktype '$zaaktypeUuid' offers no Epistola templates.")
     }
 
     /**
-     * Refuses, as [readInformatieobjecttypeUuid] does, when the zaaktype no longer offers the template, so a new
-     * version of a document is not generated from a template the beheerder has taken away.
+     * [readOfferedCatalog] for generating a document from [templateId], which the beheerder may have switched off. Only
+     * a new version of a document skips this check, as it is made from the template the first version came from.
+     *
+     * @throws EpistolaTemplateNotOfferedException when the zaaktype does not offer the template
      */
-    fun assertTemplateIsOffered(zaaktypeUuid: UUID, templateId: String) {
-        readInformatieobjecttypeUuid(zaaktypeUuid = zaaktypeUuid, templateId = templateId)
-    }
+    fun readCatalogOfferingTemplate(zaaktypeUuid: UUID, templateId: String): OfferedEpistolaCatalog =
+        readOfferedCatalog(zaaktypeUuid).also {
+            if (!it.isOffered(templateId)) {
+                throw EpistolaTemplateNotOfferedException(
+                    "Zaaktype '$zaaktypeUuid' does not offer Epistola template '$templateId'."
+                )
+            }
+        }
 
     fun isEpistolaActive() = documentCreationProviderConfiguration.activeProvider == DocumentCreationProvider.EPISTOLA
 
+    private fun assertEpistolaIsActive() {
+        if (!isEpistolaActive()) {
+            throw EpistolaTemplateMappingException("Epistola is not the active document creation provider.")
+        }
+    }
+
+    private fun findOfferedCatalog(zaaktypeUuid: UUID) =
+        if (isEpistolaActive()) {
+            zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)?.toOfferedCatalog()
+        } else {
+            null
+        }
+
+    private fun ZaaktypeConfiguration.toOfferedCatalog() =
+        epistolaInformatieobjecttypeUuid
+            ?.takeIf { isEpistolaActive() && isEpistolaEnabled && getConfigurationType() == CMMN }
+            ?.let {
+                OfferedEpistolaCatalog(
+                    catalogId = epistolaCatalogId ?: epistolaClientService.defaultCatalogId,
+                    informatieObjectTypeUuid = it,
+                    locale = epistolaLocale,
+                    templateSettings = readEpistolaTemplateSettings()
+                )
+            }
+
     /**
-     * Only an Epistola that cannot be reached falls back to the names of the last listing. Refused access, a
-     * rate limit or a rejected request say something the beheerder needs to see, and saving a mapping checks
-     * the live list, never these names.
+     * Every successful listing replaces the names kept for the catalog, so a template Epistola has dropped from it
+     * cannot come back from them.
      */
-    private fun readTemplateNamesById(): Map<String, String> =
+    private fun listTemplateNames(catalogId: String): Map<String, String> =
+        epistolaClientService.listTemplates(catalogId)
+            .map { it.toRestEpistolaTemplate() }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            .also { templates ->
+                lastReadTemplateNames[catalogId] = ReadTemplateNames(
+                    namesById = templates.associate { it.id to it.name },
+                    readAt = Instant.now()
+                )
+            }
+            .associate { it.id to it.name }
+
+    /**
+     * Only an Epistola that cannot be reached falls back to the names of the catalog's last listing. Refused access, a
+     * rate limit or a rejected request say something the user needs to see.
+     */
+    private fun readTemplateNames(catalogId: String): TemplateNames =
         try {
-            listTemplates().associate { it.id to it.name }
+            TemplateNames(namesById = listTemplateNames(catalogId), isRemembered = false)
         } catch (epistolaRequestFailedException: EpistolaRequestFailedException) {
-            lastReadTemplateNames.get()
+            lastReadTemplateNames[catalogId]
                 ?.takeIf { epistolaRequestFailedException.errorCode == ERROR_CODE_EPISTOLA_UNAVAILABLE }
                 ?.also {
-                    LOG.warning { "Epistola cannot be reached; listing the templates by the names read at ${it.readAt}" }
+                    LOG.warning {
+                        "Epistola cannot be reached; listing the templates of catalog '$catalogId' by the names read at ${it.readAt}"
+                    }
                 }
-                ?.namesById
+                ?.let { TemplateNames(namesById = it.namesById, isRemembered = true) }
                 ?: throw epistolaRequestFailedException
         }
 
-    private fun readStoredTemplateGroups(zaaktypeUuid: UUID) =
-        if (isEpistolaActive()) {
-            zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
-                ?.let(epistolaTemplateGroupRepository::listTemplateGroups)
-                .orEmpty()
-        } else {
-            emptyList()
+    /** Stops at the first template Epistola cannot be reached for, so that the others do not each wait for a timeout. */
+    private fun readGenerationTemplates(catalogId: String, templateIds: Collection<String>) =
+        mutableMapOf<String, EpistolaGenerationTemplate>().also { generationTemplates ->
+            try {
+                templateIds.forEach {
+                    generationTemplates[it] = epistolaClientService.readGenerationTemplate(
+                        catalogId = catalogId,
+                        templateId = it
+                    )
+                }
+            } catch (epistolaRequestFailedException: EpistolaRequestFailedException) {
+                if (epistolaRequestFailedException.errorCode != ERROR_CODE_EPISTOLA_UNAVAILABLE) {
+                    throw epistolaRequestFailedException
+                }
+                LOG.warning {
+                    "Epistola cannot be reached; listing the templates of catalog '$catalogId' without their details"
+                }
+            }
         }
-
-    private fun readZaaktypeConfiguration(zaaktypeUuid: UUID): ZaaktypeConfiguration =
-        zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid)
-            ?: throw ZaaktypeConfigurationNotFoundException(
-                "No zaaktype configuration found for zaaktype UUID '$zaaktypeUuid'"
-            )
 }
 
 private data class ReadTemplateNames(val namesById: Map<String, String>, val readAt: Instant)
+
+private data class TemplateNames(val namesById: Map<String, String>, val isRemembered: Boolean)

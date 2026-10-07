@@ -4,10 +4,9 @@
  */
 package nl.info.zac.app.documentcreation.model
 
-import nl.info.client.epistola.model.EpistolaGenerationTemplate
+import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
 import nl.info.zac.documentcreation.model.kanaalSuggestedBy
 import nl.info.zac.documentcreation.model.kanalenIn
-import nl.info.zac.documentcreation.model.resolveLocale
 import nl.info.zac.documentcreation.model.suggestFor
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -25,8 +24,8 @@ data class RestEpistolaVarianten(
     val communicatiekanaal: String?
 )
 
-fun EpistolaGenerationTemplate.toRestEpistolaVarianten(communicatiekanaal: String?) =
-    kanalenIn(resolveLocale()).let { kanalenInLocale ->
+fun EpistolaTemplateInLocale.toRestEpistolaVarianten(communicatiekanaal: String?) =
+    template.kanalenIn(locale).let { kanalenInLocale ->
         RestEpistolaVarianten(
             varianten = kanalenInLocale.kanalen,
             voorgesteldeVariant = kanalenInLocale.suggestFor(communicatiekanaal),

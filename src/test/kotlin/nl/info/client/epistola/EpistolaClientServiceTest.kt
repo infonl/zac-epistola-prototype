@@ -5,6 +5,7 @@
 package nl.info.client.epistola
 
 import app.epistola.client.jakarta.api.ApiException
+import app.epistola.client.jakarta.api.CatalogsApi
 import app.epistola.client.jakarta.api.GenerationApi
 import app.epistola.client.jakarta.api.TemplatesApi
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
@@ -30,14 +31,12 @@ import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaJobStatus
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.createTemplate
 import nl.info.client.epistola.model.createVariantSummary
-import nl.info.client.epistola.model.createTemplateListResponse
-import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.createEpistolaSettings
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE
@@ -53,6 +52,7 @@ import kotlin.time.measureTime
 
 private const val FAKE_TENANT_ID = "fake-tenant"
 private const val FAKE_CATALOG_ID = "fake-catalog"
+private const val FAKE_DEFAULT_CATALOG_ID = "fake-default-catalog"
 private const val FAKE_TEMPLATE_ID = "fake-template"
 private const val FAKE_FILE_NAME = "fakeFileName.pdf"
 private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
@@ -60,13 +60,15 @@ private const val FAKE_CORRELATION_ID = "fakeCorrelationId"
 class EpistolaClientServiceTest : BehaviorSpec({
     val generationApi = mockk<GenerationApi>()
     val templatesApi = mockk<TemplatesApi>()
+    val catalogsApi = mockk<CatalogsApi>()
 
     fun createService(generationTimeout: Duration = Duration.ZERO) = EpistolaClientService(
         generationApi = generationApi,
         templatesApi = templatesApi,
+        catalogsApi = catalogsApi,
         epistolaSettings = createEpistolaSettings(
             tenantId = FAKE_TENANT_ID,
-            catalogId = FAKE_CATALOG_ID,
+            catalogId = FAKE_DEFAULT_CATALOG_ID,
             generationTimeout = generationTimeout
         )
     )
@@ -95,6 +97,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
             `when`("the document is generated") {
                 val generatedDocument = createService().generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
@@ -107,7 +110,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
                     generatedDocument.content shouldBe pdfContent
                 }
 
-                and("the request carries the catalog, the template, the data and the correlation id") {
+                and("the request carries the catalog it was given, the template, the data and the correlation id") {
                     with(generateRequestSlot.captured) {
                         catalogId shouldBe FAKE_CATALOG_ID
                         templateId shouldBe FAKE_TEMPLATE_ID
@@ -143,6 +146,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
             `when`("the document is generated") {
                 val generatedDocument = createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = emptyMap(),
                     fileName = FAKE_FILE_NAME,
@@ -175,6 +179,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the document is generated") {
                 val exception = shouldThrow<EpistolaDocumentGenerationException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -216,6 +221,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the document is generated") {
                 val exception = shouldThrow<EpistolaRequestFailedException> {
                     createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -253,6 +259,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the configured timeout passes") {
                 val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -288,6 +295,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the configured timeout passes") {
                 val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -316,6 +324,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
                 val waitingTime = measureTime {
                     epistolaDocumentGenerationTimeoutException = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
                         createService(generationTimeout = Duration.ofSeconds(1)).generateDocument(
+                            catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
                             data = emptyMap(),
                             fileName = FAKE_FILE_NAME,
@@ -345,6 +354,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the configured timeout passes") {
                 val exception = shouldThrow<EpistolaDocumentGenerationTimeoutException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -381,6 +391,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
             `when`("the document is generated") {
                 createService(generationTimeout = Duration.ofSeconds(30)).generateDocument(
+                    catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = emptyMap(),
                     fileName = FAKE_FILE_NAME,
@@ -400,6 +411,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the document is generated") {
                 val exception = shouldThrow<EpistolaRequestFailedException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -438,6 +450,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the document is generated") {
                 val exception = shouldThrow<EpistolaRequestFailedException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -469,6 +482,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the document is generated") {
                 val exception = shouldThrow<EpistolaDocumentGenerationException> {
                     createService().generateDocument(
+                        catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
                         data = emptyMap(),
                         fileName = FAKE_FILE_NAME,
@@ -493,7 +507,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             } returns createTemplate(dataModel = dataModel)
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
                 then("the data model is its data contract, as the contract defines it") {
                     generationTemplate.dataContract shouldBe dataModel
@@ -507,7 +521,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             } returns createTemplate(schema = schema)
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
                 then("that schema is its data contract rather than the template counting as having none") {
                     generationTemplate.dataContract shouldBe schema
@@ -521,7 +535,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             } returns createTemplate(schema = schema, dataModel = dataModel)
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
                 then("the data model wins, because that is the one Epistola validates against") {
                     generationTemplate.dataContract shouldBe dataModel
@@ -535,7 +549,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             } returns createTemplate()
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
                 then("it has no data contract, so the caller decides what an unrestricted template means") {
                     generationTemplate.dataContract shouldBe null
@@ -568,9 +582,9 @@ class EpistolaClientServiceTest : BehaviorSpec({
             )
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
-                then("each kanaal of ZAC's catalog is listed once, with that of the default variant") {
+                then("each kanaal of the template's own catalog is listed once, with that of the default variant") {
                     generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "digitaal")
                 }
             }
@@ -587,7 +601,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             )
 
             `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
                 then("it has a kanaal, but no default kanaal") {
                     generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = null)
@@ -602,83 +616,12 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
             `when`("the template is read") {
                 val exception = shouldThrow<EpistolaRequestFailedException> {
-                    createService().readGenerationTemplate(FAKE_TEMPLATE_ID)
+                    createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
                 }
 
                 then("the behandelaar learns that ZAC has no access to Epistola") {
                     exception.errorCode shouldBe ERROR_CODE_EPISTOLA_ACCESS_DENIED
                     exception.message shouldContain "HTTP 401"
-                }
-            }
-        }
-    }
-
-    context("listing templates") {
-        given("a catalog that fits on one page") {
-            val templateSummary = createTemplateSummary()
-            every {
-                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
-            } returns createTemplateListResponse(items = listOf(templateSummary), totalPages = 1)
-
-            `when`("the templates are listed") {
-                val templates = createService().listTemplates()
-
-                then("the one page is read, at the largest page size Epistola allows") {
-                    templates shouldBe listOf(templateSummary)
-                    verify(exactly = 1) { templatesApi.listTemplates(any(), any(), any(), any(), any(), any(), any()) }
-                }
-            }
-        }
-
-        given("a catalog spread over two pages") {
-            val firstTemplateSummary = createTemplateSummary(id = "fake-template-1")
-            val secondTemplateSummary = createTemplateSummary(id = "fake-template-2")
-            every {
-                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
-            } returns createTemplateListResponse(items = listOf(firstTemplateSummary), pageNumber = 0, totalPages = 2)
-            every {
-                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 1, 100, null, null)
-            } returns createTemplateListResponse(items = listOf(secondTemplateSummary), pageNumber = 1, totalPages = 2)
-
-            `when`("the templates are listed") {
-                val templates = createService().listTemplates()
-
-                then("the templates of both pages are returned, so none past the first page is left out") {
-                    templates shouldBe listOf(firstTemplateSummary, secondTemplateSummary)
-                }
-            }
-        }
-
-        given("an empty catalog whose response carries no page information") {
-            every {
-                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
-            } returns createTemplateListResponse(items = emptyList(), totalPages = null)
-
-            `when`("the templates are listed") {
-                val templates = createService().listTemplates()
-
-                then("no templates are returned and no further page is requested") {
-                    templates shouldBe emptyList()
-                    verify(exactly = 1) { templatesApi.listTemplates(any(), any(), any(), any(), any(), any(), any()) }
-                }
-            }
-        }
-    }
-
-    context("listing templates while Epistola cannot be reached") {
-        given("a connection that Epistola's host refuses") {
-            every {
-                templatesApi.listTemplates(FAKE_TENANT_ID, FAKE_CATALOG_ID, null, 0, 100, null, null)
-            } throws ProcessingException(ConnectException("fakeConnectionRefused"))
-
-            `when`("the templates are listed") {
-                val exception = shouldThrow<EpistolaRequestFailedException> {
-                    createService().listTemplates()
-                }
-
-                then("Epistola counts as unavailable, instead of the catalog as empty") {
-                    exception.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
-                    exception.message shouldContain FAKE_CATALOG_ID
                 }
             }
         }

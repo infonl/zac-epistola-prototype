@@ -66,6 +66,7 @@ import {
   NotificationDialogComponent,
   NotificationDialogData,
 } from "../../shared/notification-dialog/notification-dialog.component";
+import { epistolaVariantLabel } from "../../shared/utils/epistola-variant-label";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import {
   EPISTOLA_GENERATION_FINISHED_DISPLAY_MS,
@@ -77,21 +78,16 @@ import {
 } from "../epistola-preview-dialog/epistola-preview-dialog.component";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
-/** SmartDocuments groups carry an id; Epistola's belong to ZAC and are known by name only. */
 type TemplateOption = {
   id: string;
   name: string;
   informatieObjectTypeUUID?: string | null;
 };
+/** Only SmartDocuments groups its templates; Epistola offers those of the zaaktype's catalog directly. */
 type TemplateGroupOption = {
-  id?: string;
+  id: string;
   name: string;
   templates: TemplateOption[];
-};
-
-const VARIANT_LABELS: Record<string, string> = {
-  post: "epistola.variant.post",
-  digitaal: "epistola.variant.digitaal",
 };
 
 /** A disabled control is left out of the form's validity, so the picker's wait for the variants has to be checked here. */
@@ -171,7 +167,7 @@ export class InformatieObjectCreateAttendedComponent
 
   protected templateGroups: Observable<TemplateGroupOption[]> = of([]);
   protected templates: TemplateOption[] = [];
-  protected readonly templateGroupsError = signal<string | null>(null);
+  protected readonly templatesError = signal<string | null>(null);
 
   protected readonly varianten =
     signal<GeneratedType<"RestEpistolaVarianten"> | null>(null);
@@ -179,8 +175,7 @@ export class InformatieObjectCreateAttendedComponent
     const varianten = this.varianten()?.varianten ?? [];
     return varianten.length > 1 ? varianten : [];
   });
-  protected readonly variantLabel = (variant: string) =>
-    VARIANT_LABELS[variant] ?? variant;
+  protected readonly variantLabel = epistolaVariantLabel;
   private readonly chosenVariant = toSignal(
     this.form.controls.variant.valueChanges,
     { initialValue: null },
@@ -280,52 +275,14 @@ export class InformatieObjectCreateAttendedComponent
     this.form.controls.informationObjectType.disable();
     this.form.controls.confidentiality.disable();
     if (this.usesEpistola) {
+      this.form.controls.templateGroup.disable();
       this.form.controls.creationDate.disable();
       this.form.controls.author.disable();
     }
 
-    const templateGroupsFetcher: Observable<TemplateGroupOption[]> = from(
-      this.fetchTemplateGroups(),
-    ).pipe(
-      catchError((error: HttpErrorResponse) => {
-        this.templateGroupsError.set(
-          error.error?.message ?? "dialoog.error.body.technisch",
-        );
-        return of([]);
-      }),
-      startWith([]),
-    );
-    this.templateGroups = templateGroupsFetcher;
-
     this.form.controls.templateGroup.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe((value) => {
-        this.templates = value?.templates ?? [];
-
-        if (this.smartDocumentsTemplateId !== undefined) {
-          const smartDocumentsTemplate = this.templates.find(
-            ({ id }) => id === this.smartDocumentsTemplateId,
-          );
-          if (smartDocumentsTemplate) {
-            this.form.controls.template.setValue(smartDocumentsTemplate);
-            this.form.controls.template.disable();
-            return;
-          }
-        }
-
-        if (!value?.templates) {
-          this.form.controls.template.setValue(null);
-          this.form.controls.template.disable();
-          return;
-        }
-
-        this.form.controls.template.enable();
-
-        if (value.templates.length !== 1) return;
-
-        this.form.controls.template.setValue(value.templates.at(0) ?? null);
-        this.form.controls.template.disable();
-      });
+      .subscribe((value) => this.offerTemplates(value?.templates));
 
     this.form.controls.template.valueChanges
       .pipe(
@@ -383,6 +340,19 @@ export class InformatieObjectCreateAttendedComponent
         .subscribe((varianten) => this.offerVarianten(varianten));
     }
 
+    if (this.usesEpistola) {
+      this.offerEpistolaTemplates();
+      return;
+    }
+
+    const templateGroupsFetcher = this.whenLoaded(
+      this.queryClient.query(
+        this.smartDocumentsService.getTemplatesMappingQuery(
+          this.zaak.zaaktype.uuid,
+        ),
+      ),
+    ).pipe(startWith([]));
+    this.templateGroups = templateGroupsFetcher;
     templateGroupsFetcher
       .pipe(takeUntil(this.destroy$))
       .subscribe((templateGroups) => {
@@ -425,18 +395,56 @@ export class InformatieObjectCreateAttendedComponent
     variant.enable();
   }
 
-  private fetchTemplateGroups(): Promise<TemplateGroupOption[]> {
-    return this.usesEpistola
-      ? this.queryClient.query(
-          this.epistolaTemplatesService.getTemplatesMappingQuery(
-            this.zaak.zaaktype.uuid,
-          ),
-        )
-      : this.queryClient.query(
-          this.smartDocumentsService.getTemplatesMappingQuery(
-            this.zaak.zaaktype.uuid,
-          ),
+  private offerEpistolaTemplates() {
+    this.whenLoaded(
+      this.queryClient.query(
+        this.epistolaTemplatesService.listOfferedTemplatesQuery(
+          this.zaak.zaaktype.uuid,
+        ),
+      ),
+    )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((templates) => this.offerTemplates(templates));
+  }
+
+  /** Empty, with the reason shown, when the templates cannot be loaded. */
+  private whenLoaded<T>(templates: Promise<T[]>): Observable<T[]> {
+    return from(templates).pipe(
+      catchError((error: HttpErrorResponse) => {
+        this.templatesError.set(
+          error.error?.message ?? "dialoog.error.body.technisch",
         );
+        return of([]);
+      }),
+    );
+  }
+
+  private offerTemplates(templates: TemplateOption[] | undefined) {
+    this.templates = templates ?? [];
+
+    if (this.smartDocumentsTemplateId !== undefined) {
+      const smartDocumentsTemplate = this.templates.find(
+        ({ id }) => id === this.smartDocumentsTemplateId,
+      );
+      if (smartDocumentsTemplate) {
+        this.form.controls.template.setValue(smartDocumentsTemplate);
+        this.form.controls.template.disable();
+        return;
+      }
+    }
+
+    if (!templates) {
+      this.form.controls.template.setValue(null);
+      this.form.controls.template.disable();
+      return;
+    }
+
+    this.form.controls.template.enable();
+
+    if (templates.length !== 1) return;
+
+    this.form.controls.template.setValue(templates.at(0) ?? null);
+    this.form.controls.template.disable();
   }
 
   private fetchInformatieobjecttypes() {
