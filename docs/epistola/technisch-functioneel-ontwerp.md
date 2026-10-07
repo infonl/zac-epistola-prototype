@@ -49,6 +49,12 @@ gebouwde versie noemen Epistola wel (§5).
    Het gekozen kanaal, ook het voorgeselecteerde, is het kanaal waar ZAC Epistola om vraagt. Heeft het template minder
    dan twee kanalen, dan ontbreekt de keuzelijst en vraagt ZAC om het kanaal dat het communicatiekanaal voorstelt, of om
    geen ([§5](#verzoek)).
+   *5 oktober:* ~~heeft het template varianten in twee of meer talen, dan staat daarboven de keuzelijst **Taal** (#52),
+   op Nederlands als het template dat heeft en anders op de taal van de standaardvariant. *Variant* biedt dan alleen de
+   varianten in de gekozen taal~~ *6 oktober:* de behandelaar kiest geen taal; er is geen keuzelijst *Taal*. ZAC kiest
+   zelf de taal waar het Epistola om vraagt: Nederlands als het template dat heeft, anders de taal van de
+   standaardvariant. *Variant* biedt de varianten die het template in die taal heeft ([§5](#verzoek)). Dat een zaaktype
+   zijn eigen taal kiest, in de beheerkaart van het zaaktype, is gepland in #51.
 4. **Generatie** — ZAC leest de zaak uit Open Zaak en de initiator uit de BRP of KvK *op dat moment*, bouwt
    de payload ([§3](#3--datamapping)) en dient hem in bij Epistola. Generatie is **asynchroon**: het
    indienen levert een job op, ZAC pollt die tot hij klaar is en downloadt dan de PDF
@@ -416,7 +422,7 @@ dat contract gelezen en niet voorgesteld.
 | `DELETE /tenants/{tenantId}/documents/jobs/{requestId}` | Ja | `DOCUMENT_GENERATE` | Annuleert een job die de timeout overschrijdt. Een job die al klaar is, weigert dat met `409` |
 | `GET /tenants/{tenantId}/documents/{documentId}` | Ja | `DOCUMENT_VIEW` | Downloadt de PDF — `application/pdf` met een bestandsnaam en grootte |
 | `DELETE /tenants/{tenantId}/documents/{documentId}` | Ja, sinds #6 | `DOCUMENT_GENERATE` | Verwijdert de PDF bij Epistola zodra hij in Open Zaak staat, en ook als het opslaan mislukt (B20), in plaats van hem daar maanden te laten staan ([bewaartermijn](#bewaartermijn-bij-epistola)). Live nagegaan: `204`, daarna `404` |
-| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping). *5 oktober:* in dezelfde aanroep ook de varianten met hun attributen, waaruit ZAC de kanalen van het template leest (#47) |
+| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping). *5 oktober:* in dezelfde aanroep ook de varianten met hun attributen, waaruit ZAC de kanalen van het template leest (#47), en de talen uit `system.locale` (#52) |
 | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` | Ja | `TEMPLATE_VIEW` | De templates die het beheerscherm per zaaktype aanbiedt (#3) |
 | `POST /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}/validate` | Nee | `TEMPLATE_VIEW` | Toetst data tegen het contract zonder te genereren. Waarom ZAC het niet vooraf aanroept, staat in [§3](#ontbrekende-optionele-velden) |
 | `POST /tenants/{tenantId}/documents/preview` | Nee | `DOCUMENT_GENERATE` | Synchroon, maar alleen preview: geen PDF/A, rate-limited, niet bewaard |
@@ -441,8 +447,8 @@ drie velden:
 
 | Veld | Inhoud |
 |---|---|
-| `varianten` | De varianten, elk aangeduid met het kanaal waarvoor ze gemaakt zijn: de kanalen waarvoor de varianten van het template gemaakt zijn, uit het attribuut `kanaal` in ZAC's catalogus, elk één keer. Leeg voor een template zonder varianten per kanaal |
-| `voorgesteldeVariant` | Het kanaal dat het communicatiekanaal van de zaak voorstelt, en anders dat van de standaardvariant. De keuzelijst staat erop |
+| `varianten` | De varianten, elk aangeduid met het kanaal waarvoor ze gemaakt zijn: de kanalen waarvoor de varianten van het template gemaakt zijn, uit het attribuut `kanaal` in ZAC's catalogus, elk één keer. *6 oktober:* alleen die in de taal waar ZAC Epistola om vraagt. Leeg voor een template zonder varianten per kanaal |
+| `voorgesteldeVariant` | Het kanaal dat het communicatiekanaal van de zaak voorstelt, en anders dat van de standaardvariant, in die taal. De keuzelijst staat erop |
 | `communicatiekanaal` | De naam van het communicatiekanaal van de zaak, alleen als dat het voorstel deed. De hint noemt het |
 
 Het endpoint toetst dezelfde policy als het genereren, `creeren_document` op de zaak ([§4](#4--autorisatiemodel)), en
@@ -450,7 +456,7 @@ weigert een template dat het zaaktype niet aanbiedt, allebei vóór het Epistola
 template met de aanroep `GET …/templates/{templateId}` uit de tabel. Het antwoord wordt niet bewaard, omdat het
 communicatiekanaal van de zaak kan veranderen terwijl de pagina openstaat. Mislukt de aanroep, dan meldt de frontend
 niets: de keuzelijst blijft weg, en bij het genereren vraagt ZAC om het kanaal dat het communicatiekanaal voorstelt,
-of om geen.
+of om geen. De taal verandert daar niet door: ZAC vraagt altijd om de taal die het zelf kiest ([§5](#verzoek)).
 
 ### Authenticatie
 
@@ -479,14 +485,28 @@ markering in een contract zegt wat er verandert, niet waarom, en dat laatste moe
 
 Een generatieverzoek benoemt het template en ofwel een expliciete `variantId` ofwel `attributes` voor
 automatische variantkeuze — nooit allebei. Voor een template waarvan de varianten het attribuut `kanaal` in ZAC's
-catalogus dragen (`post` of `digitaal`), stuurt ZAC `attributes`: het kanaal als vereiste en `system.locale` `nl-NL`
-als voorkeur, zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen (#47). De
-behandelaar kiest de variant in *Document maken*, met de kiezer *Variant* (#53), voorgesteld door het
-communicatiekanaal van de zaak; een nieuwe versie krijgt het kanaal van het document. Zonder kanaal, en voor elk
-ander template, stuurt ZAC geen van beide en kiest Epistola de standaardvariant. *5 oktober:* ZAC slaat bij het document het kanaal op waar het om vroeg, ook het
-kanaal van de standaardvariant als de behandelaar dat in de keuzelijst liet staan. Vroeg het om geen kanaal, omdat de
-behandelaar er geen kon kiezen en het communicatiekanaal er geen voorstelde, dan slaat het geen kanaal op, en vraagt
-ook een nieuwe versie om geen ([§1](#1--functioneel-ontwerp), stap 7). Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
+catalogus dragen (`post` of `digitaal`), stuurt ZAC `attributes` met het kanaal als vereiste (#47). De behandelaar kiest
+de variant in *Document maken*, met de kiezer *Variant* (#53), voorgesteld door het communicatiekanaal van de zaak; een
+nieuwe versie krijgt het kanaal van het document. *5 oktober:* ZAC slaat bij het document het kanaal op waar het om
+vroeg, ook het kanaal van de standaardvariant als de behandelaar dat in de keuzelijst liet staan. Vroeg het om geen
+kanaal, omdat de behandelaar er geen kon kiezen en het communicatiekanaal er geen voorstelde, dan slaat het geen kanaal
+op, en vraagt ook een nieuwe versie om geen ([§1](#1--functioneel-ontwerp), stap 7).
+
+*5 oktober:* naast het kanaal stuurt ZAC de taal als vereist `system.locale`, voor een template waarvan de varianten een
+taal hebben (#52). Dat vervangt de voorkeur voor `nl-NL` die ZAC sinds #47 meestuurde, zodat een Nederlandse en een
+Engelse variant voor hetzelfde kanaal niet gelijk eindigden. ~~De behandelaar kiest de taal in *Document maken* met de
+kiezer *Taal*, die alleen verschijnt bij twee of meer talen en op Nederlands staat, anders op de taal van de
+standaardvariant.~~ *6 oktober:* de behandelaar kiest geen taal. ZAC vraagt om Nederlands als het template dat heeft
+(`nl-NL`, anders een andere Nederlandse regio) en anders om de taal van de standaardvariant; heeft de standaardvariant
+geen taal, dan vraagt het om geen. *Variant* biedt alleen de varianten die het template in die taal heeft, zodat
+Epistola nooit ongemerkt terugvalt op de standaardvariant in een andere taal. ZAC leest de talen uit de varianten en
+houdt zelf geen talenlijst bij. Dat een zaaktype zijn taal kiest (#51) volgt later. Het informatieobject in Open Zaak krijgt de gevraagde taal als ISO 639-2/B-code, zoals `eng`, en `dut` als
+ZAC om geen taal vroeg. ZAC slaat de gevraagde taal bij het document op, en een nieuwe versie vraagt erom zolang het
+template die taal nog heeft; zonder opgeslagen taal, of met een taal die het template niet meer heeft, vraagt ze om de
+taal die ZAC voor het template kiest. Zonder kanaal en zonder taal stuurt ZAC geen `attributes` en kiest Epistola de
+standaardvariant.
+
+Het verzoek draagt de catalogus, de templatevariabelen uit [§3](#3--datamapping) en
 een `correlationId`, die ZAC op de **UUID** van de zaak zet. Epistola echoot die terug en bewaart hem, dus
 de waarde belandt in het audittrail van een derde partij en in elke supportuitwisseling. Beide
 identificeren de zaak vanuit ZAC even goed en terugzoeken kost in geen van beide gevallen extra, maar de

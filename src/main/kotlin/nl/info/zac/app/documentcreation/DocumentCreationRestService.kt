@@ -142,7 +142,10 @@ class DocumentCreationRestService @Inject constructor(
             )
         }
 
-    /** The variants a behandelaar can choose between, and the one the zaak's communicatiekanaal suggests. */
+    /**
+     * The variants a behandelaar can choose between, in the language ZAC asks Epistola for, and the variant the zaak's
+     * communicatiekanaal suggests.
+     */
     @GET
     @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/varianten")
     fun readEpistolaVarianten(
@@ -152,7 +155,7 @@ class DocumentCreationRestService @Inject constructor(
         zrcClientService.readZaak(zaakUuid).also { zaak ->
             assertDocumentCreationAllowed(zaak = zaak, taskId = null)
         }.let { zaak ->
-            epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = templateId)
+            epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = templateId)
                 .toRestEpistolaVarianten(zaak.communicatiekanaalNaam)
         }
 

@@ -139,7 +139,8 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = informatieObjectUUID,
                     templateId = FAKE_TEMPLATE_ID,
-                    kanaal = captureNullable(storedKanalen)
+                    kanaal = captureNullable(storedKanalen),
+                    locale = null
                 )
             } returns createEpistolaDocument(informatieObjectUUID = informatieObjectUUID, templateId = FAKE_TEMPLATE_ID)
             every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } answers {
@@ -285,17 +286,17 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
 
         given("a template the zaak's zaaktype offers, with a post and a digital variant") {
             val zaak = createZaak()
+            val generationTemplate = EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal)
             every {
                 epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
             } just runs
-            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
-                EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = postAndDigitaal)
+            every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns generationTemplate
 
-            `when`("its kanalen are read") {
-                val kanalen = epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+            `when`("its variants are read") {
+                val varianten = epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
 
-                then("both are returned, with that of the default variant") {
-                    kanalen shouldBe postAndDigitaal
+                then("both kanalen are returned, with that of the default variant") {
+                    varianten.kanalen shouldBe postAndDigitaal
                 }
             }
         }
@@ -306,12 +307,13 @@ class EpistolaDocumentCreationKanaalTest : BehaviorSpec({
                 epistolaTemplatesService.assertTemplateIsOffered(zaak.zaaktype.extractUuid(), FAKE_TEMPLATE_ID)
             } throws EpistolaTemplateNotConfiguredException("fakeMessage")
 
-            `when`("its kanalen are read") {
-                shouldThrow<EpistolaTemplateNotConfiguredException> {
-                    epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+            `when`("its variants are read") {
+                val exception = shouldThrow<EpistolaTemplateNotConfiguredException> {
+                    epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
                 }
 
-                then("Epistola is not asked about it") {
+                then("the refusal is passed on, and Epistola is not asked about it") {
+                    exception.message shouldBe "fakeMessage"
                     verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any()) }
                 }
             }

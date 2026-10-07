@@ -5,6 +5,7 @@
 
 package nl.info.zac.app.documentcreation
 
+import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
@@ -410,8 +411,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
                 creerenDocument = true
             )
-            every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
-                EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
+            every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
+                createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"))
 
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
 
@@ -432,7 +433,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
             }
 
             then("it is refused before Epistola is asked") {
-                verify(exactly = 0) { epistolaDocumentCreationService.readKanalen(any(), any()) }
+                verify(exactly = 0) { epistolaDocumentCreationService.readVarianten(any(), any()) }
             }
         }
     }
@@ -443,8 +444,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { loggedInUserInstance.get() } returns loggedInUser
         every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
-        every { epistolaDocumentCreationService.readKanalen(zaak = zaak, templateId = "fake-template") } returns
-            EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
+        every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
+            createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"))
 
         `when`("its variants are read") {
             val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")

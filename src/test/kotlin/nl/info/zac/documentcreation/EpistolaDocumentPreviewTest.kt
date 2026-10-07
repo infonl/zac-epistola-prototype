@@ -22,6 +22,8 @@ import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaKanalen
+import nl.info.client.epistola.model.EpistolaLocales
+import nl.info.client.epistola.model.createDutchAndEnglishLocales
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
@@ -71,10 +73,15 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
     )
     val postAndDigitaal = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
 
-    fun givenATemplateThatIsOffered(zaakUuid: UUID, kanalen: EpistolaKanalen, dataContract: Any? = TEMPLATE_SCHEMA) {
+    fun givenATemplateThatIsOffered(
+        zaakUuid: UUID,
+        kanalen: EpistolaKanalen,
+        dataContract: Any? = TEMPLATE_SCHEMA,
+        locales: EpistolaLocales = EpistolaLocales()
+    ) {
         every { epistolaTemplatesService.assertTemplateIsOffered(zaakUuid, FAKE_TEMPLATE_ID) } just runs
         every { epistolaClientService.readGenerationTemplate(FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen)
+            EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales)
     }
 
     afterEach { checkUnnecessaryStub() }
@@ -109,7 +116,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 and("no document is generated, so nothing is created at Epistola or stored in the zaak") {
                     verify(exactly = 0) {
-                        epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any())
+                        epistolaClientService.generateDocument(any(), any(), any(), any(), any(), any(), any())
                     }
                 }
             }
@@ -151,6 +158,25 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "post") }
                 }
             }
+
+            `when`("a preview is made of a template with Dutch variants by post and digitally and an English one by post") {
+                givenATemplateThatIsOffered(
+                    zaakUuid = zaak.zaaktype.extractUuid(),
+                    kanalen = postAndDigitaal,
+                    locales = createDutchAndEnglishLocales()
+                )
+                every { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") } returns FAKE_PREVIEW
+
+                epistolaDocumentCreationService.previewDocument(
+                    zaak = zaak,
+                    templateId = FAKE_TEMPLATE_ID,
+                    taskId = "fakeTaskId"
+                )
+
+                then("the Dutch variant the communicatiekanaal suggests is previewed, as it would be generated") {
+                    verify(exactly = 1) { epistolaClientService.previewDocument(FAKE_TEMPLATE_ID, any(), "digitaal", "nl-NL") }
+                }
+            }
         }
 
         given("a template the zaak's zaaktype does not offer") {
@@ -166,7 +192,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 then("it is refused before any zaak data reaches Epistola") {
                     epistolaTemplateNotConfiguredException.message shouldBe "fakeNotConfigured"
-                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any()) }
                 }
             }
         }
@@ -185,7 +211,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
                 then("no zaak data is sent to Epistola") {
                     epistolaTemplateSchemaMissingException.message shouldContain FAKE_TEMPLATE_ID
-                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any()) }
+                    verify(exactly = 0) { epistolaClientService.previewDocument(any(), any(), any(), any()) }
                 }
             }
         }

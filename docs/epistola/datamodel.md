@@ -69,6 +69,7 @@ erDiagram
         uuid informatieobject_uuid PK "NIEUW, geen FK"
         varchar template_id
         varchar kanaal
+        varchar locale
     }
 ```
 
@@ -121,6 +122,7 @@ en spaties te letten, zodat een behandelaar nooit twee groepen ziet die hij niet
 | `template_id` | varchar | nee | Identificatie van het template waarmee het document is gegenereerd |
 | `aanmaakdatum` | timestamptz | nee | Wanneer het document is gegenereerd |
 | `kanaal` | varchar | ja | ~~Het kanaal van de variant waarin het document is gegenereerd~~ *5 oktober:* het kanaal waar ZAC Epistola om vroeg, zoals `post` of `digitaal` (`V102`, #47), ook als dat het kanaal van de standaardvariant is dat de behandelaar in de keuzelijst liet staan. Leeg als ZAC om geen kanaal vroeg: bij een template zonder varianten per kanaal, en bij een standaardrender, waar de behandelaar geen kanaal kon kiezen en het communicatiekanaal van de zaak er geen voorstelde. Dan krijgt ook een nieuwe versie de standaardvariant, zolang het communicatiekanaal niets voorstelt. Ook leeg voor een document van vóór `V102`. Een nieuwe versie gebruikt een gevuld kanaal zolang het template dat kanaal nog heeft |
+| `locale` | varchar | ja | De taal waar ZAC Epistola om vroeg, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (`V103`, #52). De kolom heet naar het attribuut, zoals `kanaal`. Leeg als ZAC om geen taal vroeg, omdat de varianten van het template geen taal hebben, en voor een document van vóór `V103`. Een nieuwe versie vraagt om de opgeslagen taal zolang het template die nog heeft. Is de kolom leeg terwijl het template nu wel talen heeft, of heeft het template de taal niet meer, dan vraagt ze om de taal die ZAC voor het template kiest (Nederlands als het template dat heeft, anders die van de standaardvariant; de behandelaar kiest geen taal), zodat een Nederlandse en een Engelse variant voor hetzelfde kanaal niet gelijk eindigen |
 
 Er staat één rij per gegenereerd document, geschreven nadat het in Open Zaak staat. Een document zonder rij, omdat het
 ouder is of omdat het schrijven van de rij mislukte, heeft geen actie *Nieuwe versie genereren*. Een rij van een document
