@@ -13,6 +13,7 @@ import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaJobStatus
+import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
 import nl.info.client.zgw.util.extractUuid
@@ -28,6 +29,7 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
+import nl.info.zac.documentcreation.model.choose
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
 import nl.info.zac.epistola.EpistolaTemplatesService
@@ -69,12 +71,14 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Epistola's copy is deleted whether or not storing succeeds. A document that could not be stored is not kept:
      * the behandelaar is told, and can generate it again from the zaak.
      */
+    @Suppress("LongParameterList")
     fun createAndStoreDocument(
         zaak: Zaak,
         templateId: String,
         title: String,
         description: String?,
-        taskId: String? = null
+        taskId: String? = null,
+        kanaal: String? = null
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
@@ -88,7 +92,8 @@ class EpistolaDocumentCreationService @Inject constructor(
                 zaak = zaak,
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
-                taskId = taskId
+                taskId = taskId,
+                kanaal = kanaal
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeDocument(
@@ -102,27 +107,41 @@ class EpistolaDocumentCreationService @Inject constructor(
                     author = loggedInUser.getFullName()
                 ),
                 taskId = taskId
-            ).also { rememberTemplate(informatieObjectUUID = it.informatieobject.extractUuid(), templateId = templateId) }
+            ).also {
+                rememberGeneration(
+                    informatieObjectUUID = it.informatieobject.extractUuid(),
+                    templateId = templateId,
+                    kanaal = generatedDocument.kanaal
+                )
+            }
         } finally {
             epistolaDocumentCreationStatusStore.remove(userId = loggedInUser.id, zaakUuid = zaak.uuid)
         }
     }
 
+    /**
+     * Without a [kanaal], or with one the template has no variant for, the zaak's communicatiekanaal decides. The document
+     * names the kanaal ZAC asked Epistola for, and none when it asked for none and Epistola rendered the default
+     * variant, so that a new version asks for the same.
+     */
+    @Suppress("LongParameterList")
     fun createDocument(
         zaak: Zaak,
         templateId: String,
         fileName: String,
         taskId: String? = null,
+        kanaal: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument =
         try {
+            val generationTemplate = epistolaClientService.readGenerationTemplate(templateId)
             val templateData = documentCreationDataService.createEpistolaData(
                 loggedInUser = loggedInUserInstance.get(),
                 zaak = zaak,
                 taskId = taskId
             ).toEpistolaTemplateData(
                 templateId = templateId,
-                templateSchema = epistolaClientService.readTemplateSchema(templateId)
+                templateSchema = generationTemplate.dataContract
             )
             LOG.fine { "Generating Epistola document from template '$templateId' for zaak '${zaak.identificatie}'" }
 
@@ -131,6 +150,10 @@ class EpistolaDocumentCreationService @Inject constructor(
                 data = templateData,
                 fileName = fileName,
                 correlationId = zaak.uuid.toString(),
+                kanaal = generationTemplate.kanalen.choose(
+                    requestedKanaal = kanaal,
+                    communicatiekanaal = zaak.communicatiekanaalNaam
+                ),
                 onJobStatus = onJobStatus
             )
         } catch (epistolaException: EpistolaException) {
@@ -140,6 +163,11 @@ class EpistolaDocumentCreationService @Inject constructor(
                 epistolaException = epistolaException
             )
         }
+
+    fun readKanalen(zaak: Zaak, templateId: String): EpistolaKanalen {
+        epistolaTemplatesService.assertTemplateIsOffered(zaaktypeUuid = zaak.zaaktype.extractUuid(), templateId = templateId)
+        return epistolaClientService.readGenerationTemplate(templateId).kanalen
+    }
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
@@ -174,11 +202,12 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Not remembering the template only costs the document its "new version" action, so it does not fail a
      * document that is already in the zaak.
      */
-    private fun rememberTemplate(informatieObjectUUID: UUID, templateId: String) {
+    private fun rememberGeneration(informatieObjectUUID: UUID, templateId: String, kanaal: String?) {
         try {
             epistolaDocumentRepository.createEpistolaDocument(
                 informatieObjectUUID = informatieObjectUUID,
-                templateId = templateId
+                templateId = templateId,
+                kanaal = kanaal
             )
         } catch (persistenceException: PersistenceException) {
             LOG.warning { notRememberedMessage(informatieObjectUUID, persistenceException) }

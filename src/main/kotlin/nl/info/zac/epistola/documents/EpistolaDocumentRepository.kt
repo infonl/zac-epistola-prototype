@@ -27,10 +27,11 @@ class EpistolaDocumentRepository @Inject constructor(
         entityManager.find(EpistolaDocument::class.java, informatieObjectUUID)
 
     @Transactional(REQUIRED)
-    fun createEpistolaDocument(informatieObjectUUID: UUID, templateId: String) =
+    fun createEpistolaDocument(informatieObjectUUID: UUID, templateId: String, kanaal: String?) =
         EpistolaDocument().apply {
             this.informatieObjectUUID = informatieObjectUUID
             this.templateId = templateId
+            this.kanaal = kanaal
             creationDate = ZonedDateTime.now()
         }.also(entityManager::persist)
 }

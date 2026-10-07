@@ -6,10 +6,12 @@ package nl.info.client.epistola.model
 
 import java.util.UUID
 
+/** [kanaal] is the one ZAC asked Epistola for, and null when it asked for none. */
 data class EpistolaGeneratedDocument(
     val documentId: UUID,
     val fileName: String,
-    val content: ByteArray
+    val content: ByteArray,
+    val kanaal: String? = null
 ) {
     override fun equals(other: Any?) =
         this === other ||
@@ -17,13 +19,15 @@ data class EpistolaGeneratedDocument(
                 other is EpistolaGeneratedDocument &&
                     documentId == other.documentId &&
                     fileName == other.fileName &&
-                    content.contentEquals(other.content)
+                    content.contentEquals(other.content) &&
+                    kanaal == other.kanaal
                 )
 
     override fun hashCode(): Int {
         var result = documentId.hashCode()
         result = 31 * result + fileName.hashCode()
         result = 31 * result + content.contentHashCode()
+        result = 31 * result + (kanaal?.hashCode() ?: 0)
         return result
     }
 }

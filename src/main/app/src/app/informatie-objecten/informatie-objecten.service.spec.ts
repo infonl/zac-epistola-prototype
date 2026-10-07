@@ -4,13 +4,17 @@
  */
 
 import { HttpErrorResponse, provideHttpClient } from "@angular/common/http";
-import { provideHttpClientTesting } from "@angular/common/http/testing";
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from "@angular/common/http/testing";
 import { TestBed } from "@angular/core/testing";
 import { of } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { UtilService } from "../core/service/util.service";
 import { FoutAfhandelingService } from "../fout-afhandeling/fout-afhandeling.service";
 import { QUERY_CLIENT } from "../shared/http/query-client";
+import { GeneratedType } from "../shared/utils/generated-types";
 import { InformatieObjectenService } from "./informatie-objecten.service";
 
 describe(InformatieObjectenService.name, () => {
@@ -30,6 +34,41 @@ describe(InformatieObjectenService.name, () => {
       ],
     });
     informatieObjectenService = TestBed.inject(InformatieObjectenService);
+  });
+
+  describe("readEpistolaKanalenQuery", () => {
+    const KANALEN_URL =
+      "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-template/kanalen";
+    const emailKanalen: GeneratedType<"RestEpistolaKanalen"> = {
+      kanalen: ["post", "digitaal"],
+      voorgesteldKanaal: "digitaal",
+      communicatiekanaal: "E-mail",
+    };
+    const balieKanalen: GeneratedType<"RestEpistolaKanalen"> = {
+      kanalen: ["post", "digitaal"],
+      voorgesteldKanaal: "post",
+      communicatiekanaal: "Balie",
+    };
+
+    it("asks again every time, because the suggestion follows the zaak's communicatiekanaal, which can be edited in between", async () => {
+      const queryClient = TestBed.inject(QUERY_CLIENT);
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const read = () =>
+        queryClient.query(
+          informatieObjectenService.readEpistolaKanalenQuery(
+            "fakeZaakUuid",
+            "fake-template",
+          ),
+        );
+
+      const first = read();
+      httpTestingController.expectOne(KANALEN_URL).flush(emailKanalen);
+      expect(await first).toEqual(emailKanalen);
+
+      const second = read();
+      httpTestingController.expectOne(KANALEN_URL).flush(balieKanalen);
+      expect(await second).toEqual(balieKanalen);
+    });
   });
 
   describe("readEpistolaDocumentCreationStatusQuery", () => {
