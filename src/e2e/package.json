@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "engines": {
     "node": "24.21.0",
-    "npm": "11.19.1"
+    "npm": "11.21.0"
   },
   "scripts": {
     "e2e:run": "./node_modules/.bin/cucumber-js -p default",
@@ -17,13 +17,13 @@
   "dependencies": {
     "@cucumber/cucumber": "13.2.1",
     "pdf-parse": "2.4.5",
-    "zod": "4.6.4"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@types/node": "24.13.4",
+    "@types/node": "24.19.1",
     "multiple-cucumber-html-reporter": "4.3.0",
-    "dotenv": "17.4.2",
+    "dotenv": "18.0.5",
     "playwright-bdd": "9.2.1",
     "ts-node": "10.9.2",
     "typescript": "5.9.3"

@@ -26,11 +26,11 @@ import jakarta.servlet.http.HttpSession
 import net.atos.zac.flowable.ZaakVariabelenService.Companion.VAR_ZAAK_UUID
 import net.atos.zac.flowable.task.FlowableTaskService
 import net.atos.zac.flowable.task.exception.TaskNotFoundException
+import nl.info.client.smartdocuments.model.createFile
+import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.zrc.ZrcClientService
 import nl.info.client.zgw.zrc.model.generated.ZaakInformatieObject
-import nl.info.client.zgw.ztc.ZtcClientService
-import nl.info.client.zgw.ztc.model.createInformatieObjectType
 import nl.info.test.org.flowable.task.api.createTestTask
 import nl.info.zac.admin.ZaaktypeConfigurationService
 import nl.info.zac.app.documentcreation.model.createRestDocumentCreationAttendedData
@@ -42,31 +42,31 @@ import nl.info.zac.documentcreation.DocumentCreationUserStore
 import nl.info.zac.documentcreation.model.DocumentCreationDataAttended
 import nl.info.zac.documentcreation.model.createDocumentCreationAttendedResponse
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_SMARTDOCUMENTS_DISABLED
-import nl.info.zac.flowable.bpmn.BpmnService
 import nl.info.zac.policy.PolicyService
 import nl.info.zac.policy.exception.PolicyException
 import nl.info.zac.policy.output.createZaakRechtenAllDeny
+import nl.info.zac.smartdocuments.SmartDocumentsService
 import nl.info.zac.smartdocuments.exception.SmartDocumentsDisabledException
 import org.flowable.task.api.TaskInfo
+import nl.info.zac.smartdocuments.exception.SmartDocumentsUnsupportedOutputFormatException
 import java.net.URI
 import java.time.ZonedDateTime
 import java.util.UUID
-import java.util.logging.Logger
-import java.util.logging.LogRecord
-import java.util.logging.Level
 import java.util.logging.Handler
+import java.util.logging.Level
+import java.util.logging.LogRecord
+import java.util.logging.Logger
 
 class DocumentCreationRestServiceTest : BehaviorSpec({
     val documentCreationService = mockk<DocumentCreationService>()
     val epistolaDocumentCreationService = mockk<EpistolaDocumentCreationService>()
     val policyService = mockk<PolicyService>()
     val zrcClientService = mockk<ZrcClientService>()
-    val ztcClientService = mockk<ZtcClientService>()
     val zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>()
     val flowableTaskService = mockk<FlowableTaskService>()
-    val bpmnService = mockk<BpmnService>()
     val loggedInUserInstance = mockk<Instance<LoggedInUser>>()
     val documentCreationUserStore = mockk<DocumentCreationUserStore>()
+    val smartDocumentsService = mockk<SmartDocumentsService>()
     val documentCreationRestService = DocumentCreationRestService(
         policyService = policyService,
         documentCreationService = documentCreationService,
@@ -75,7 +75,8 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         zaaktypeConfigurationService = zaaktypeConfigurationService,
         flowableTaskService = flowableTaskService,
         loggedInUserInstance = loggedInUserInstance,
-        documentCreationUserStore = documentCreationUserStore
+        documentCreationUserStore = documentCreationUserStore,
+        smartDocumentsService = smartDocumentsService
     )
 
     isolationMode = IsolationMode.InstancePerTest
@@ -99,15 +100,6 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         val loggedInUser = createLoggedInUser()
 
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { ztcClientService.readInformatieobjecttypen(zaak.zaaktype) } returns listOf(
-            createInformatieObjectType(omschrijving = "bijlage")
-        )
-        every {
-            documentCreationService.createDocumentAttended(capture(documentCreationDataAttended))
-        } returns documentCreationResponse
-        every {
-            bpmnService.isZaakProcessDriven(any())
-        } returns false
         every { loggedInUserInstance.get() } returns loggedInUser
 
         `when`("createDocument is called by a role that is allowed to change the zaak") {
@@ -115,8 +107,11 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns true
+            every { policyService.readTaakRechten(task).canCreerenDocument } returns true
             every { zaaktypeConfigurationService.isSmartDocumentsEnabled(zaakTypeUUID) } returns true
+            every {
+                documentCreationService.createDocumentAttended(capture(documentCreationDataAttended))
+            } returns documentCreationResponse
 
             val restDocumentCreationResponse = documentCreationRestService.createDocumentAttended(
                 restDocumentCreationAttendedData
@@ -139,7 +134,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns false
+            every { policyService.readTaakRechten(task).canCreerenDocument } returns false
 
             val exception = shouldThrow<PolicyException> {
                 documentCreationRestService.createDocumentAttended(restDocumentCreationAttendedData)
@@ -199,7 +194,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns true
+            every { policyService.readTaakRechten(task).canCreerenDocument } returns true
             every { zaaktypeConfigurationService.isSmartDocumentsEnabled(zaakTypeUUID) } returns false
 
             val exception = shouldThrow<SmartDocumentsDisabledException> {
@@ -208,279 +203,7 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
 
             then("it throws exception with correct message") {
                 exception.errorCode shouldBe ERROR_CODE_SMARTDOCUMENTS_DISABLED
-                exception.message shouldBe null
-            }
-        }
-    }
-
-    given("an Epistola document requested for a zaak, from one of its tasks") {
-        val zaak = createZaak()
-        val taskId = "fakeTaskId"
-        val task = createTestTask(caseVariables = mapOf(VAR_ZAAK_UUID to zaak.uuid))
-        val informatieobjectUuid = UUID.randomUUID()
-        val loggedInUser = createLoggedInUser()
-        val restEpistolaDocumentCreationData = RestEpistolaDocumentCreationData(
-            zaakUuid = zaak.uuid,
-            taskId = taskId,
-            templateId = "fake-template",
-            title = "fakeTitle",
-            description = "fakeDescription"
-        )
-        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { loggedInUserInstance.get() } returns loggedInUser
-
-        `when`("it is requested by a user who may create documents for the zaak and for the task") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns true
-            every {
-                epistolaDocumentCreationService.createAndStoreDocument(
-                    zaak = zaak,
-                    templateId = "fake-template",
-                    title = "fakeTitle",
-                    description = "fakeDescription",
-                    taskId = taskId
-                )
-            } returns createZaakInformatieobjectForReads(
-                informatieobject = URI("https://example.com/enkelvoudiginformatieobjecten/$informatieobjectUuid")
-            )
-
-            val restEpistolaDocumentCreationResponse = documentCreationRestService.createEpistolaDocument(
-                restEpistolaDocumentCreationData
-            )
-
-            then("the document is generated and stored, and the stored informatieobject is named") {
-                restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
-            }
-        }
-
-        `when`("it is requested by a user who may not create documents for the zaak") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
-
-            shouldThrow<PolicyException> {
-                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
-            }
-
-            then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
-            }
-        }
-
-        `when`("it is requested by a user who may create documents for the zaak but not for the task") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns false
-
-            shouldThrow<PolicyException> {
-                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
-            }
-
-            then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
-            }
-        }
-
-        `when`("it is requested with a task that belongs to another zaak") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every { flowableTaskService.findOpenTask(taskId) } returns createTestTask(
-                caseVariables = mapOf(VAR_ZAAK_UUID to UUID.randomUUID())
-            )
-
-            val taskNotFoundException = shouldThrow<TaskNotFoundException> {
-                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
-            }
-
-            then("it is refused, naming the task and the zaak, before any zaak data reaches Epistola") {
-                taskNotFoundException.message shouldBe
-                    "No open task found with task id: 'fakeTaskId' for zaak '${zaak.uuid}'"
-                verify(exactly = 0) { epistolaDocumentCreationService.createAndStoreDocument(any(), any(), any(), any(), any(), any()) }
-            }
-        }
-
-        `when`("it is requested for a task that is no longer open") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every { flowableTaskService.findOpenTask(taskId) } returns null
-
-            val taskNotFoundException = shouldThrow<TaskNotFoundException> {
-                documentCreationRestService.createEpistolaDocument(restEpistolaDocumentCreationData)
-            }
-
-            then("it is refused, naming the task") {
-                taskNotFoundException.message shouldBe "No open task found with task id: 'fakeTaskId'"
-            }
-        }
-    }
-
-    given("an Epistola document requested for a zaak, and not from a task") {
-        val zaak = createZaak()
-        val informatieobjectUuid = UUID.randomUUID()
-        val loggedInUser = createLoggedInUser()
-        val restEpistolaDocumentCreationData = RestEpistolaDocumentCreationData(
-            zaakUuid = zaak.uuid,
-            templateId = "fake-template",
-            title = "fakeTitle",
-            description = "fakeDescription"
-        )
-        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { loggedInUserInstance.get() } returns loggedInUser
-
-        `when`("it is requested by a user who may create documents for the zaak") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every {
-                epistolaDocumentCreationService.createAndStoreDocument(
-                    zaak = zaak,
-                    templateId = "fake-template",
-                    title = "fakeTitle",
-                    description = "fakeDescription",
-                    taskId = null
-                )
-            } returns createZaakInformatieobjectForReads(
-                informatieobject = URI("https://example.com/enkelvoudiginformatieobjecten/$informatieobjectUuid")
-            )
-
-            val restEpistolaDocumentCreationResponse = documentCreationRestService.createEpistolaDocument(
-                restEpistolaDocumentCreationData
-            )
-
-            then("the document is generated and stored for the zaak, and no task is looked up or checked") {
-                restEpistolaDocumentCreationResponse.informatieobjectUuid shouldBe informatieobjectUuid
-                verify(exactly = 0) { flowableTaskService.findOpenTask(any()) }
-                verify(exactly = 0) { policyService.readTaakRechten(any<TaskInfo>()) }
-            }
-        }
-    }
-
-    given("an Epistola document requested for a zaak by post") {
-        val zaak = createZaak()
-        val loggedInUser = createLoggedInUser()
-        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { loggedInUserInstance.get() } returns loggedInUser
-        every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
-        every {
-            epistolaDocumentCreationService.createAndStoreDocument(
-                zaak = zaak,
-                templateId = "fake-template",
-                title = "fakeTitle",
-                description = null,
-                taskId = null,
-                variant = "post"
-            )
-        } returns createZaakInformatieobjectForReads()
-
-        `when`("it is requested") {
-            documentCreationRestService.createEpistolaDocument(
-                RestEpistolaDocumentCreationData(
-                    zaakUuid = zaak.uuid,
-                    templateId = "fake-template",
-                    title = "fakeTitle",
-                    variant = "post"
-                )
-            )
-
-            then("the document is generated in that variant") {
-                verify(exactly = 1) {
-                    epistolaDocumentCreationService.createAndStoreDocument(
-                        zaak = zaak,
-                        templateId = "fake-template",
-                        title = "fakeTitle",
-                        description = null,
-                        taskId = null,
-                        variant = "post"
-                    )
-                }
-            }
-        }
-    }
-
-    given("a template with a post and a digital variant, and a zaak whose communicatiekanaal is e-mail") {
-        val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
-        val loggedInUser = createLoggedInUser()
-        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { loggedInUserInstance.get() } returns loggedInUser
-
-        `when`("its variants are read by a user who may create documents for the zaak") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(
-                creerenDocument = true
-            )
-            every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
-                EpistolaTemplateInLocale(
-                template = createGenerationTemplate(
-                    kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
-                ),
-                locale = null
-            )
-
-            val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
-
-            then("both variants are offered, with the digital one suggested by the communicatiekanaal it names") {
-                restEpistolaVarianten shouldBe RestEpistolaVarianten(
-                    varianten = listOf("post", "digitaal"),
-                    voorgesteldeVariant = "digitaal",
-                    communicatiekanaal = "E-mail"
-                )
-            }
-        }
-
-        `when`("its variants are read by a user who may not create documents for the zaak") {
-            every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny()
-
-            shouldThrow<PolicyException> {
-                documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
-            }
-
-            then("it is refused before Epistola is asked") {
-                verify(exactly = 0) { epistolaDocumentCreationService.readVarianten(any(), any()) }
-            }
-        }
-    }
-
-    given("a template with only a variant by post, and a zaak whose communicatiekanaal is e-mail") {
-        val zaak = createZaak().apply { communicatiekanaalNaam = "E-mail" }
-        val loggedInUser = createLoggedInUser()
-        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-        every { loggedInUserInstance.get() } returns loggedInUser
-        every { policyService.readZaakRechten(zaak, loggedInUser) } returns createZaakRechtenAllDeny(creerenDocument = true)
-        every { epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = "fake-template") } returns
-            EpistolaTemplateInLocale(
-                template = createGenerationTemplate(kanalen = EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")),
-                locale = null
-            )
-
-        `when`("its variants are read") {
-            val restEpistolaVarianten = documentCreationRestService.readEpistolaVarianten(zaak.uuid, "fake-template")
-
-            then("post is suggested as the default, without naming the communicatiekanaal that did not suggest it") {
-                restEpistolaVarianten shouldBe RestEpistolaVarianten(
-                    varianten = listOf("post"),
-                    voorgesteldeVariant = "post",
-                    communicatiekanaal = null
-                )
-            }
-        }
-    }
-
-    given("an Epistola document that the logged-in user is having rendered for a zaak") {
-        val zaakUuid = UUID.randomUUID()
-        every {
-            epistolaDocumentCreationService.readStatus(zaakUuid)
-        } returns EpistolaDocumentCreationStatus.HELD_UP_IN_RENDERING
-
-        `when`("the status is read") {
-            val restEpistolaDocumentCreationStatus = documentCreationRestService.readEpistolaDocumentCreationStatus(zaakUuid)
-
-            then("the status Epistola reports is returned, without reading the zaak") {
-                restEpistolaDocumentCreationStatus.status shouldBe EpistolaDocumentCreationStatus.HELD_UP_IN_RENDERING
-                verify(exactly = 0) { zrcClientService.readZaak(any<UUID>()) }
+                exception.message shouldBe "SmartDocuments is disabled"
             }
         }
     }
@@ -494,20 +217,29 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         val loggedInUserProvider = LoggedInUserProvider(httpSessionInstance)
         var userWhileStoringDocument: LoggedInUser? = null
 
-        every { httpSessionInstance.get() } returns null
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { documentCreationUserStore.consumeUser(documentCreationToken, any()) } returns loggedInUser
+        every { smartDocumentsService.downloadDocument("fakeFileId") } returns createFile()
         every {
             documentCreationService.getInformationObjecttypeUuid(zaak, "fakeTemplateGroupId", "fakeTemplateId")
         } returns informatieobjecttypeUuid
         every {
-            documentCreationService.downloadAndStoreDocument(any(), any(), any(), any(), any(), any(), any(), any())
+            documentCreationService.storeDownloadedDocument(
+                zaak = any(),
+                taskId = any(),
+                file = any(),
+                title = any(),
+                description = any(),
+                informatieobjecttypeUuid = any(),
+                creationDate = any(),
+                userName = any()
+            )
         } answers {
             userWhileStoringDocument = loggedInUserProvider.getLoggedInUser()
             mockk<ZaakInformatieObject>()
         }
         every {
-            documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), any())
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
         } returns URI("https://example.com/finish")
 
         `when`("the callback is called") {
@@ -533,33 +265,37 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
         val zaak = createZaak()
         val expiredDocumentCreationToken = UUID.randomUUID()
         val informatieobjecttypeUuid = UUID.randomUUID()
-        val httpSession = mockk<HttpSession>()
         val httpSessionInstance = mockk<Instance<HttpSession>>()
         val loggedInUserProvider = LoggedInUserProvider(httpSessionInstance)
         var userWhileStoringDocument: LoggedInUser? = null
         var userWhileReadingZaak: LoggedInUser? = null
 
-        // the browser posting the callback still carries a ZAC session cookie
-        every { httpSessionInstance.get() } returns httpSession
-        every {
-            httpSession.getAttribute(LoggedInUserProvider.LOGGED_IN_USER_SESSION_ATTRIBUTE)
-        } returns createLoggedInUser(id = "fakeSessionUserId")
         every { zrcClientService.readZaak(zaak.uuid) } answers {
             userWhileReadingZaak = loggedInUserProvider.getLoggedInUser()
             zaak
         }
         every { documentCreationUserStore.consumeUser(expiredDocumentCreationToken, any()) } returns null
+        every { smartDocumentsService.downloadDocument("fakeFileId") } returns createFile()
         every {
             documentCreationService.getInformationObjecttypeUuid(zaak, "fakeTemplateGroupId", "fakeTemplateId")
         } returns informatieobjecttypeUuid
         every {
-            documentCreationService.downloadAndStoreDocument(any(), any(), any(), any(), any(), any(), any(), any())
+            documentCreationService.storeDownloadedDocument(
+                zaak = any(),
+                taskId = any(),
+                file = any(),
+                title = any(),
+                description = any(),
+                informatieobjecttypeUuid = any(),
+                creationDate = any(),
+                userName = any()
+            )
         } answers {
             userWhileStoringDocument = loggedInUserProvider.getLoggedInUser()
             mockk<ZaakInformatieObject>()
         }
         every {
-            documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), any())
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
         } returns URI("https://example.com/finish")
 
         `when`("the callback is called") {
@@ -594,35 +330,39 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
     given("a SmartDocuments callback whose session belongs to a different user than its token") {
         val zaak = createZaak()
         val documentCreationUser = createLoggedInUser(id = "fakeDocumentCreationUserId")
-        val sessionUser = createLoggedInUser(id = "fakeSessionUserId")
         val documentCreationToken = UUID.randomUUID()
         val informatieobjecttypeUuid = UUID.randomUUID()
-        val httpSession = mockk<HttpSession>()
         val httpSessionInstance = mockk<Instance<HttpSession>>()
         val loggedInUserProvider = LoggedInUserProvider(httpSessionInstance)
         var userWhileStoringDocument: LoggedInUser? = null
         var userWhileReadingZaak: LoggedInUser? = null
 
-        every { httpSessionInstance.get() } returns httpSession
-        every {
-            httpSession.getAttribute(LoggedInUserProvider.LOGGED_IN_USER_SESSION_ATTRIBUTE)
-        } returns sessionUser
         every { zrcClientService.readZaak(zaak.uuid) } answers {
             userWhileReadingZaak = loggedInUserProvider.getLoggedInUser()
             zaak
         }
         every { documentCreationUserStore.consumeUser(documentCreationToken, any()) } returns documentCreationUser
+        every { smartDocumentsService.downloadDocument("fakeFileId") } returns createFile()
         every {
             documentCreationService.getInformationObjecttypeUuid(zaak, "fakeTemplateGroupId", "fakeTemplateId")
         } returns informatieobjecttypeUuid
         every {
-            documentCreationService.downloadAndStoreDocument(any(), any(), any(), any(), any(), any(), any(), any())
+            documentCreationService.storeDownloadedDocument(
+                zaak = any(),
+                taskId = any(),
+                file = any(),
+                title = any(),
+                description = any(),
+                informatieobjecttypeUuid = any(),
+                creationDate = any(),
+                userName = any()
+            )
         } answers {
             userWhileStoringDocument = loggedInUserProvider.getLoggedInUser()
             mockk<ZaakInformatieObject>()
         }
         every {
-            documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), any())
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
         } returns URI("https://example.com/finish")
 
         `when`("the callback is called") {
@@ -651,12 +391,11 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
     given("a SmartDocuments callback for a wizard that was cancelled") {
         val zaak = createZaak()
         val documentCreationToken = UUID.randomUUID()
-        val httpSessionInstance = mockk<Instance<HttpSession>>()
 
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { documentCreationUserStore.consumeUser(documentCreationToken, any()) } returns createLoggedInUser()
         every {
-            documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), any())
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
         } returns URI("https://example.com/finish")
 
         `when`("the callback is called without a document") {
@@ -685,14 +424,24 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
 
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { documentCreationUserStore.consumeUser(documentCreationToken, any()) } returns createLoggedInUser()
+        every { smartDocumentsService.downloadDocument("fakeFileId") } returns createFile()
         every {
             documentCreationService.getInformationObjecttypeUuid(zaak, "fakeTemplateGroupId", "fakeTemplateId")
         } returns informatieobjecttypeUuid
         every {
-            documentCreationService.downloadAndStoreDocument(any(), any(), any(), any(), any(), any(), any(), any())
-        } throws IllegalStateException("fakeStoreFailure")
+            documentCreationService.storeDownloadedDocument(
+                zaak = any(),
+                taskId = any(),
+                file = any(),
+                title = any(),
+                description = any(),
+                informatieobjecttypeUuid = any(),
+                creationDate = any(),
+                userName = any()
+            )
+        } throws DrcRuntimeException("fakeStoreFailure")
         every {
-            documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), any())
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
         } returns URI("https://example.com/finish")
 
         `when`("the callback is called") {
@@ -710,8 +459,60 @@ class DocumentCreationRestServiceTest : BehaviorSpec({
 
             then("the wizard is sent to the failure page instead of the error reaching SmartDocuments") {
                 verify(exactly = 1) {
-                    documentCreationService.documentCreationFinishPageUrl(any(), any(), any(), "failure")
+                    documentCreationService.documentCreationFinishPageUrl(
+                        zaakId = any(),
+                        taskId = any(),
+                        documentName = any(),
+                        result = "failure"
+                    )
                 }
+            }
+
+            and("the already-read zaak is reused for that redirect instead of reading it again") {
+                verify(exactly = 1) { zrcClientService.readZaak(zaak.uuid) }
+            }
+        }
+    }
+
+    given("a SmartDocuments callback whose downloaded document has an unsupported output format") {
+        val zaak = createZaak()
+        val documentCreationToken = UUID.randomUUID()
+
+        every { zrcClientService.readZaak(zaak.uuid) } returns zaak
+        every { documentCreationUserStore.consumeUser(documentCreationToken, any()) } returns createLoggedInUser()
+        every {
+            smartDocumentsService.downloadDocument("fakeFileId")
+        } throws SmartDocumentsUnsupportedOutputFormatException("fakeUnsupportedFormat")
+        every {
+            documentCreationService.documentCreationFinishPageUrl(zaakId = any(), taskId = any(), documentName = any(), result = any())
+        } returns URI("https://example.com/finish")
+
+        `when`("the callback is called") {
+            documentCreationRestService.createCmmnDocumentForZaakCallback(
+                zaakUuid = zaak.uuid,
+                templateGroupId = "fakeTemplateGroupId",
+                templateId = "fakeTemplateId",
+                title = "fakeTitle",
+                description = null,
+                creationDate = ZonedDateTime.now(),
+                userName = "fakeUserDisplayName",
+                documentCreationToken = documentCreationToken,
+                fileId = "fakeFileId"
+            )
+
+            then("the wizard is sent to the unsupported-output-format page") {
+                verify(exactly = 1) {
+                    documentCreationService.documentCreationFinishPageUrl(
+                        zaakId = any(),
+                        taskId = any(),
+                        documentName = any(),
+                        result = "unsupported-output-format"
+                    )
+                }
+            }
+
+            and("the zaak is read only once, even though the download failed") {
+                verify(exactly = 1) { zrcClientService.readZaak(zaak.uuid) }
             }
         }
     }

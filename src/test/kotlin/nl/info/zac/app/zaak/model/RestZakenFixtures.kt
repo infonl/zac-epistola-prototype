@@ -142,7 +142,7 @@ fun createRestUser(
 
 @Suppress("LongParameterList")
 fun createRestZaak(
-    behandelaar: RestUser = createRestUser(),
+    behandelaar: RestUser? = createRestUser(),
     communicatiekanaal: String? = "fakeCommunicatiekanaal",
     einddatumGepland: LocalDate? = null,
     heeftOntvangstbevestigingVerstuurd: Boolean = false,
@@ -167,12 +167,12 @@ fun createRestZaak(
     bronorganisatie = "Sample Bronorganisatie",
     communicatiekanaal = communicatiekanaal,
     duurVerlenging = "Sample Duur Verlenging",
-    eerdereOpschorting = false,
+    hasEerdereOpschorting = false,
     einddatum = LocalDate.of(2023, 10, 5),
     einddatumGepland = einddatumGepland,
     gerelateerdeZaken = listOf(createRESTGerelateerdeZaak()),
     groep = restGroup,
-    heeftOntvangstbevestigingVerstuurd = heeftOntvangstbevestigingVerstuurd,
+    isOntvangstbevestigingVerstuurd = heeftOntvangstbevestigingVerstuurd,
     identificatie = "ZA2023001",
     indicaties = indicaties,
     initiatorIdentificatie = initiatorBetrokkeneIdentificatie,
@@ -205,29 +205,23 @@ fun createRestZaak(
     zaakdata = createZaakData(),
     zaakgeometrie = createRESTGeometry(),
     zaakSpecificContactDetails = null,
-    zaaktype = restZaakType
-)
-
-fun createRestZaakDataUpdate(
-    uuid: UUID = UUID.randomUUID(),
-    zaakData: Map<String, Any> = createZaakData()
-) = RestZaakDataUpdate(
-    uuid = uuid,
-    zaakdata = zaakData
+    zaaktype = restZaakType,
+    isZaakdataGearchiveerd = false
 )
 
 @Suppress("LongParameterList")
 fun createRestZaakCreateData(
     description: String = "fakeDescription",
     explanation: String = "fakeExplanation",
-    behandelaar: RestUser = createRestUser(),
+    behandelaar: RestUser? = createRestUser(),
     restGroup: RestGroup = createRestGroup(),
     restZaakType: RestZaaktype = createRestZaaktype(),
     uiterlijkeEinddatumAfdoening: LocalDate = LocalDate.of(2023, 10, 10),
     einddatumGepland: LocalDate? = null,
     communicatiekanaal: String? = "fakeCommunicatiekanaal",
     startDatum: LocalDate = LocalDate.of(2023, 9, 15),
-    vertrouwelijkheidaanduiding: String = RestVertrouwelijkheidaanduiding.OPENBAAR.name
+    vertrouwelijkheidaanduiding: String = RestVertrouwelijkheidaanduiding.OPENBAAR.name,
+    isZaakspecifiekGeautoriseerd: Boolean? = null
 ) = RestZaakCreateData(
     omschrijving = description,
     toelichting = explanation,
@@ -245,7 +239,8 @@ fun createRestZaakCreateData(
     groep = restGroup,
     behandelaar = behandelaar,
     gerelateerdeZaken = listOf(createRESTGerelateerdeZaak()),
-    initiatorIdentificatie = createBetrokkeneIdentificatie()
+    initiatorIdentificatie = createBetrokkeneIdentificatie(),
+    isZaakspecifiekGeautoriseerd = isZaakspecifiekGeautoriseerd
 )
 
 fun createRESTZaakAanmaakGegevens(
@@ -282,7 +277,7 @@ fun createRESTZaakKenmerk() = RestZaakKenmerk("Sample kenmerk", "Sample bron")
 fun createRESTZaakAssignmentData(
     zaakUUID: UUID = UUID.randomUUID(),
     groepId: String = "fakeGroupId",
-    behandelaarGebruikersnaam: String = "fakeBehandelaarGebruikersnaam",
+    behandelaarGebruikersnaam: String? = "fakeBehandelaarGebruikersnaam",
     reden: String = "fakeReden"
 ) = RestZaakAssignmentData(
     zaakUUID = zaakUUID,
@@ -372,26 +367,26 @@ fun createRestZaakRechten(
     wijzigenLocatie: Boolean = true,
     brondatumZetten: Boolean = true
 ) = RestZaakRechten(
-    lezen = lezen,
-    wijzigen = wijzigen,
-    toekennen = toekennen,
-    behandelen = behandelen,
-    afbreken = afbreken,
-    heropenen = heropenen,
-    bekijkenZaakdata = bekijkenZaakdata,
-    wijzigenDoorlooptijd = wijzigenDoorlooptijd,
-    toevoegenBagObject = toevoegenBagObject,
-    toevoegenBetrokkeneBedrijf = toevoegenBetrokkeneBedrijf,
-    toevoegenBetrokkenePersoon = toevoegenBetrokkenePersoon,
-    toevoegenInitiatorBedrijf = toevoegenInitiatorBedrijf,
-    toevoegenInitiatorPersoon = toevoegenInitiatorPersoon,
-    versturenOntvangstbevestiging = versturenOntvangstbevestiging,
-    verwijderenBetrokkene = verwijderenBetrokkene,
-    verwijderenInitiator = verwijderenInitiator,
-    creerenDocument = creerenDocument,
-    versturenEmail = versturenEmail,
-    wijzigenLocatie = wijzigenLocatie,
-    brondatumZetten = brondatumZetten
+    canLezen = lezen,
+    canWijzigen = wijzigen,
+    canToekennen = toekennen,
+    canBehandelen = behandelen,
+    canAfbreken = afbreken,
+    canHeropenen = heropenen,
+    canBekijkenZaakdata = bekijkenZaakdata,
+    canWijzigenDoorlooptijd = wijzigenDoorlooptijd,
+    canToevoegenBagObject = toevoegenBagObject,
+    canToevoegenBetrokkeneBedrijf = toevoegenBetrokkeneBedrijf,
+    canToevoegenBetrokkenePersoon = toevoegenBetrokkenePersoon,
+    canToevoegenInitiatorBedrijf = toevoegenInitiatorBedrijf,
+    canToevoegenInitiatorPersoon = toevoegenInitiatorPersoon,
+    canVersturenOntvangstbevestiging = versturenOntvangstbevestiging,
+    canVerwijderenBetrokkene = verwijderenBetrokkene,
+    canVerwijderenInitiator = verwijderenInitiator,
+    canCreerenDocument = creerenDocument,
+    canVersturenEmail = versturenEmail,
+    canWijzigenLocatie = wijzigenLocatie,
+    canBrondatumZetten = brondatumZetten
 )
 
 fun createRestZaakResultaat() = RestZaakResultaat()
@@ -412,14 +407,14 @@ fun createRestZaaktype(
     doel = "Sample Doel",
     omschrijving = ZAAK_TYPE_1_OMSCHRIJVING,
     referentieproces = "Sample Referentieproces",
-    servicenorm = true,
+    hasServicenorm = true,
     versiedatum = LocalDate.now(),
     beginGeldigheid = LocalDate.of(2023, 1, 1),
     eindeGeldigheid = LocalDate.of(2023, 12, 31),
     vertrouwelijkheidaanduiding = RestVertrouwelijkheidaanduiding.OPENBAAR,
-    nuGeldig = true,
-    opschortingMogelijk = false,
-    verlengingMogelijk = false,
+    isNuGeldig = true,
+    isOpschortingMogelijk = false,
+    isVerlengingMogelijk = false,
     verlengingstermijn = null,
     zaaktypeRelaties = emptyList(),
     informatieobjecttypes = emptyList(),

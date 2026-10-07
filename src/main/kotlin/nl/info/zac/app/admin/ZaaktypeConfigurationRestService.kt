@@ -15,15 +15,13 @@ import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
-import net.atos.zac.app.admin.converter.RESTCaseDefinitionConverter
-import net.atos.zac.app.admin.converter.RESTReplyToConverter
+import nl.info.zac.app.admin.converter.RestCaseDefinitionConverter
 import net.atos.zac.app.admin.converter.RESTZaakbeeindigRedenConverter
 import net.atos.zac.app.admin.model.RESTCaseDefinition
-import net.atos.zac.app.admin.model.RESTReplyTo
 import net.atos.zac.app.admin.model.RESTTaakFormulierDefinitie
 import net.atos.zac.app.admin.model.RESTTaakFormulierVeldDefinitie
 import net.atos.zac.app.admin.model.RestZaakbeeindigReden
-import net.atos.zac.flowable.cmmn.CMMNService
+import net.atos.zac.flowable.cmmn.CmmnService
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.admin.ReferenceTableService
@@ -39,7 +37,9 @@ import nl.info.zac.admin.model.ReferenceTable.SystemReferenceTable.AFZENDER
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZaaktypeConfigurationType.BPMN
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZaaktypeConfigurationType.CMMN
 import nl.info.zac.app.admin.converter.RestZaaktypeConfigurationConverter
+import nl.info.zac.app.admin.model.RestReplyTo
 import nl.info.zac.app.admin.model.RestZaaktypeConfiguration
+import nl.info.zac.app.admin.model.toRestReplyTos
 import nl.info.zac.app.zaak.model.RestResultaattype
 import nl.info.zac.app.zaak.model.toRestResultaatTypes
 import nl.info.zac.configuration.ConfigurationService
@@ -71,7 +71,7 @@ import java.util.UUID
 class ZaaktypeConfigurationRestService @Inject constructor(
     private val ztcClientService: ZtcClientService,
     private val configurationService: ConfigurationService,
-    private val cmmnService: CMMNService,
+    private val cmmnService: CmmnService,
     private val zaaktypeConfigurationService: ZaaktypeConfigurationService,
     private val zaaktypeCmmnConfigurationService: ZaaktypeCmmnConfigurationService,
     private val zaaktypeCmmnConfigurationBeheerService: ZaaktypeCmmnConfigurationBeheerService,
@@ -79,7 +79,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     private val zaaktypeCmmnConfigurationConverter: RestZaaktypeConfigurationConverter,
     private val zaaktypeBpmnConfigurationService: ZaaktypeBpmnConfigurationService,
     private val zaaktypeBpmnConfigurationBeheerService: ZaaktypeBpmnConfigurationBeheerService,
-    private val caseDefinitionConverter: RESTCaseDefinitionConverter,
+    private val caseDefinitionConverter: RestCaseDefinitionConverter,
     private val smartDocumentsTemplatesService: SmartDocumentsTemplatesService,
     private val epistolaTemplatesService: EpistolaTemplatesService,
     private val policyService: PolicyService,
@@ -93,9 +93,9 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("case-definitions")
     fun listCaseDefinitions(): List<RESTCaseDefinition> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return cmmnService.listCaseDefinitions()
-            .map { caseDefinitionConverter.convertToRESTCaseDefinition(it, true) }
+            .map { caseDefinitionConverter.convertToRestCaseDefinition(it, true) }
     }
 
     /**
@@ -107,8 +107,8 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("case-definitions/{key}")
     fun readCaseDefinition(@PathParam("key") caseDefinitionKey: String): RESTCaseDefinition {
-        assertPolicy(policyService.readOverigeRechten().beheren)
-        return caseDefinitionConverter.convertToRESTCaseDefinition(caseDefinitionKey, true)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
+        return caseDefinitionConverter.convertToRestCaseDefinition(caseDefinitionKey, true)
     }
 
     /**
@@ -122,7 +122,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
      */
     @GET
     fun listZaaktypeConfigurations(): List<RestZaaktypeConfiguration> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return ztcClientService.listZaaktypen(configurationService.readDefaultCatalogusURI())
             .map { it.url.extractUuid() }
             .map(zaaktypeCmmnConfigurationService::readZaaktypeCmmnConfiguration)
@@ -131,7 +131,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
                 zaaktypeBpmnConfigurationBeheerService.findConfiguration(
                     restZaaktypeConfiguration.zaaktype.uuid
                 )?.let {
-                    restZaaktypeConfiguration.valide = true
+                    restZaaktypeConfiguration.isValide = true
                 }
             }
     }
@@ -144,7 +144,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("{zaaktypeUUID}")
     fun readZaaktypeConfiguration(@PathParam("zaaktypeUUID") zaakTypeUUID: UUID): RestZaaktypeConfiguration {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         zaaktypeConfigurationService.readZaaktypeConfiguration(zaakTypeUUID)?.let {
             return when (it.getConfigurationType()) {
                 CMMN -> {
@@ -157,10 +157,11 @@ class ZaaktypeConfigurationRestService @Inject constructor(
                     }
                 }
                 BPMN -> {
-                    zaaktypeBpmnConfigurationBeheerService.findConfiguration(zaakTypeUUID).let {
-                            zaaktypeBpmnConfiguration ->
-                        zaaktypeCmmnConfigurationConverter.toRestZaaktypeConfiguration(zaaktypeBpmnConfiguration!!)
-                    }
+                    zaaktypeCmmnConfigurationConverter.toRestZaaktypeConfiguration(
+                        checkNotNull(zaaktypeBpmnConfigurationBeheerService.findConfiguration(zaakTypeUUID)) {
+                            "No BPMN configuration found for zaaktype '$zaakTypeUUID'"
+                        }
+                    )
                 }
             }
         }
@@ -184,7 +185,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     fun createOrUpdateZaaktypeCmmnConfiguration(
         @Valid restZaaktypeConfiguration: RestZaaktypeConfiguration
     ): RestZaaktypeConfiguration {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
 
         restZaaktypeConfiguration.productaanvraagtype?.also { productaanvraagtype ->
             restZaaktypeConfiguration.zaaktype.omschrijving?.also {
@@ -223,7 +224,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("zaakbeeindigredenen")
     fun listZaakbeeindigRedenen(): List<RestZaakbeeindigReden> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return RESTZaakbeeindigRedenConverter.convertZaakbeeindigRedenen(
             zaaktypeCmmnConfigurationBeheerService.listZaakbeeindigRedenen()
         )
@@ -252,7 +253,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("resultaattypes/{zaaktypeUUID}")
     fun listResultaattypesForZaaktypeForAdmins(@PathParam("zaaktypeUUID") zaaktypeUUID: UUID): List<RestResultaattype> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return ztcClientService.readResultaattypen(
             ztcClientService.readZaaktype(zaaktypeUUID).url
         ).toRestResultaatTypes()
@@ -286,19 +287,15 @@ class ZaaktypeConfigurationRestService @Inject constructor(
      */
     @GET
     @Path("replyTo")
-    fun listReplyTos(): List<RESTReplyTo> =
-        referenceTableService.readReferenceTable(AFZENDER.name).let { referenceTable ->
-            referenceTableService.listReferenceTableValuesSorted(referenceTable).let {
-                RESTReplyToConverter.convertReplyTos(
-                    it
-                )
-            }
+    fun listReplyTos(): List<RestReplyTo> =
+        referenceTableService.readSystemReferenceTable(AFZENDER).let { referenceTable ->
+            referenceTableService.listReferenceTableValuesSorted(referenceTable).toRestReplyTos()
         }
 
     @GET
     @Path("smartdocuments-templates")
     fun listSmartDocumentsTemplates(): Set<RestSmartDocumentsTemplateGroup> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return smartDocumentsTemplatesService.listTemplates()
     }
 
@@ -315,11 +312,10 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @Path("smartdocuments-template-group")
     fun getSmartDocumentsGroup(
         group: RestSmartDocumentsPath
-    ): RestSmartDocumentsTemplateGroup {
+    ): RestSmartDocumentsTemplateGroup =
         // No authorization to allow BPMN tasks (form.io) to read template group names and display them
         // We should consider a proper authorization with PABC
-        return smartDocumentsTemplatesService.getTemplateGroup(group.path)
-    }
+        smartDocumentsTemplatesService.getTemplateGroup(group.path)
 
     @GET
     @Path("{zaakafhandelUUID}/smartdocuments-templates-mapping")
@@ -334,7 +330,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
         @PathParam("zaakafhandelUUID") zaaktypeUuid: UUID,
         restTemplateGroups: Set<RestMappedSmartDocumentsTemplateGroup>
     ) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         val smartDocumentsTemplates = smartDocumentsTemplatesService.listTemplates()
         restTemplateGroups isSubsetOf smartDocumentsTemplates
         smartDocumentsTemplatesService.storeTemplatesMapping(restTemplateGroups, zaaktypeUuid)
@@ -343,21 +339,21 @@ class ZaaktypeConfigurationRestService @Inject constructor(
     @GET
     @Path("epistola-catalogs")
     fun listEpistolaCatalogs(): List<RestEpistolaCatalog> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return epistolaTemplatesService.listCatalogs()
     }
 
     @GET
     @Path("epistola-catalogs/{catalogId}/templates")
     fun listEpistolaTemplates(@PathParam("catalogId") catalogId: String): List<RestEpistolaTemplate> {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return epistolaTemplatesService.listTemplates(catalogId)
     }
 
     @GET
     @Path("{zaaktypeUuid}/epistola-catalog-mapping")
     fun readEpistolaCatalogMapping(@PathParam("zaaktypeUuid") zaaktypeUuid: UUID): RestEpistolaCatalogMapping {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         return epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
     }
 
@@ -367,7 +363,7 @@ class ZaaktypeConfigurationRestService @Inject constructor(
         @PathParam("zaaktypeUuid") zaaktypeUuid: UUID,
         @Valid restEpistolaCatalogMapping: RestEpistolaCatalogMapping
     ) {
-        assertPolicy(policyService.readOverigeRechten().beheren)
+        assertPolicy(policyService.readOverigeRechten().canBeheren)
         epistolaTemplatesService.storeCatalogMapping(
             zaaktypeUuid = zaaktypeUuid,
             catalogMapping = restEpistolaCatalogMapping
@@ -397,6 +393,5 @@ class ZaaktypeConfigurationRestService @Inject constructor(
         zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUUID)
             ?.getZaakbeeindigParameters()
             ?.map { it.zaakbeeindigReden }
-            ?.let { RESTZaakbeeindigRedenConverter.convertZaakbeeindigRedenen(it) }
-            ?: emptyList()
+            ?.let { RESTZaakbeeindigRedenConverter.convertZaakbeeindigRedenen(it) }.orEmpty()
 }

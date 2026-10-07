@@ -15,6 +15,7 @@ import io.mockk.mockkConstructor
 import io.mockk.runs
 import io.mockk.verify
 import jakarta.enterprise.inject.Instance
+import kotlinx.coroutines.delay
 import nl.info.zac.search.IndexingService
 import nl.info.zac.search.IndexingService.Companion.SOLR_CORE
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
@@ -27,10 +28,14 @@ import org.apache.solr.client.solrj.request.schema.SchemaRequest.MultiUpdate
 
 class SolrDeployerServiceTest : BehaviorSpec({
     val indexingService = mockk<IndexingService>()
-    val solrUrl = "https://example.com/solr"
+    val solrClientFactory = SolrClientFactory(
+        solrUrl = "https://example.com",
+        solrUsername = "fakeSolrUsername",
+        solrPassword = "fakeSolrPassword"
+    )
 
     val solrDeployerService = SolrDeployerService(
-        solrUrl,
+        solrClientFactory,
         indexingService,
     )
 
@@ -94,7 +99,7 @@ class SolrDeployerServiceTest : BehaviorSpec({
             }
             startupThread.start()
             while (startupThread.state != Thread.State.TIMED_WAITING) {
-                Thread.sleep(10)
+                delay(10)
             }
             startupThread.interrupt()
             startupThread.join(5_000)

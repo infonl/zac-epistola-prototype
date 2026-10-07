@@ -231,9 +231,9 @@ describe(EpistolaDocumentCreateComponent.name, () => {
 
     await choose("template", "Standaardbrief");
 
-    expect(field("informatieobjectType")).toHaveValue("Bijlage");
+    expect(field("informatieobject-type")).toHaveValue("Bijlage");
     expect(field("vertrouwelijkheidaanduiding")).toHaveValue(
-      "vertrouwelijkheidaanduiding.OPENBAAR",
+      "vertrouwelijkheidaanduiding.openbaar",
     );
   });
 
@@ -298,7 +298,7 @@ describe(EpistolaDocumentCreateComponent.name, () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: [
         "/rest/informatieobjecten/informatieobjectenList",
-        "fakeZaakUuid",
+        { zaakUUID: "fakeZaakUuid" },
       ],
     });
     expect(documentCreated).toHaveBeenCalled();

@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   helm-lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs: 
       changed: ${{ steps.list-changed.outputs.changed }}
       needsbump: ${{ steps.testbump.outputs.needsbump }} 
@@ -76,7 +76,7 @@ jobs:
           fi
 
   helm-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: helm-lint
     if: ${{ needs.helm-lint.outputs.changed == 'true' }}
     steps:
@@ -105,7 +105,7 @@ jobs:
           helm repo add solr https://solr.apache.org/charts
 
       - name: Create kind cluster
-        uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
 
       - name: Run chart-testing (install)
         continue-on-error: true
@@ -114,7 +114,7 @@ jobs:
           --helm-extra-args "--values=charts/zac/ci/zac-chart-test-values.yaml"
 
   bump-chart:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: helm-lint
     if: ${{ failure() && needs.helm-lint.outputs.needsbump == 'true' && github.event_name == 'pull_request' }}
     steps:
@@ -136,7 +136,7 @@ jobs:
           git push
 
   helm-docs:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Depend on bump-chart so the two jobs never push to the PR branch concurrently.
     # Skip when bump-chart just pushed a version bump: that push re-triggers a fresh run
     # in which the chart is already bumped and this job regenerates the docs cleanly.
@@ -176,7 +176,7 @@ jobs:
   # and it reflects the outcome of the helm jobs so native auto-merge and the merge queue wait
   # for chart linting/testing/bumping/docs before merging.
   helm-status:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [helm-lint, helm-test, helm-docs]
     if: ${{ always() }}
     steps:

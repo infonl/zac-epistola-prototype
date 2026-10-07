@@ -15,12 +15,13 @@ import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObject
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
 import nl.info.client.zgw.zrc.util.isOpen
-import nl.info.client.zgw.zrc.util.isZaakspecifiekGeautoriseerd
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.enkelvoudiginformatieobject.EnkelvoudigInformatieObjectLockService
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.identity.model.getFullName
+import nl.info.zac.search.ReindexSupportService
 import nl.info.zac.search.model.DocumentIndicatie
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
 import nl.info.zac.search.model.zoekobject.DocumentZoekObject
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import java.util.UUID
@@ -31,24 +32,32 @@ class DocumentZoekObjectConverter @Inject constructor(
     private val ztcClientService: ZtcClientService,
     private val drcClientService: DrcClientService,
     private val zrcClientService: ZrcClientService,
-    private val enkelvoudigInformatieObjectLockService: EnkelvoudigInformatieObjectLockService
-) : AbstractZoekObjectConverter<DocumentZoekObject>() {
+    private val enkelvoudigInformatieObjectLockService: EnkelvoudigInformatieObjectLockService,
+    private val reindexSupportService: ReindexSupportService
+) : ZoekObjectConverter<DocumentZoekObject> {
 
     override fun convert(id: String): DocumentZoekObject? =
-        convert(id, zrcClientService::isZaakspecifiekGeautoriseerd)
+        convert(id, reindexSupportService::zaakAutorisatieGegevens)
 
     /**
-     * Converts [id], looking up the zaakspecifiek geautoriseerd flag through [isZaakspecifiekGeautoriseerd]
-     * for whichever zaak the document actually resolves against, rather than always calling
-     * [ZrcClientService.isZaakspecifiekGeautoriseerd] directly. Used by
+     * Converts [id], looking up the zaak-level data through [zaakAutorisatieGegevens] for whichever zaak
+     * the document actually resolves against, rather than always deriving it directly. Used by
      * [nl.info.zac.search.IndexingService.addOrUpdateInformatieobjectenForZaak] to memoize that lookup
      * per zaak UUID across the documents of one zaak.
      */
-    override fun convert(id: String, isZaakspecifiekGeautoriseerd: (UUID) -> Boolean): DocumentZoekObject? {
+    override fun convert(
+        id: String,
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
+    ): DocumentZoekObject? {
         val document = drcClientService.readEnkelvoudigInformatieobject(UUID.fromString(id))
         val zaakInformatieobject = zrcClientService.listZaakinformatieobjecten(document).firstOrNull() ?: return null
         val zaak = zrcClientService.readZaak(zaakInformatieobject.zaakUUID)
-        return convert(document, zaak, zaakInformatieobject, isZaakspecifiekGeautoriseerd)
+        return convert(
+            informatieobject = document,
+            zaak = zaak,
+            gekoppeldeZaakInformatieobject = zaakInformatieobject,
+            zaakAutorisatieGegevens = zaakAutorisatieGegevens
+        )
     }
 
     /**
@@ -63,10 +72,15 @@ class DocumentZoekObjectConverter @Inject constructor(
     fun convert(
         zaakInformatieobject: ZaakInformatieObject,
         zaak: Zaak,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): DocumentZoekObject {
         val document = drcClientService.readEnkelvoudigInformatieobject(zaakInformatieobject.informatieobject.extractUuid())
-        return convert(document, zaak, zaakInformatieobject, isZaakspecifiekGeautoriseerd)
+        return convert(
+            informatieobject = document,
+            zaak = zaak,
+            gekoppeldeZaakInformatieobject = zaakInformatieobject,
+            zaakAutorisatieGegevens = zaakAutorisatieGegevens
+        )
     }
 
     override fun supports(objectType: ZoekObjectType) = objectType == ZoekObjectType.DOCUMENT
@@ -76,7 +90,7 @@ class DocumentZoekObjectConverter @Inject constructor(
         informatieobject: EnkelvoudigInformatieObject,
         zaak: Zaak,
         gekoppeldeZaakInformatieobject: ZaakInformatieObject,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): DocumentZoekObject {
         val zaaktype = ztcClientService.readZaaktype(zaak.zaaktype)
         val informatieobjecttype = ztcClientService.readInformatieobjecttype(informatieobject.informatieobjecttype)
@@ -93,7 +107,14 @@ class DocumentZoekObjectConverter @Inject constructor(
             zaaktypeIdentificatie = zaaktype.identificatie
             zaakIdentificatie = zaak.identificatie
             zaakUuid = zaak.uuid.toString()
-            this.isZaakspecifiekGeautoriseerd = isZaakspecifiekGeautoriseerd(zaak.uuid)
+            zaakAutorisatieGegevens(zaak.uuid).let { gegevens ->
+                this.isZaakspecifiekGeautoriseerd = gegevens.isZaakspecifiekGeautoriseerd
+                zaakGeautoriseerdeMedewerkers = if (gegevens.isZaakspecifiekGeautoriseerd) {
+                    gegevens.geautoriseerdeMedewerkers
+                } else {
+                    emptyList()
+                }
+            }
             gekoppeldeZaakInformatieobject.aardRelatieWeergave?.let { zaakRelatie = it.toString() }
             isZaakAfgehandeld = !zaak.isOpen()
             creatiedatum = convertToDate(informatieobject.creatiedatum)

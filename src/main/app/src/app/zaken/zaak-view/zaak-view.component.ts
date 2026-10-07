@@ -38,8 +38,8 @@ import { ScreenEvent } from "../../core/websocket/model/screen-event";
 import { WebsocketListener } from "../../core/websocket/model/websocket-listener";
 import { WebsocketService } from "../../core/websocket/websocket.service";
 import { IdentityService } from "../../identity/identity.service";
-import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
 import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
+import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
 import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectVerzendenComponent } from "../../informatie-objecten/informatie-object-verzenden/informatie-object-verzenden.component";
 import { KlantKoppelComponent } from "../../klanten/koppel/klanten/klant-koppel/klant-koppel.component";
@@ -55,6 +55,7 @@ import { detailExpand } from "../../shared/animations/animations";
 import { runMutation } from "../../shared/http/run-mutation";
 import { SideNavComponent } from "../../shared/side-nav/side-nav.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
+import { toI18nKey } from "../../shared/utils/i18n-key";
 import { BesluitCreateComponent } from "../besluit-create/besluit-create.component";
 import { BesluitEditComponent } from "../besluit-edit/besluit-edit.component";
 import { BesluitViewComponent } from "../besluit-view/besluit-view.component";
@@ -181,6 +182,7 @@ export class ZaakViewComponent
       this.menuHandlers,
       this.dialogs,
       this.hasBrpSearchRight(),
+      this.zaak.isZaakdataGearchiveerd!,
     );
   });
 
@@ -350,7 +352,7 @@ export class ZaakViewComponent
     startHumanTask: (planItem) => this.startHumanTaskPlanItem(planItem),
   };
 
-  private startHumanTaskPlanItem(planItem: GeneratedType<"RESTPlanItem">) {
+  private startHumanTaskPlanItem(planItem: GeneratedType<"RestPlanItem">) {
     const actiefPlanItem = this.sideActions.actiefPlanItem();
     if (!actiefPlanItem || actiefPlanItem.id !== planItem.id) {
       this.sideActions.clear();
@@ -398,14 +400,16 @@ export class ZaakViewComponent
 
     forkJoin({
       msgPart1: this.translate.get(
-        "msg.gewijzigd.objecttype." + event.objectType,
+        toI18nKey("msg.gewijzigd.objecttype." + event.objectType),
       ),
       msgPart2: this.translate.get(
         event.objectType.indexOf("_") < 0
           ? "msg.gewijzigd.2"
           : "msg.gewijzigd.2.details",
       ),
-      msgPart3: this.translate.get("msg.gewijzigd.operatie." + event.opcode),
+      msgPart3: this.translate.get(
+        toI18nKey("msg.gewijzigd.operatie." + event.opcode),
+      ),
       msgPart4: this.translate.get("msg.gewijzigd.4"),
     }).subscribe((result) => {
       this.utilService.openSnackbar(
@@ -419,13 +423,13 @@ export class ZaakViewComponent
   }
 
   protected editCaseDetails() {
-    if (this.zaak.rechten.wijzigen || this.zaak.rechten.toekennen) {
+    if (this.zaak.rechten.canWijzigen || this.zaak.rechten.canToekennen) {
       this.sideActions.open("actie.zaak.wijzigen");
     }
   }
 
   protected editLocationDetails() {
-    if (this.zaak.rechten.wijzigen) {
+    if (this.zaak.rechten.canWijzigen) {
       this.sideActions.open("actie.zaak.locatie.koppelen");
     }
   }
@@ -448,7 +452,9 @@ export class ZaakViewComponent
       .subscribe((rechten) => (this.notitieRechten = rechten));
   }
 
-  protected initiatorGeselecteerd(initiator: GeneratedType<"RestPersoon">) {
+  protected initiatorGeselecteerd(
+    initiator: GeneratedType<"RestPersoon" | "RestBedrijf">,
+  ) {
     this.betrokkenenService.initiatorGeselecteerd(this.zaak, initiator);
   }
 
@@ -473,7 +479,7 @@ export class ZaakViewComponent
     this.bagService
       .create({ zaakUuid: this.zaak.uuid, zaakobject: bagObject })
       .subscribe(() => {
-        this.utilService.openSnackbar("msg.bagObject.gekoppeld");
+        this.utilService.openSnackbar("msg.bag-object.gekoppeld");
         this.invalidateZaakHistorie();
         this.loadBagObjecten();
       });
@@ -566,7 +572,7 @@ export class ZaakViewComponent
         if (!result) return;
 
         this.loadBagObjecten();
-        this.utilService.openSnackbar("msg.bagObject.ontkoppelen.uitgevoerd", {
+        this.utilService.openSnackbar("msg.bag-object.ontkoppelen.uitgevoerd", {
           omschrijving: bagObject?.omschrijving,
         });
       });
@@ -592,6 +598,6 @@ export class ZaakViewComponent
   }
 
   protected hasBrpSearchRight() {
-    return Boolean(this.brpRechtenQuery.data()?.zoeken);
+    return Boolean(this.brpRechtenQuery.data()?.canZoeken);
   }
 }

@@ -141,16 +141,20 @@ data class ZaakZoekObject(
     var bagObjectIDs: List<String>? = null,
 
     @Field(ZAAKSPECIFIEK_GEAUTORISEERD_FIELD)
-    var isZaakspecifiekGeautoriseerd: Boolean = false
+    var isZaakspecifiekGeautoriseerd: Boolean = false,
+
+    @Field(ZAAK_GEAUTORISEERDE_MEDEWERKERS_FIELD)
+    var zaakGeautoriseerdeMedewerkers: List<String>? = null
 ) : ZoekObject {
     companion object {
-        const val AFGEHANDELD_FIELD: String = "zaak_afgehandeld"
-        const val BEHANDELAAR_ID_FIELD: String = "zaak_behandelaarGebruikersnaam"
-        const val EINDSTATUS_FIELD: String = "zaak_statusEindstatus"
-        const val OMSCHRIJVING_FIELD: String = "zaak_omschrijving"
-        const val TOELICHTING_FIELD: String = "zaak_toelichting"
-        const val ZAAK_BETROKKENE_PREFIX: String = "zaak_betrokkene_"
-        const val ZAAKSPECIFIEK_GEAUTORISEERD_FIELD: String = "zaak_zaakspecifiekGeautoriseerd"
+        const val AFGEHANDELD_FIELD = "zaak_afgehandeld"
+        const val BEHANDELAAR_ID_FIELD = "zaak_behandelaarGebruikersnaam"
+        const val EINDSTATUS_FIELD = "zaak_statusEindstatus"
+        const val OMSCHRIJVING_FIELD = "zaak_omschrijving"
+        const val TOELICHTING_FIELD = "zaak_toelichting"
+        const val ZAAK_BETROKKENE_PREFIX = "zaak_betrokkene_"
+        const val ZAAKSPECIFIEK_GEAUTORISEERD_FIELD = "zaak_zaakspecifiekGeautoriseerd"
+        const val ZAAK_GEAUTORISEERDE_MEDEWERKERS_FIELD = "zaak_zaakGeautoriseerdeMedewerkers"
     }
 
     override fun getObjectId() = id
@@ -179,8 +183,8 @@ data class ZaakZoekObject(
 
     fun addBetrokkene(rol: String, identificatie: String) {
         val key = "$ZAAK_BETROKKENE_PREFIX$rol"
-        betrokkenen = betrokkenen ?: mutableMapOf()
-        betrokkenen!!.getOrPut(key) { mutableListOf() }.add(identificatie)
+        val betrokkenenByRol = betrokkenen ?: mutableMapOf<String, MutableList<String>>().also { betrokkenen = it }
+        betrokkenenByRol.getOrPut(key) { mutableListOf() }.add(identificatie)
     }
 
     private fun updateIndicaties(indicatie: ZaakIndicatie, value: Boolean) {
@@ -202,3 +206,5 @@ data class ZaakZoekObject(
         }
     }
 }
+
+fun ZaakZoekObject.isOpen() = !isAfgehandeld

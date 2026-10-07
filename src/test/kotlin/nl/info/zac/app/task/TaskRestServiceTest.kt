@@ -62,6 +62,7 @@ import nl.info.zac.policy.output.createTaakRechtenAllDeny
 import nl.info.zac.policy.output.createWerklijstRechten
 import nl.info.zac.policy.output.createWerklijstRechtenAllDeny
 import nl.info.zac.search.IndexingService
+import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import nl.info.zac.shared.helper.SuspensionZaakHelper
 import nl.info.zac.signalering.SignaleringService
 import nl.info.zac.task.BpmnTaskFormRuntimeService
@@ -73,6 +74,7 @@ import java.time.ZonedDateTime
 import java.util.UUID
 import kotlin.io.reader
 
+@Suppress("LargeClass")
 class TaskRestServiceTest : BehaviorSpec({
     val drcClientService = mockk<DrcClientService>()
     val enkelvoudigInformatieObjectUpdateService = mockk<EnkelvoudigInformatieObjectUpdateService>()
@@ -160,6 +162,55 @@ class TaskRestServiceTest : BehaviorSpec({
 
                 val exception = shouldThrow<PolicyException> {
                     taskRestService.assignTask(restTaakToekennenGegevens)
+                }
+
+                then("it throws exception with no message") { exception.message shouldBe null }
+            }
+        }
+
+        given("a task is assigned to the logged-in user themselves") {
+            val restTaakToekennenGegevens = createRestTaskAssignData()
+            val task = createTestTask()
+            val restTask = createRestTask()
+            every { loggedInUserInstance.get() } returns loggedInUser
+            every { flowableTaskService.readOpenTask(restTaakToekennenGegevens.taakId) } returns task
+            every {
+                taskService.assignTaskToUser(
+                    taskId = task.id,
+                    assignee = loggedInUser.id,
+                    loggedInUser = loggedInUser,
+                    explanation = restTaakToekennenGegevens.reden
+                )
+            } returns task
+            every { taskService.sendScreenEventsOnTaskChange(task, restTaakToekennenGegevens.zaakUuid) } just runs
+            every {
+                indexingService.indexeerDirect(restTaakToekennenGegevens.taakId, ZoekObjectType.TAAK, true)
+            } just runs
+            every { restTaskConverter.convert(task) } returns restTask
+
+            `when`("the task is open and the user has permission") {
+                every { policyService.readTaakRechten(task) } returns createTaakRechtenAllDeny(toekennen = true)
+
+                val result = taskRestService.assignTaskToLoggedInUser(restTaakToekennenGegevens)
+
+                then("the task is assigned to the logged-in user") {
+                    result shouldBe restTask
+                    verify(exactly = 1) {
+                        taskService.assignTaskToUser(
+                            taskId = task.id,
+                            assignee = loggedInUser.id,
+                            loggedInUser = loggedInUser,
+                            explanation = restTaakToekennenGegevens.reden
+                        )
+                    }
+                }
+            }
+
+            `when`("the user has no permission") {
+                every { policyService.readTaakRechten(task) } returns createTaakRechtenAllDeny()
+
+                val exception = shouldThrow<PolicyException> {
+                    taskRestService.assignTaskToLoggedInUser(restTaakToekennenGegevens)
                 }
 
                 then("it throws exception with no message") { exception.message shouldBe null }
@@ -509,7 +560,7 @@ class TaskRestServiceTest : BehaviorSpec({
             )
             val loggedInUser = createLoggedInUser()
             every { zrcClientService.readZaak(zaak.uuid) } returns zaak
-            every { policyService.readZaakRechten(zaak, loggedInUser).lezen } returns true
+            every { policyService.readZaakRechten(zaak, loggedInUser).canLezen } returns true
             every { taskService.listTasksForZaak(zaak.uuid) } returns tasks
             every { restTaskConverter.convert(tasks) } returns restTasks
             every { loggedInUserInstance.get() } returns loggedInUser
@@ -545,7 +596,7 @@ class TaskRestServiceTest : BehaviorSpec({
             every { loggedInUserInstance.get() } returns loggedInUser
             every { signaleringService.deleteSignaleringen(any()) } returns 2
             every { flowableTaskService.readTask(taskId) } returns taskInfo
-            every { policyService.readTaakRechten(taskInfo).lezen } returns true
+            every { policyService.readTaakRechten(taskInfo).canLezen } returns true
             every { restTaskConverter.convert(taskInfo) } returns restTask
             every { bpmnTaskFormRuntimeService.renderFormioFormulier(restTask) } returns restTask.formioFormulier
             every { zaakVariabelenService.readProcessZaakdata(zaakUuid) } returns mapOf(

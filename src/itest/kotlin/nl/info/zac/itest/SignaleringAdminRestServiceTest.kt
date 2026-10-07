@@ -7,6 +7,7 @@ package nl.info.zac.itest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.kotest.assertions.json.shouldBeJsonArray
 import io.kotest.assertions.nondeterministic.eventually
+import io.kotest.core.annotation.Isolate
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -35,6 +36,7 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 import kotlin.time.Duration.Companion.seconds
 
+@Isolate
 class SignaleringAdminRestServiceTest : BehaviorSpec({
     val logger = KotlinLogging.logger {}
     val itestHttpClient = ItestHttpClient()
@@ -53,7 +55,7 @@ class SignaleringAdminRestServiceTest : BehaviorSpec({
                 "Content-Type",
                 "application/json"
             ),
-            requestBodyAsString = """{ "mail": true, "subjecttype": "TAAK", "type": "TAAK_VERLOPEN" }""",
+            requestBodyAsString = """{ "isMailEnabled": true, "subjecttype": "TAAK", "type": "TAAK_VERLOPEN" }""",
             testUser = BEHANDELAAR_1
         )
         response.code shouldBe HTTP_OK
@@ -93,7 +95,7 @@ class SignaleringAdminRestServiceTest : BehaviorSpec({
                 {
                     "planItemInstanceId": "$humanTaskItemId",
                     "fataledatum": "$fataleDatum",
-                    "taakStuurGegevens": { "sendMail": false },
+                    "taakStuurGegevens": { "shouldSendMail": false },
                     "medewerker": {
                         "id": "${BEHANDELAAR_1.username}",
                         "naam": "${BEHANDELAAR_1.displayName}"

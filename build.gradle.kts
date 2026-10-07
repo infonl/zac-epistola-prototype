@@ -10,6 +10,8 @@ import io.smallrye.openapi.api.OpenApiConfig.DuplicateOperationIdBehavior
 import io.smallrye.openapi.api.OpenApiConfig.OperationIdStrategy
 import org.gradle.api.plugins.JavaBasePlugin.BUILD_TASK_NAME
 import org.gradle.api.plugins.JavaBasePlugin.DOCUMENTATION_GROUP
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 import java.io.File
 import java.net.HttpURLConnection
@@ -226,6 +228,70 @@ dependencies {
     jacocoAgentJarForItest(variantOf(libs.jacoco.agent) { classifier("runtime") })
 }
 
+val itestShardsFile = layout.projectDirectory.file("src/itest/itest-shards.txt")
+val itestSpecsDirectory = layout.projectDirectory.dir("src/itest/kotlin")
+
+/**
+ * Returns the fully qualified names of the integration test specs that [itestShardsFile] assigns to the given
+ * shard, after checking that every spec under [itestSpecsDirectory] is assigned to exactly one shard.
+ */
+fun itestSpecsInShard(shard: String): List<String> {
+    val shards = readItestShards()
+    val specsInShard = shards[shard] ?: error(
+        "Integration test shard '$shard' does not exist in '${itestShardsFile.asFile.path}'. " +
+            "Available shards: ${shards.keys}"
+    )
+    val assignedSpecs = shards.values.flatten()
+    val existingSpecs = findItestSpecs()
+    val problems = buildList {
+        assignedSpecs.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+            .takeIf { it.isNotEmpty() }?.let { add("assigned to more than one shard: $it") }
+        (existingSpecs - assignedSpecs.toSet())
+            .takeIf { it.isNotEmpty() }?.let { add("not assigned to any shard: $it") }
+        (assignedSpecs.toSet() - existingSpecs)
+            .takeIf { it.isNotEmpty() }
+            ?.let { add("assigned to a shard but not found under '${itestSpecsDirectory.asFile.path}': $it") }
+    }
+    if (problems.isNotEmpty()) {
+        error("'${itestShardsFile.asFile.path}' is out of date. Specs ${problems.joinToString("; ")}")
+    }
+    return specsInShard
+}
+
+/**
+ * Reads [itestShardsFile]: a `[shard N]` header starts a shard and every following non-blank, non-comment line
+ * is the fully qualified name of a spec in that shard.
+ */
+fun readItestShards(): Map<String, List<String>> {
+    val shards = linkedMapOf<String, MutableList<String>>()
+    var currentShard: String? = null
+    val lines = itestShardsFile.asFile.readLines().map { it.substringBefore('#').trim() }.filter { it.isNotEmpty() }
+    for (line in lines) {
+        val shardHeader = Regex("""\[shard (\d+)]""").matchEntire(line)
+        if (shardHeader != null) {
+            currentShard = shardHeader.groupValues[1]
+            shards.getOrPut(shardHeader.groupValues[1]) { mutableListOf() }
+        } else {
+            val shard = currentShard
+                ?: error("'${itestShardsFile.asFile.path}': '$line' is listed before the first '[shard N]' header")
+            shards.getValue(shard).add(line)
+        }
+    }
+    return shards
+}
+
+/**
+ * Finds the fully qualified names of all Kotest specs under [itestSpecsDirectory]: the top-level classes
+ * that extend one of the Kotest spec styles.
+ */
+fun findItestSpecs(): Set<String> =
+    itestSpecsDirectory.asFileTree.matching { include("**/*.kt") }.files.mapNotNullTo(sortedSetOf()) { specFile ->
+        val source = specFile.readText()
+        val packageName = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE).find(source)?.groupValues?.get(1)
+        val specName = Regex("""^class\s+(\w+)\s*:\s*\w*Spec\(""", RegexOption.MULTILINE).find(source)?.groupValues?.get(1)
+        if (packageName != null && specName != null) "$packageName.$specName" else null
+    }
+
 testing {
     suites {
         // configure the default unit test suite to use JUnit Jupiter
@@ -267,6 +333,31 @@ testing {
                         // mirror previous behavior
                         useJUnitPlatform()
                         systemProperty("zacDockerImage", zacDockerImage)
+                        // the migration tests run Flyway in a container with the Flyway version that ZAC uses
+                        systemProperty("flywayVersion", libs.versions.flyway.get())
+                        // write the (very verbose) integration test log to a file instead of the console
+                        // when the 'itestLogFile' Gradle property is set, as is done in CI
+                        providers.gradleProperty("itestLogFile").orNull?.let { itestLogFile ->
+                            systemProperty("org.slf4j.simpleLogger.logFile", itestLogFile)
+                            val itestLogDirectory = file(itestLogFile).parentFile
+                            doFirst { itestLogDirectory.mkdirs() }
+                        }
+                        // run only the specs of one shard from 'src/itest/itest-shards.txt' when the 'itestShard'
+                        // Gradle property is set, as is done in CI
+                        providers.gradleProperty("itestShard").orNull?.let { itestShard ->
+                            val specsInShard = itestSpecsInShard(itestShard)
+                            systemProperty("zac.itest.shard", itestShard)
+                            filter { specsInShard.forEach { includeTestsMatching(it) } }
+                        }
+                        // override the number of specs that run concurrently, for example with
+                        // '-PitestSpecConcurrency=1' to run the specs one by one when debugging
+                        providers.gradleProperty("itestSpecConcurrency").orNull?.let {
+                            systemProperty("zac.itest.specConcurrency", it)
+                        }
+                        testLogging {
+                            events(TestLogEvent.FAILED)
+                            exceptionFormat = TestExceptionFormat.FULL
+                        }
                         dependsOn("buildDockerImage")
                         // always execute the integration tests
                         outputs.upToDateWhen { false }
@@ -568,9 +659,20 @@ tasks {
 
     withType<Detekt>().configureEach {
         config.setFrom("$rootDir/config/detekt.yml")
-        setSource(files("src/main/kotlin", "src/test/kotlin", "src/itest/kotlin", "build.gradle.kts"))
         // our Detekt configuration build builds upon the default configuration
         buildUponDefaultConfig = true
+    }
+
+    // detektMain, detektTest and detektItest analyse the Kotlin source sets with type resolution, which rules such as
+    // UnsafeCallOnNullableType need to fire at all. The plain detekt task has no classpath, so it only covers the
+    // build script and runs the type resolution tasks for everything else.
+    named<Detekt>("detekt") {
+        setSource(files("build.gradle.kts"))
+        dependsOn("detektMain", "detektTest", "detektItest")
+    }
+
+    named<Detekt>("detektApply") {
+        setSource(files("src/main/kotlin", "src/test/kotlin", "src/itest/kotlin", "build.gradle.kts"))
     }
 
     getByName("spotlessApply").finalizedBy(listOf("detektApply"))
@@ -820,6 +922,8 @@ tasks {
 
         inputs.files(fileTree("$appPath/node_modules"))
         inputs.files(fileTree("$appPath/src"))
+        inputs.files(fileTree("$appPath/fonts"))
+        inputs.files(fileTree("$appPath/scripts"))
         outputs.files(fileTree("$appPath/dist/zaakafhandelcomponent"))
         outputs.files(fileTree("$appPath/src/generated/types"))
         outputs.cacheIf { true }

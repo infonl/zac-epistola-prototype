@@ -14,6 +14,7 @@ import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.CO
 import app.epistola.client.jakarta.model.DocumentGenerationItemDto.StatusEnum.FAILED
 import app.epistola.client.jakarta.model.GenerateDocumentRequest
 import app.epistola.client.jakarta.model.PreviewDocumentRequest
+import app.epistola.client.jakarta.model.TemplateDto
 import app.epistola.client.jakarta.model.TemplateSummaryDto
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
@@ -119,7 +120,12 @@ class EpistolaClientService @Inject constructor(
             if (!isJobFinished) cancelGenerationJob(tenant, requestId)
         }
         if (finishedItem.status == FAILED) throw finishedItem.toGenerationFailure(generationRequest)
-        return downloadDocument(tenant, finishedItem, fileName, generationRequest).copy(kanaal = kanaal, locale = locale)
+        return downloadDocument(
+            tenant = tenant,
+            item = finishedItem,
+            fileName = fileName,
+            generationRequest = generationRequest
+        ).copy(kanaal = kanaal, locale = locale)
     }
 
     /**
@@ -204,7 +210,7 @@ class EpistolaClientService @Inject constructor(
             )
         }
 
-    fun readTemplate(catalogId: String, templateId: String) =
+    fun readTemplate(catalogId: String, templateId: String): TemplateDto =
         requestEpistola(request = "reading template '$templateId' of catalog '$catalogId'", isTemplateRequest = true) {
             templatesApi.getTemplate(epistolaSettings.tenantId, catalogId, templateId)
         }

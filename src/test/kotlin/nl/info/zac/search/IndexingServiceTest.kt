@@ -13,40 +13,47 @@ import io.mockk.checkUnnecessaryStub
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkConstructor
-import io.mockk.mockkStatic
 import io.mockk.verify
 import io.mockk.verifyOrder
 import jakarta.enterprise.inject.Instance
+import jakarta.ws.rs.ProcessingException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
-import nl.info.client.zgw.shared.model.Results
-import nl.info.client.zgw.zrc.model.ZaakListParameters
 import net.atos.zac.flowable.task.FlowableTaskService
 import nl.info.client.zgw.drc.DrcClientService
 import nl.info.client.zgw.drc.model.EnkelvoudigInformatieobjectListParameters
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
+import nl.info.client.zgw.model.createMedewerkerIdentificatie
+import nl.info.client.zgw.model.createRolMedewerker
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.model.createZaakEigenschap
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
+import nl.info.client.zgw.shared.model.Results
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
+import nl.info.client.zgw.zrc.exception.ZaakGeometrieNotSupportedException
+import nl.info.client.zgw.zrc.model.ZaakListParameters
 import nl.info.client.zgw.zrc.model.ZaakUuid
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.zrc.model.generated.ZaakInformatieObject
 import nl.info.client.zgw.zrc.util.ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD
 import nl.info.client.zgw.ztc.model.createZaakType
 import nl.info.zac.app.task.model.TaakSortering
-import nl.info.zac.search.converter.AbstractZoekObjectConverter
 import nl.info.zac.search.converter.DocumentZoekObjectConverter
 import nl.info.zac.search.converter.TaakZoekObjectConverter
 import nl.info.zac.search.converter.ZaakZoekObjectConverter
+import nl.info.zac.search.converter.ZoekObjectConverter
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
 import nl.info.zac.search.model.createDocumentZoekObject
 import nl.info.zac.search.model.createTaakZoekObject
 import nl.info.zac.search.model.createZaakZoekObject
 import nl.info.zac.search.model.zoekobject.ZoekObject
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import nl.info.zac.shared.model.SorteerRichting
+import nl.info.zac.solr.SolrClientFactory
+import nl.info.zac.zaak.ZaakspecifiekeAutorisatieService
+import nl.info.zac.zaak.model.createZaakToewijzing
 import org.apache.solr.client.solrj.SolrQuery
 import org.apache.solr.client.solrj.SolrServerException
 import org.apache.solr.client.solrj.impl.Http2SolrClient
@@ -55,7 +62,6 @@ import org.apache.solr.client.solrj.response.UpdateResponse
 import org.apache.solr.common.SolrDocument
 import org.apache.solr.common.SolrDocumentList
 import org.apache.solr.common.params.CursorMarkParams
-import org.eclipse.microprofile.config.ConfigProvider
 import org.flowable.task.api.Task
 import java.io.IOException
 import java.net.URI
@@ -69,11 +75,12 @@ private data class TestContext(
     val solrClient: Http2SolrClient,
     val zaakZoekObjectConverter: ZaakZoekObjectConverter,
     val taakZoekObjectConverter: TaakZoekObjectConverter,
-    val converterInstances: Instance<AbstractZoekObjectConverter<out ZoekObject>>,
-    val converterInstancesIterator: MutableIterator<AbstractZoekObjectConverter<out ZoekObject>>,
+    val converterInstances: Instance<ZoekObjectConverter<out ZoekObject>>,
+    val converterInstancesIterator: MutableIterator<ZoekObjectConverter<out ZoekObject>>,
     val drcClientService: DrcClientService,
     val flowableTaskService: FlowableTaskService,
     val zrcClientService: ZrcClientService,
+    val zaakspecifiekeAutorisatieService: ZaakspecifiekeAutorisatieService,
     val documentZoekObjectConverter: DocumentZoekObjectConverter,
     val indexingService: IndexingService,
     val testDispatcher: TestDispatcher
@@ -108,31 +115,30 @@ private fun captureLogRecords(block: () -> Unit): List<LogRecord> {
 }
 
 private fun setupContext(): TestContext {
-    val solrUrl = "http://localhost/fakeSolrUrl"
-    mockkStatic(ConfigProvider::class)
-    every {
-        ConfigProvider.getConfig().getValue("solr.url", String::class.java)
-    } returns solrUrl
-
     val solrClient = mockk<Http2SolrClient>()
-    mockkConstructor(Http2SolrClient.Builder::class)
-    every { anyConstructed<Http2SolrClient.Builder>().build() } returns solrClient
+    val solrClientFactory = mockk<SolrClientFactory> {
+        every { createSolrClient(any()) } returns solrClient
+    }
 
     val zaakZoekObjectConverter = mockk<ZaakZoekObjectConverter>()
     val taakZoekObjectConverter = mockk<TaakZoekObjectConverter>()
-    val converterInstances = mockk<Instance<AbstractZoekObjectConverter<out ZoekObject>>>()
-    val converterInstancesIterator = mockk<MutableIterator<AbstractZoekObjectConverter<out ZoekObject>>>()
+    val converterInstances = mockk<Instance<ZoekObjectConverter<out ZoekObject>>>()
+    val converterInstancesIterator = mockk<MutableIterator<ZoekObjectConverter<out ZoekObject>>>()
     val drcClientService = mockk<DrcClientService>()
     val flowableTaskService = mockk<FlowableTaskService>()
     val zrcClientService = mockk<ZrcClientService>()
+    val zaakspecifiekeAutorisatieService = mockk<ZaakspecifiekeAutorisatieService>()
     val testDispatcher = StandardTestDispatcher()
     val documentZoekObjectConverter = mockk<DocumentZoekObjectConverter>()
 
     val reindexSupportService = ReindexSupportService(
-        converterInstances,
-        zrcClientService,
-        drcClientService,
-        flowableTaskService
+        converterInstances = converterInstances,
+        zrcClientService = zrcClientService,
+        drcClientService = drcClientService,
+        flowableTaskService = flowableTaskService,
+        zaakspecifiekeAutorisatieService = zaakspecifiekeAutorisatieService,
+        solrClientFactory = solrClientFactory,
+        dispatcher = Dispatchers.IO
     )
     val zaakGedrevenReindexService = ZaakGedrevenReindexService(
         reindexSupportService,
@@ -144,14 +150,14 @@ private fun setupContext(): TestContext {
         taakZoekObjectConverter
     )
     val indexingService = IndexingService(
-        reindexSupportService,
-        zaakGedrevenReindexService,
-        zrcClientService,
-        flowableTaskService,
-        documentZoekObjectConverter,
-        zaakZoekObjectConverter,
-        taakZoekObjectConverter,
-        testDispatcher
+        reindexSupportService = reindexSupportService,
+        zaakGedrevenReindexService = zaakGedrevenReindexService,
+        zrcClientService = zrcClientService,
+        flowableTaskService = flowableTaskService,
+        documentZoekObjectConverter = documentZoekObjectConverter,
+        zaakZoekObjectConverter = zaakZoekObjectConverter,
+        taakZoekObjectConverter = taakZoekObjectConverter,
+        dispatcher = testDispatcher
     )
 
     return TestContext(
@@ -163,10 +169,39 @@ private fun setupContext(): TestContext {
         drcClientService,
         flowableTaskService,
         zrcClientService,
+        zaakspecifiekeAutorisatieService,
         documentZoekObjectConverter,
         indexingService,
         testDispatcher
     )
+}
+
+private fun createZaakToewijzingWithBehandelaar(behandelaarId: String?) = createZaakToewijzing(
+    behandelaarRollen = listOfNotNull(
+        behandelaarId?.let {
+            createRolMedewerker(medewerkerIdentificatie = createMedewerkerIdentificatie(identificatie = it))
+        }
+    ),
+    isZaakspecifiekGeautoriseerd = true
+)
+
+private fun TestContext.stubZaakGeautoriseerdeMedewerkersLookup(
+    zaak: Zaak,
+    medewerkerId: String? = "fakeBehandelaarId"
+) {
+    every {
+        zaakspecifiekeAutorisatieService.readZaakToewijzing(zaak = zaak, isZaakspecifiekGeautoriseerd = any())
+    } returns
+        createZaakToewijzingWithBehandelaar(medewerkerId)
+}
+
+private fun TestContext.stubZaakGeautoriseerdeMedewerkersLookup(
+    zaakUUID: UUID,
+    medewerkerId: String? = "fakeBehandelaarId"
+) {
+    val zaak = createZaak(uuid = zaakUUID)
+    every { zrcClientService.readZaak(zaakUUID) } returns zaak
+    stubZaakGeautoriseerdeMedewerkersLookup(zaak, medewerkerId)
 }
 
 @Suppress("LargeClass")
@@ -276,6 +311,8 @@ class IndexingServiceTest : BehaviorSpec({
                 val current = activeConversions.incrementAndGet()
                 maxObservedConcurrency.updateAndGet { previousMax -> maxOf(previousMax, current) }
                 try {
+                    // the converter is a blocking call made from a worker thread, so blocking that thread is the point
+                    @Suppress("SleepInsteadOfDelay")
                     Thread.sleep(50)
                 } finally {
                     activeConversions.decrementAndGet()
@@ -314,11 +351,12 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaakUUID)
         informatieobjectUUIDs.forEachIndexed { index, informatieobjectUUID ->
             every { ctx.documentZoekObjectConverter.convert(informatieobjectUUID, any()) } answers {
                 // simulates the converter resolving the memoized flag lookup for the shared zaak,
                 // concurrently with the other documents on this page
-                secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+                secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).geautoriseerdeMedewerkers
                 documentZoekObjecten[index]
             }
         }
@@ -333,6 +371,16 @@ class IndexingServiceTest : BehaviorSpec({
             ) {
                 verify(exactly = 1) {
                     ctx.zrcClientService.listZaakeigenschappen(zaakUUID)
+                }
+            }
+
+            then(
+                "the shared zaak's geautoriseerde medewerkers are resolved only once as well, so their " +
+                    "lazy resolution is safe to share across the page's concurrent conversions"
+            ) {
+                verify(exactly = 1) {
+                    ctx.zrcClientService.readZaak(zaakUUID)
+                    ctx.zaakspecifiekeAutorisatieService.readZaakToewijzing(any(), any(), any())
                 }
             }
         }
@@ -352,6 +400,7 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(zaak.uuid) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaak)
         every { ctx.solrClient.addBeans(any<Collection<*>>()) } returns UpdateResponse()
         zaakInformatieobjecten.forEachIndexed { index, zaakInformatieobject ->
             every {
@@ -362,7 +411,7 @@ class IndexingServiceTest : BehaviorSpec({
             } answers {
                 // simulates the converter resolving the document against this same zaak,
                 // which is what actually triggers the memoized flag lookup
-                secondArg<(UUID) -> Boolean>().invoke(zaak.uuid)
+                secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaak.uuid).geautoriseerdeMedewerkers
                 documentZoekObjecten[index]
             }
         }
@@ -409,6 +458,8 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(otherZaakUUID) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "false")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaak)
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(otherZaakUUID, medewerkerId = "fakeOtherBehandelaarId")
         every { ctx.solrClient.addBeans(any<Collection<*>>()) } returns UpdateResponse()
         every {
             ctx.documentZoekObjectConverter.convert(
@@ -417,7 +468,7 @@ class IndexingServiceTest : BehaviorSpec({
             )
         } answers {
             // resolves against the iterated zaak, like a document only linked to this one zaak
-            secondArg<(UUID) -> Boolean>().invoke(zaak.uuid)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaak.uuid).geautoriseerdeMedewerkers
             documentZoekObjecten[0]
         }
         every {
@@ -427,7 +478,7 @@ class IndexingServiceTest : BehaviorSpec({
             )
         } answers {
             // resolves against a different zaak, like a document linked to more than one zaak
-            secondArg<(UUID) -> Boolean>().invoke(otherZaakUUID)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(otherZaakUUID).geautoriseerdeMedewerkers
             documentZoekObjecten[1]
         }
 
@@ -456,23 +507,24 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaakUUID)
         every { ctx.zaakZoekObjectConverter.convert(zaakUUID.toString(), any()) } answers {
             // simulates the converter resolving the memoized flag lookup for this same zaak
-            secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).isZaakspecifiekGeautoriseerd
             zaakZoekObject
         }
         every { ctx.taakZoekObjectConverter.convert("fakeOpenTaskId", any()) } answers {
-            secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).geautoriseerdeMedewerkers
             taakZoekObject
         }
         every { ctx.flowableTaskService.listOpenTasksForZaak(zaakUUID) } returns listOf(openTask)
         every { ctx.solrClient.addBeans(any<Collection<*>>()) } returns UpdateResponse()
 
         `when`("addOrUpdateZaak is called") {
-            val zaakIndexed = ctx.indexingService.addOrUpdateZaak(zaakUUID, true)
+            val isZaakIndexed = ctx.indexingService.addOrUpdateZaak(zaakUUID, true)
 
             then("it reports that the zaak itself was indexed successfully") {
-                zaakIndexed shouldBe true
+                isZaakIndexed shouldBe true
             }
 
             then("the zaak and only its open taken are reindexed, without listing its completed taken") {
@@ -491,6 +543,13 @@ class IndexingServiceTest : BehaviorSpec({
                     ctx.zrcClientService.listZaakeigenschappen(zaakUUID)
                 }
             }
+
+            then("the zaak's geautoriseerde medewerkers are resolved only once, shared by the zaak and its taak") {
+                verify(exactly = 1) {
+                    ctx.zrcClientService.readZaak(zaakUUID)
+                    ctx.zaakspecifiekeAutorisatieService.readZaakToewijzing(any(), any(), any())
+                }
+            }
         }
     }
 
@@ -504,13 +563,14 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaakUUID)
         every { ctx.taakZoekObjectConverter.convert("fakeOpenTaskId", any()) } answers {
             // simulates the converter resolving the memoized flag lookup for this same zaak
-            secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).geautoriseerdeMedewerkers
             taakZoekObjecten[0]
         }
         every { ctx.taakZoekObjectConverter.convert("fakeCompletedTaskId", any()) } answers {
-            secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).geautoriseerdeMedewerkers
             taakZoekObjecten[1]
         }
         every { ctx.flowableTaskService.listTasksForZaak(zaakUUID) } returns listOf(openTask, completedTask)
@@ -787,6 +847,7 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
             createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
         )
+        ctx.stubZaakGeautoriseerdeMedewerkersLookup(zaakUUID)
 
         every {
             ctx.drcClientService.listEnkelvoudigInformatieObjecten(
@@ -807,7 +868,7 @@ class IndexingServiceTest : BehaviorSpec({
             every {
                 documentZoekObjectConverter.convert(informatieobject.url.extractUuid().toString(), any())
             } answers {
-                secondArg<(UUID) -> Boolean>().invoke(zaakUUID)
+                secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).geautoriseerdeMedewerkers
                 createDocumentZoekObject()
             }
         }
@@ -1278,13 +1339,13 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.flowableTaskService.countOpenTasks() } returns 0
 
         `when`("reindexAsync is called") {
-            val started = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
+            val isStarted = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
 
             then(
                 """reindexing is reported as started, but does not run until the coroutine dispatcher
                    is advanced"""
             ) {
-                started shouldBe true
+                isStarted shouldBe true
                 verify(exactly = 0) {
                     ctx.flowableTaskService.countOpenTasks()
                 }
@@ -1310,10 +1371,10 @@ class IndexingServiceTest : BehaviorSpec({
         ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
 
         `when`("reindexAsync is called again before the first launch has run") {
-            val startedAgain = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
+            val isStartedAgain = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
 
             then("the second call is rejected instead of running a duplicate reindex") {
-                startedAgain shouldBe false
+                isStartedAgain shouldBe false
 
                 // let the still-pending launch from the first call run, so it releases its viewfinder
                 // entry and does not leak into any other test relying on the
@@ -1338,8 +1399,8 @@ class IndexingServiceTest : BehaviorSpec({
                     it.message == "Unexpected failure while reindexing" && it.thrown?.message == "fakeUnexpectedFailure"
                 } shouldBe true
 
-                val startedAgain = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
-                startedAgain shouldBe true
+                val isStartedAgain = ctx.indexingService.reindexAsync(ZoekObjectType.TAAK)
+                isStartedAgain shouldBe true
                 ctx.testDispatcher.scheduler.advanceUntilIdle()
             }
         }
@@ -1379,9 +1440,9 @@ class IndexingServiceTest : BehaviorSpec({
         every { ctx.solrClient.addBeans(listOf(taakZoekObject)) } returns UpdateResponse()
 
         `when`("addOrUpdateZaak is called") {
-            var zaakIndexed = true
+            var isZaakIndexed = true
             val logRecords = captureLogRecords {
-                zaakIndexed = ctx.indexingService.addOrUpdateZaak(zaakUUID, true)
+                isZaakIndexed = ctx.indexingService.addOrUpdateZaak(zaakUUID, true)
             }
 
             then("the zaak's open taak is still indexed despite the zaak's own Solr indexing failing") {
@@ -1397,7 +1458,48 @@ class IndexingServiceTest : BehaviorSpec({
             }
 
             then("the return value reports that indexing the zaak itself failed") {
-                zaakIndexed shouldBe false
+                isZaakIndexed shouldBe false
+            }
+        }
+    }
+
+    given("A zaak with an open taak, where converting the zaak itself fails because its zaakgeometrie is unsupported") {
+        val ctx = setupContext()
+        val zaakUUID = UUID.randomUUID()
+        val openTask = mockk<Task>().apply { every { id } returns "fakeOpenTaskId" }
+        val taakZoekObject = createTaakZoekObject()
+
+        every { ctx.zaakZoekObjectConverter.convert(zaakUUID.toString(), any()) } throws
+            ZaakGeometrieNotSupportedException(
+                "Zaak '$zaakUUID' has an unsupported zaakgeometrie type. Only 'Point' zaakgeometrie is supported.",
+                ProcessingException("fake JSON-B deserialization failure")
+            )
+        every { ctx.taakZoekObjectConverter.convert("fakeOpenTaskId", any()) } returns taakZoekObject
+        every { ctx.flowableTaskService.listOpenTasksForZaak(zaakUUID) } returns listOf(openTask)
+        every { ctx.solrClient.addBeans(listOf(taakZoekObject)) } returns UpdateResponse()
+
+        `when`("addOrUpdateZaak is called") {
+            val logRecords = captureLogRecords {
+                ctx.indexingService.addOrUpdateZaak(zaakUUID, true)
+            }
+
+            then("the zaak itself is not added to the Solr index, only its taak is") {
+                verify(exactly = 1) {
+                    ctx.solrClient.addBeans(any<Collection<*>>())
+                }
+            }
+
+            then("the zaak's open taak is still indexed despite the zaak itself failing to convert") {
+                verify(exactly = 1) {
+                    ctx.solrClient.addBeans(listOf(taakZoekObject))
+                }
+            }
+
+            then("the unsupported zaakgeometrie failure is logged instead of being thrown to the caller") {
+                logRecords.any {
+                    it.message == "[ZAAK] Error during indexing" &&
+                        it.thrown?.cause is ZaakGeometrieNotSupportedException
+                } shouldBe true
             }
         }
     }
@@ -1655,7 +1757,7 @@ class IndexingServiceTest : BehaviorSpec({
 
             then("the document is not reconverted by the orphan sweep, since it was already reindexed via its zaak") {
                 verify(exactly = 0) {
-                    ctx.documentZoekObjectConverter.convert(any<String>(), any<(UUID) -> Boolean>())
+                    ctx.documentZoekObjectConverter.convert(any<String>(), any<(UUID) -> ZaakAutorisatieGegevens>())
                 }
             }
         }
@@ -2167,7 +2269,7 @@ class IndexingServiceTest : BehaviorSpec({
         // the orphan sweep falls back to the id-only convert(), which itself looks for a linked zaak
         // and returns null (skipped) when there is none - exactly like today's independent DOCUMENT pass
         every {
-            ctx.documentZoekObjectConverter.convert(orphanDocumentUUID.toString(), any<(UUID) -> Boolean>())
+            ctx.documentZoekObjectConverter.convert(orphanDocumentUUID.toString(), any<(UUID) -> ZaakAutorisatieGegevens>())
         } returns null
 
         every { ctx.zaakZoekObjectConverter.convert(zaak, any()) } returns zaakZoekObject
@@ -2183,7 +2285,7 @@ class IndexingServiceTest : BehaviorSpec({
 
             then("the orphan document is still found by the sweep and counted as skipped") {
                 verify(exactly = 1) {
-                    ctx.documentZoekObjectConverter.convert(orphanDocumentUUID.toString(), any<(UUID) -> Boolean>())
+                    ctx.documentZoekObjectConverter.convert(orphanDocumentUUID.toString(), any<(UUID) -> ZaakAutorisatieGegevens>())
                 }
                 logRecords.map { it.message } shouldContain
                     "[DOCUMENT] Reindexing finished. Reindexed: 0 / 1, skipped: 1, not reindexed because of errors: 0. " +
@@ -2227,6 +2329,72 @@ class IndexingServiceTest : BehaviorSpec({
                 // viewfinder entry and does not leak into any other test relying on the
                 // (companion-object-shared) viewfinder
                 ctx.testDispatcher.scheduler.advanceUntilIdle()
+            }
+        }
+    }
+    given("a zaak indexed on its own, without its taken or documenten") {
+        val ctx = setupContext()
+        val zaakUUID = UUID.randomUUID()
+
+        every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns emptyList()
+        every { ctx.zaakZoekObjectConverter.convert(zaakUUID.toString(), any()) } answers {
+            secondArg<(UUID) -> ZaakAutorisatieGegevens>().invoke(zaakUUID).isZaakspecifiekGeautoriseerd
+            createZaakZoekObject()
+        }
+        every { ctx.solrClient.addBeans(any<Collection<*>>()) } returns UpdateResponse()
+
+        `when`("addOrUpdateZaak is called without its taken") {
+            ctx.indexingService.addOrUpdateZaak(zaakUUID, false)
+
+            then("the zaak's geautoriseerde medewerkers are never resolved, since a zaak conversion knows them") {
+                verify(exactly = 0) {
+                    ctx.zrcClientService.readZaak(any<UUID>())
+                    ctx.zaakspecifiekeAutorisatieService.readZaakToewijzing(any(), any(), any())
+                }
+            }
+        }
+    }
+
+    given("a zaak whose geautoriseerde medewerkers change between two separate indexing operations") {
+        val ctx = setupContext()
+        val zaakUUID = UUID.randomUUID()
+        val zaak = createZaak(uuid = zaakUUID)
+        val openTask = mockk<Task>().apply { every { id } returns "fakeOpenTaskId" }
+        val observedMedewerkers = mutableListOf<String>()
+
+        every { ctx.zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
+            createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
+        )
+        every { ctx.zrcClientService.readZaak(zaakUUID) } returns zaak
+        every {
+            ctx.zaakspecifiekeAutorisatieService.readZaakToewijzing(zaak = zaak, isZaakspecifiekGeautoriseerd = any())
+        } returnsMany listOf(
+            createZaakToewijzingWithBehandelaar("fakeFirstMedewerkerId"),
+            createZaakToewijzingWithBehandelaar("fakeSecondMedewerkerId")
+        )
+        every { ctx.taakZoekObjectConverter.convert("fakeOpenTaskId", any()) } answers {
+            observedMedewerkers += secondArg<(UUID) -> ZaakAutorisatieGegevens>()
+                .invoke(zaakUUID)
+                .geautoriseerdeMedewerkers
+            createTaakZoekObject()
+        }
+        every { ctx.flowableTaskService.listTasksForZaak(zaakUUID) } returns listOf(openTask)
+        every { ctx.solrClient.addBeans(any<Collection<*>>()) } returns UpdateResponse()
+
+        `when`("the zaak's taken are reindexed twice") {
+            ctx.indexingService.addOrUpdateTakenForZaak(zaakUUID)
+            ctx.indexingService.addOrUpdateTakenForZaak(zaakUUID)
+
+            then("each operation sees the medewerkers of that moment, so a change in between lands") {
+                observedMedewerkers shouldBe listOf("fakeFirstMedewerkerId", "fakeSecondMedewerkerId")
+            }
+
+            then("the memoization does not outlive a single operation") {
+                verify(exactly = 2) {
+                    ctx.zrcClientService.listZaakeigenschappen(zaakUUID)
+                    ctx.zrcClientService.readZaak(zaakUUID)
+                    ctx.zaakspecifiekeAutorisatieService.readZaakToewijzing(any(), any(), any())
+                }
             }
         }
     }

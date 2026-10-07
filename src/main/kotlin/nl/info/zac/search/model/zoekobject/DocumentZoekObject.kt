@@ -109,10 +109,14 @@ data class DocumentZoekObject(
     private var indicatiesVolgorde: Long = 0,
 
     @Field(ZAAKSPECIFIEK_GEAUTORISEERD_FIELD)
-    var isZaakspecifiekGeautoriseerd: Boolean = false
+    var isZaakspecifiekGeautoriseerd: Boolean = false,
+
+    @Field(ZAAK_GEAUTORISEERDE_MEDEWERKERS_FIELD)
+    var zaakGeautoriseerdeMedewerkers: List<String>? = null
 ) : ZoekObject {
     companion object {
-        const val ZAAKSPECIFIEK_GEAUTORISEERD_FIELD: String = "informatieobject_zaakspecifiekGeautoriseerd"
+        const val ZAAKSPECIFIEK_GEAUTORISEERD_FIELD = "informatieobject_zaakspecifiekGeautoriseerd"
+        const val ZAAK_GEAUTORISEERDE_MEDEWERKERS_FIELD = "informatieobject_zaakGeautoriseerdeMedewerkers"
     }
 
     override fun getObjectId() = id
@@ -159,3 +163,5 @@ data class DocumentZoekObject(
         }
     }
 }
+
+fun DocumentZoekObject.isZaakOpen() = !isZaakAfgehandeld

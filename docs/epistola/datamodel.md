@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober. Alle Epistola-tabellen staan in `V100__epistola.sql` |
+| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober. Alle Epistola-tabellen staan in `V102__epistola.sql` |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
 | Raakt | #2, #3, #6, #9, #52, #51 |
 
@@ -216,6 +216,6 @@ Epistola verwijdert, komt niet terug uit het geheugen. Opslaan controleert de ca
 
 Datamodel voor het Epistola-prototype, afgeleid van de JPA-entiteiten in `nl.info.zac.admin.model` en
 `nl.info.zac.smartdocuments.templates.model` op de examenfork. Bestaande structuren zijn tegen de code
-geverifieerd. De nieuwe structuren staan in `V100__epistola.sql`: de kolommen op `ZaaktypeConfiguration` en de
+geverifieerd. De nieuwe structuren staan in `V102__epistola.sql`: de kolommen op `ZaaktypeConfiguration` en de
 entiteit `ZaaktypeEpistolaTemplateSettings` in `nl.info.zac.admin.model` (#3, #51), en de entiteit `EpistolaDocument` in
 `nl.info.zac.epistola.documents.model` (#9, #47, #52).

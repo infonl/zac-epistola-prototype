@@ -6,6 +6,7 @@ package nl.info.zac.configuration
 
 import java.time.Duration
 
+@Suppress("LongParameterList")
 fun createEpistolaSettings(
     restUrl: String = "https://epistola.example.com",
     tenantId: String = "fake-tenant",

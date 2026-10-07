@@ -37,7 +37,7 @@ jobs:
   publish:
     name: Build and publish NVD database cache image
     # INFO runner as NVD download is heavily throttled from github IPs
-    runs-on: [Linux, X64, ubuntu-24.04]
+    runs-on: [Linux, X64, ubuntu-26.04]
     # Normal (incremental) runs finish in minutes. A seed run (seed_database=true)
     # performs a full cold NVD download, which - because the NVD API heavily and
     # unpredictably rate-limits CI egress IPs - can take many hours; it runs on a
@@ -58,10 +58,10 @@ jobs:
           cache: "gradle"
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0

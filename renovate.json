@@ -479,6 +479,45 @@
       ]
     },
     {
+      "groupName": "OPA docker image",
+      "matchPackageNames": [
+        "openpolicyagent/opa",
+        "docker.io/openpolicyagent/opa"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "description": [
+        "The Helm chart names the image with its registry, Docker Compose and DEPENDENCIES.md without; update them in a single PR"
+      ]
+    },
+    {
+      "groupName": "Gotenberg docker image",
+      "matchPackageNames": [
+        "gotenberg/gotenberg",
+        "docker.io/gotenberg/gotenberg"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "description": [
+        "The Helm chart names the image with its registry, Docker Compose and DEPENDENCIES.md without; update them in a single PR"
+      ]
+    },
+    {
+      "groupName": "nginx-unprivileged docker image",
+      "matchPackageNames": [
+        "nginxinc/nginx-unprivileged",
+        "docker.io/nginxinc/nginx-unprivileged"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "description": [
+        "The Helm chart names the image with its registry, Docker Compose and DEPENDENCIES.md without; update them in a single PR"
+      ]
+    },
+    {
       "description": "Disable digest pinning for DEPENDENCIES.md - we only want version tags there",
       "matchFileNames": [
         "DEPENDENCIES.md"
@@ -595,6 +634,9 @@
         "docker"
       ],
       "allowedVersions": "< 1.30.0",
+      "prBodyNotes": [
+        "After merging the Docker Compose change, regenerate the pre-migrated Open Zaak database dump by running `scripts/docker-compose/regenerate-openzaak-database-dump.sh` and commit the result, so that Open Zaak keeps starting without pending database migrations."
+      ],
       "description": [
         "Pinned by the next Dimpact PodiumD release"
       ]

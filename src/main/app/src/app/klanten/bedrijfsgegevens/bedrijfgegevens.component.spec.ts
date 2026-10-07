@@ -5,11 +5,7 @@
 
 import { HarnessLoader } from "@angular/cdk/testing";
 import { TestbedHarnessEnvironment } from "@angular/cdk/testing/testbed";
-import { provideHttpClient } from "@angular/common/http";
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from "@angular/common/http/testing";
+import { HttpTestingController } from "@angular/common/http/testing";
 import { ComponentRef } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { MatButtonHarness } from "@angular/material/button/testing";
@@ -17,18 +13,16 @@ import { MatExpansionPanelHarness } from "@angular/material/expansion/testing";
 import { MatIconHarness } from "@angular/material/icon/testing";
 import { MatProgressSpinnerHarness } from "@angular/material/progress-spinner/testing";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
-import { provideRouter } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
 import {
   provideTanStackQuery,
   QueryClient,
 } from "@tanstack/angular-query-experimental";
 import { notifyManager } from "@tanstack/query-core";
+import { screen } from "@testing-library/angular";
 import { of } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { sleep } from "../../../../setupJest";
-import { MaterialModule } from "../../shared/material/material.module";
-import { PipesModule } from "../../shared/pipes/pipes.module";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { BetrokkeneIdentificatie } from "../../zaken/model/betrokkeneIdentificatie";
 import { KlantenService } from "../klanten.service";
@@ -72,8 +66,8 @@ describe(BedrijfsgegevensComponent.name, () => {
   const testZaak = fromPartial<GeneratedType<"RestZaak">>({
     initiatorIdentificatie: betrokkeneIdentificatie,
     rechten: {
-      toevoegenInitiatorBedrijf: false,
-      verwijderenInitiator: false,
+      canToevoegenInitiatorBedrijf: false,
+      canVerwijderenInitiator: false,
     },
   });
 
@@ -89,16 +83,8 @@ describe(BedrijfsgegevensComponent.name, () => {
         BedrijfsgegevensComponent,
         TranslateModule.forRoot(),
         NoopAnimationsModule,
-        MaterialModule,
-        PipesModule,
       ],
-      providers: [
-        KlantenService,
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-        provideTanStackQuery(queryClient),
-      ],
+      providers: [KlantenService, provideTanStackQuery(queryClient)],
     });
 
     klantenService = TestBed.inject(KlantenService);
@@ -137,8 +123,8 @@ describe(BedrijfsgegevensComponent.name, () => {
         fromPartial<GeneratedType<"RestZaak">>({
           ...testZaak,
           rechten: {
-            toevoegenInitiatorBedrijf: true,
-            verwijderenInitiator: false,
+            canToevoegenInitiatorBedrijf: true,
+            canVerwijderenInitiator: false,
           },
         }),
       );
@@ -167,8 +153,8 @@ describe(BedrijfsgegevensComponent.name, () => {
         fromPartial<GeneratedType<"RestZaak">>({
           ...testZaak,
           rechten: {
-            toevoegenInitiatorBedrijf: false,
-            verwijderenInitiator: true,
+            canToevoegenInitiatorBedrijf: false,
+            canVerwijderenInitiator: true,
           },
         }),
       );
@@ -230,10 +216,7 @@ describe(BedrijfsgegevensComponent.name, () => {
     });
 
     it("renders the bedrijf type from bedrijfQuery data, not the identificatieType", () => {
-      const typeField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="type"]',
-      );
-      expect(typeField?.textContent).toContain("fakeType1");
+      expect(screen.getByText("fake-type1")).toBeInTheDocument();
     });
   });
 
@@ -263,11 +246,8 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const telefoonField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="telefoonnummer"]',
-      );
-      expect(telefoonField?.textContent).toContain("0612345678");
-      expect(telefoonField?.textContent).not.toContain("0299123456");
+      expect(screen.getByText("0612345678")).toBeInTheDocument();
+      expect(screen.queryByText("0299123456")).not.toBeInTheDocument();
     });
 
     it("renders the zaak-specific emailAddress when set, overriding the bedrijf emailadres", async () => {
@@ -287,11 +267,8 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const emailField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="emailadres"]',
-      );
-      expect(emailField?.textContent).toContain("zaak@example.com");
-      expect(emailField?.textContent).not.toContain("bedrijf@example.com");
+      expect(screen.getByText("zaak@example.com")).toBeInTheDocument();
+      expect(screen.queryByText("bedrijf@example.com")).not.toBeInTheDocument();
     });
 
     it("falls back to the bedrijf telefoonnummer and emailadres when zaakSpecificContactDetails is absent", async () => {
@@ -304,14 +281,8 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const telefoonField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="telefoonnummer"]',
-      );
-      const emailField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="emailadres"]',
-      );
-      expect(telefoonField?.textContent).toContain("0299123456");
-      expect(emailField?.textContent).toContain("bedrijf@example.com");
+      expect(screen.getByText("0299123456")).toBeInTheDocument();
+      expect(screen.getByText("bedrijf@example.com")).toBeInTheDocument();
     });
 
     it("falls back per-field to bedrijf data when only one zaak-specific contact value is set", async () => {
@@ -335,14 +306,8 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const telefoonField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="telefoonnummer"]',
-      );
-      const emailField: HTMLElement = fixture.nativeElement.querySelector(
-        'zac-static-text[label="emailadres"]',
-      );
-      expect(telefoonField?.textContent).toContain("0612345678");
-      expect(emailField?.textContent).toContain("bedrijf@example.com");
+      expect(screen.getByText("0612345678")).toBeInTheDocument();
+      expect(screen.getByText("bedrijf@example.com")).toBeInTheDocument();
     });
 
     it("shows the aanvraagspecifiek hint when telephoneNumber comes from contact details", async () => {
@@ -362,14 +327,9 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const hints: HTMLElement[] = Array.from(
-        fixture.nativeElement.querySelectorAll(".hint"),
-      );
       expect(
-        hints.some((h) =>
-          h.textContent?.includes("initiator.aanvraagspecifiek-telefoonnummer"),
-        ),
-      ).toBe(true);
+        screen.getByText("initiator.aanvraagspecifiek-telefoonnummer"),
+      ).toBeInTheDocument();
     });
 
     it("shows the aanvraagspecifiek hint when emailAddress comes from contact details", async () => {
@@ -389,14 +349,9 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      const hints: HTMLElement[] = Array.from(
-        fixture.nativeElement.querySelectorAll(".hint"),
-      );
       expect(
-        hints.some((h) =>
-          h.textContent?.includes("initiator.aanvraagspecifiek-emailadres"),
-        ),
-      ).toBe(true);
+        screen.getByText("initiator.aanvraagspecifiek-emailadres"),
+      ).toBeInTheDocument();
     });
 
     it("does not show any aanvraagspecifiek hint when no zaak-specific contact details are set", async () => {
@@ -409,7 +364,12 @@ describe(BedrijfsgegevensComponent.name, () => {
       await sleep();
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelector(".hint")).toBeNull();
+      expect(
+        screen.queryByText("initiator.aanvraagspecifiek-telefoonnummer"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("initiator.aanvraagspecifiek-emailadres"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -498,12 +458,11 @@ describe(BedrijfsgegevensComponent.name, () => {
           );
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find(
-            (de) => de.componentInstance.label === "totaalWerkzamePersonen",
-          );
-        expect(element).toBeTruthy();
+
+        expect(
+          screen.getByText("totaal-werkzame-personen"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("25")).toBeInTheDocument();
       });
 
       it("renders hoofdactiviteit after profiel is loaded", () => {
@@ -514,10 +473,9 @@ describe(BedrijfsgegevensComponent.name, () => {
           );
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find((de) => de.componentInstance.label === "hoofdactiviteit");
-        expect(element).toBeTruthy();
+
+        expect(screen.getByText("hoofdactiviteit")).toBeInTheDocument();
+        expect(screen.getByText("Software")).toBeInTheDocument();
       });
 
       it("renders website after profiel is loaded", () => {
@@ -528,10 +486,9 @@ describe(BedrijfsgegevensComponent.name, () => {
           );
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find((de) => de.componentInstance.label === "website");
-        expect(element).toBeTruthy();
+
+        expect(screen.getByText("website")).toBeInTheDocument();
+        expect(screen.getByText("https://test.nl")).toBeInTheDocument();
       });
     });
 
@@ -588,10 +545,9 @@ describe(BedrijfsgegevensComponent.name, () => {
           .mockReturnValue(of(makeBedrijfsprofiel({ rechtsvorm: "BV" })));
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find((de) => de.componentInstance.label === "rechtsvorm");
-        expect(element).toBeTruthy();
+
+        expect(screen.getByText("rechtsvorm")).toBeInTheDocument();
+        expect(screen.getByText("BV")).toBeInTheDocument();
       });
 
       it("renders uitgebreideRechtsvorm after profiel is loaded", () => {
@@ -604,10 +560,9 @@ describe(BedrijfsgegevensComponent.name, () => {
         );
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find((de) => de.componentInstance.label === "uitgebreideRechtsvorm");
-        expect(element).toBeTruthy();
+
+        expect(screen.getByText("uitgebreide-rechtsvorm")).toBeInTheDocument();
+        expect(screen.getByText("Besloten Vennootschap")).toBeInTheDocument();
       });
 
       it("renders statutaireNaam after profiel is loaded", () => {
@@ -618,10 +573,9 @@ describe(BedrijfsgegevensComponent.name, () => {
           );
         component["ophalenProfiel"]();
         fixture.detectChanges();
-        const element = fixture.debugElement
-          .queryAll((de) => de.name === "zac-static-text")
-          .find((de) => de.componentInstance.label === "statutaireNaam");
-        expect(element).toBeTruthy();
+
+        expect(screen.getByText("statutaire-naam")).toBeInTheDocument();
+        expect(screen.getByText("Test BV Statutair")).toBeInTheDocument();
       });
     });
   });

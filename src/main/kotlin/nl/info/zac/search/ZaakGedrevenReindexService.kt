@@ -18,6 +18,7 @@ import nl.info.client.zgw.zrc.model.generated.ZaakInformatieObject
 import nl.info.zac.search.converter.DocumentZoekObjectConverter
 import nl.info.zac.search.converter.TaakZoekObjectConverter
 import nl.info.zac.search.converter.ZaakZoekObjectConverter
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import nl.info.zac.util.AllOpen
 import java.util.UUID
@@ -25,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Level
 import java.util.logging.Logger
 
-internal data class ReindexScope(val includeTaken: Boolean, val includeDocumenten: Boolean)
+internal data class ReindexScope(val shouldIncludeTaken: Boolean, val shouldIncludeDocumenten: Boolean)
 
 /**
  * Reindexes `ZAAK` together with, when requested, `TAAK` and/or `DOCUMENT` as one zaak-driven combined pass,
@@ -92,8 +93,8 @@ class ZaakGedrevenReindexService @Inject constructor(
      */
     internal fun reindex(scope: ReindexScope) {
         LOG.info(reindexSupportService.reindexStartedMessage(ZoekObjectType.ZAAK))
-        if (scope.includeTaken) LOG.info(reindexSupportService.reindexStartedMessage(ZoekObjectType.TAAK))
-        if (scope.includeDocumenten) LOG.info(reindexSupportService.reindexStartedMessage(ZoekObjectType.DOCUMENT))
+        if (scope.shouldIncludeTaken) LOG.info(reindexSupportService.reindexStartedMessage(ZoekObjectType.TAAK))
+        if (scope.shouldIncludeDocumenten) LOG.info(reindexSupportService.reindexStartedMessage(ZoekObjectType.DOCUMENT))
 
         val numberOfZaken = reindexSupportService.continueOnExceptions(ZoekObjectType.ZAAK) { countZaken() }
         if (numberOfZaken == null) {
@@ -104,8 +105,8 @@ class ZaakGedrevenReindexService @Inject constructor(
         val plan = determineTaakDocumentReindexPlan(scope)
 
         reindexSupportService.deleteExistingEntities(ZoekObjectType.ZAAK)
-        if (plan.effectiveScope.includeTaken) reindexSupportService.deleteExistingEntities(ZoekObjectType.TAAK)
-        if (plan.effectiveScope.includeDocumenten) reindexSupportService.deleteExistingEntities(ZoekObjectType.DOCUMENT)
+        if (plan.effectiveScope.shouldIncludeTaken) reindexSupportService.deleteExistingEntities(ZoekObjectType.TAAK)
+        if (plan.effectiveScope.shouldIncludeDocumenten) reindexSupportService.deleteExistingEntities(ZoekObjectType.DOCUMENT)
 
         // tracks which informatieobjecten the zaak-driven stage already indexed, so the orphan sweep
         // below does not reconvert them
@@ -120,7 +121,7 @@ class ZaakGedrevenReindexService @Inject constructor(
             ZoekObjectType.ZAAK,
             ReindexSummary(counts.zaakCounts.successCount, counts.zaakCounts.skippedCount, numberOfZaken)
         )
-        if (scope.includeTaken) {
+        if (scope.shouldIncludeTaken) {
             reindexSupportService.finishReindex(
                 ZoekObjectType.TAAK,
                 plan.numberOfTasks?.let {
@@ -128,7 +129,7 @@ class ZaakGedrevenReindexService @Inject constructor(
                 }
             )
         }
-        if (scope.includeDocumenten) {
+        if (scope.shouldIncludeDocumenten) {
             reindexSupportService.finishReindex(
                 ZoekObjectType.DOCUMENT,
                 plan.numberOfInformatieobjecten?.let { total ->
@@ -146,28 +147,28 @@ class ZaakGedrevenReindexService @Inject constructor(
      * succeeded, so a count failure leaves that type untouched.
      */
     private fun determineTaakDocumentReindexPlan(requestedScope: ReindexScope): TaakDocumentReindexPlan {
-        val numberOfTasks = if (requestedScope.includeTaken) {
+        val numberOfTasks = if (requestedScope.shouldIncludeTaken) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.TAAK) { flowableTaskService.countOpenTasks() }
         } else {
             null
         }
-        val numberOfInformatieobjecten = if (requestedScope.includeDocumenten) {
+        val numberOfInformatieobjecten = if (requestedScope.shouldIncludeDocumenten) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.DOCUMENT) { countInformatieobjecten() }
         } else {
             null
         }
-        if (requestedScope.includeTaken && numberOfTasks == null) {
+        if (requestedScope.shouldIncludeTaken && numberOfTasks == null) {
             LOG.warning("[${ZoekObjectType.TAAK}] Cannot find tasks count! Aborting reindexing")
         }
-        if (requestedScope.includeDocumenten && numberOfInformatieobjecten == null) {
+        if (requestedScope.shouldIncludeDocumenten && numberOfInformatieobjecten == null) {
             LOG.warning("[${ZoekObjectType.DOCUMENT}] Cannot find information objects count! Aborting reindexing")
         }
         return TaakDocumentReindexPlan(
             numberOfTasks = numberOfTasks,
             numberOfInformatieobjecten = numberOfInformatieobjecten,
             effectiveScope = ReindexScope(
-                includeTaken = requestedScope.includeTaken && numberOfTasks != null,
-                includeDocumenten = requestedScope.includeDocumenten && numberOfInformatieobjecten != null
+                shouldIncludeTaken = requestedScope.shouldIncludeTaken && numberOfTasks != null,
+                shouldIncludeDocumenten = requestedScope.shouldIncludeDocumenten && numberOfInformatieobjecten != null
             )
         )
     }
@@ -180,10 +181,10 @@ class ZaakGedrevenReindexService @Inject constructor(
     private fun reindexFallback(scope: ReindexScope) {
         LOG.warning("[${ZoekObjectType.ZAAK}] Cannot find zaken count! Aborting reindexing")
         reindexSupportService.finishReindex(ZoekObjectType.ZAAK, null)
-        if (scope.includeTaken) {
+        if (scope.shouldIncludeTaken) {
             reindexSupportService.finishReindex(ZoekObjectType.TAAK, reindexSupportService.reindexAllTaken())
         }
-        if (scope.includeDocumenten) {
+        if (scope.shouldIncludeDocumenten) {
             reindexSupportService.finishReindex(ZoekObjectType.DOCUMENT, reindexSupportService.reindexAllInformatieobjecten())
         }
     }
@@ -209,10 +210,10 @@ class ZaakGedrevenReindexService @Inject constructor(
         for (pageNumber in ZgwApiService.FIRST_PAGE_NUMBER_ZGW_APIS..numberOfPages) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.ZAAK) {
                 reindexPage(
-                    pageNumber,
-                    numberOfZaken,
-                    scope,
-                    alreadyIndexedInformatieobjectUUIDs
+                    pageNumber = pageNumber,
+                    totalCount = numberOfZaken,
+                    scope = scope,
+                    alreadyIndexedInformatieobjectUUIDs = alreadyIndexedInformatieobjectUUIDs
                 )
             }?.let { counts += it }
         }
@@ -227,13 +228,13 @@ class ZaakGedrevenReindexService @Inject constructor(
     ): ZakenTakenDocumentenCounts {
         val zaakUUIDs = zrcClientService.listZakenUuids(reindexSupportService.zaakListParameters(pageNumber))
             .results().map { it.uuid }
-        val isZaakspecifiekGeautoriseerd = reindexSupportService.memoizedIsZaakspecifiekGeautoriseerd()
+        val zaakAutorisatieGegevens = reindexSupportService.memoizedZaakAutorisatieGegevens()
 
         val pageResults = reindexSupportService.runConcurrentPageConversions(zaakUUIDs) { zaakUUID ->
             reindexZaakTakenDocumenten(
                 zaakUUID,
                 scope,
-                isZaakspecifiekGeautoriseerd,
+                zaakAutorisatieGegevens,
                 alreadyIndexedInformatieobjectUUIDs
             )
         }
@@ -266,24 +267,31 @@ class ZaakGedrevenReindexService @Inject constructor(
 
     /**
      * Reindexes [zaakUUID] and, when requested, its open taken and its linked documenten, retrieving the
-     * zaak once via [ZrcClientService.readZaak] and reusing it for all three conversions. If retrieving or
-     * converting the zaak itself fails, its taken and documenten are not attempted either for that zaak -
-     * consistent with them belonging to the zaak, and avoiding retrieval calls likely to fail again for
-     * the same zaak. A listing failure for the taken or documenten of an otherwise successfully indexed
-     * zaak only drops that piece for this zaak (logged, not counted as a conversion error), the same way a
-     * page-listing failure is handled by [ReindexSupportService.reindexAllTaken]/
+     * zaak once via [ZrcClientService.readZaak] and reusing it for all three conversions, including when
+     * resolving its geautoriseerde medewerkers. If retrieving or converting the zaak itself fails, its
+     * taken and documenten are not attempted either for that zaak - consistent with them belonging to
+     * the zaak, and avoiding retrieval calls likely to fail again for the same zaak. A listing failure
+     * for the taken or documenten of an otherwise successfully indexed zaak only drops that piece for
+     * this zaak (logged, not counted as a conversion error), the same way a page-listing failure is
+     * handled by [ReindexSupportService.reindexAllTaken]/
      * [ReindexSupportService.reindexAllInformatieobjecten].
      */
     private fun reindexZaakTakenDocumenten(
         zaakUUID: UUID,
         scope: ReindexScope,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean,
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens,
         alreadyIndexedInformatieobjectUUIDs: MutableSet<UUID>
     ): ReindexZaakTakenDocumentenOutcome {
         val zaakConversion = try {
             reindexSupportService.runTranslatingToIndexingException {
                 val zaak = zrcClientService.readZaak(zaakUUID)
-                zaak to zaakZoekObjectConverter.convert(zaak, isZaakspecifiekGeautoriseerd)
+                val zaakAutorisatieGegevensForZaak by lazy {
+                    reindexSupportService.zaakAutorisatieGegevens(zaak)
+                }
+                val reusingZaak: (UUID) -> ZaakAutorisatieGegevens = {
+                    if (it == zaakUUID) zaakAutorisatieGegevensForZaak else zaakAutorisatieGegevens(it)
+                }
+                Triple(zaak, reusingZaak, zaakZoekObjectConverter.convert(zaak, reusingZaak))
             }
         } catch (indexingException: IndexingException) {
             LOG.log(Level.WARNING, "[${ZoekObjectType.ZAAK}] Error during indexing", indexingException)
@@ -292,19 +300,19 @@ class ZaakGedrevenReindexService @Inject constructor(
         if (zaakConversion == null) {
             return ReindexZaakTakenDocumentenOutcome(ConversionOutcome.Errored, emptyList(), emptyList())
         }
-        val (zaak, zaakZoekObject) = zaakConversion
+        val (zaak, zaakAutorisatieGegevensReusingZaak, zaakZoekObject) = zaakConversion
 
-        val takenOutcomes = if (scope.includeTaken) {
+        val takenOutcomes = if (scope.shouldIncludeTaken) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.TAAK) {
                 flowableTaskService.listOpenTasksForZaak(zaakUUID)
             }
                 .orEmpty()
-                .map { task -> convertTaak(task.id, zaak, isZaakspecifiekGeautoriseerd) }
+                .map { task -> convertTaak(task.id, zaak, zaakAutorisatieGegevensReusingZaak) }
         } else {
             emptyList()
         }
 
-        val documentenOutcomes = if (scope.includeDocumenten) {
+        val documentenOutcomes = if (scope.shouldIncludeDocumenten) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.DOCUMENT) {
                 zrcClientService.listZaakinformatieobjecten(zaak)
             }
@@ -315,7 +323,7 @@ class ZaakGedrevenReindexService @Inject constructor(
                     // here ensures it is only converted/counted once for this run, via whichever of its
                     // zaken is processed first, instead of once per zaak it is linked to
                     if (alreadyIndexedInformatieobjectUUIDs.add(informatieobjectUUID)) {
-                        convertDocument(zaakInformatieobject, zaak, isZaakspecifiekGeautoriseerd)
+                        convertDocument(zaakInformatieobject, zaak, zaakAutorisatieGegevensReusingZaak)
                     } else {
                         null
                     }
@@ -327,11 +335,11 @@ class ZaakGedrevenReindexService @Inject constructor(
         return ReindexZaakTakenDocumentenOutcome(ConversionOutcome.Converted(zaakZoekObject), takenOutcomes, documentenOutcomes)
     }
 
-    private fun convertTaak(taskId: String, zaak: Zaak, isZaakspecifiekGeautoriseerd: (UUID) -> Boolean): ConversionOutcome =
+    private fun convertTaak(taskId: String, zaak: Zaak, zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens): ConversionOutcome =
         try {
             ConversionOutcome.Converted(
                 reindexSupportService.runTranslatingToIndexingException {
-                    taakZoekObjectConverter.convert(taskId, zaak, isZaakspecifiekGeautoriseerd)
+                    taakZoekObjectConverter.convert(taskId, zaak, zaakAutorisatieGegevens)
                 }
             )
         } catch (indexingException: IndexingException) {
@@ -342,12 +350,12 @@ class ZaakGedrevenReindexService @Inject constructor(
     private fun convertDocument(
         zaakInformatieobject: ZaakInformatieObject,
         zaak: Zaak,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): ConversionOutcome =
         try {
             ConversionOutcome.Converted(
                 reindexSupportService.runTranslatingToIndexingException {
-                    documentZoekObjectConverter.convert(zaakInformatieobject, zaak, isZaakspecifiekGeautoriseerd)
+                    documentZoekObjectConverter.convert(zaakInformatieobject, zaak, zaakAutorisatieGegevens)
                 }
             )
         } catch (indexingException: IndexingException) {
@@ -369,11 +377,11 @@ class ZaakGedrevenReindexService @Inject constructor(
     ): ReindexCounts {
         val numberOfPages: Int = (totalCount + Results.DEFAULT_ZGW_PAGE_SIZE.toInt() - 1) /
             Results.DEFAULT_ZGW_PAGE_SIZE.toInt()
-        val isZaakspecifiekGeautoriseerd = reindexSupportService.memoizedIsZaakspecifiekGeautoriseerd()
+        val zaakAutorisatieGegevens = reindexSupportService.memoizedZaakAutorisatieGegevens()
         var counts = ReindexCounts()
         for (pageNumber in ZgwApiService.FIRST_PAGE_NUMBER_ZGW_APIS..numberOfPages) {
             reindexSupportService.continueOnExceptions(ZoekObjectType.DOCUMENT) {
-                reindexInformatieobjectenOrphanSweepPage(pageNumber, alreadyIndexedInformatieobjectUUIDs, isZaakspecifiekGeautoriseerd)
+                reindexInformatieobjectenOrphanSweepPage(pageNumber, alreadyIndexedInformatieobjectUUIDs, zaakAutorisatieGegevens)
             }?.let { counts += it }
         }
         return counts
@@ -382,7 +390,7 @@ class ZaakGedrevenReindexService @Inject constructor(
     private fun reindexInformatieobjectenOrphanSweepPage(
         pageNumber: Int,
         alreadyIndexedInformatieobjectUUIDs: Set<UUID>,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): ReindexCounts {
         val ids = drcClientService.listEnkelvoudigInformatieObjecten(
             EnkelvoudigInformatieobjectListParameters().apply { page = pageNumber }
@@ -390,6 +398,6 @@ class ZaakGedrevenReindexService @Inject constructor(
             .map { it.url.extractUuid() }
             .filterNot { it in alreadyIndexedInformatieobjectUUIDs }
             .map { it.toString() }
-        return reindexSupportService.indexeerDirectCountingSuccesses(ids, ZoekObjectType.DOCUMENT, isZaakspecifiekGeautoriseerd)
+        return reindexSupportService.indexeerDirectCountingSuccesses(ids, ZoekObjectType.DOCUMENT, zaakAutorisatieGegevens)
     }
 }

@@ -4,11 +4,7 @@
  *
  */
 
-import { provideHttpClient } from "@angular/common/http";
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from "@angular/common/http/testing";
+import { HttpTestingController } from "@angular/common/http/testing";
 import { LOCALE_ID } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { MatDialog, MatDialogRef } from "@angular/material/dialog";
@@ -40,9 +36,7 @@ import { NotitiesComponent } from "../../notities/notities.component";
 import { PlanItemsService } from "../../plan-items/plan-items.service";
 import { PolicyService } from "../../policy/policy.service";
 import { ZaakIndicatiesComponent } from "../../shared/indicaties/zaak-indicaties/zaak-indicaties.component";
-import { MaterialModule } from "../../shared/material/material.module";
 import { EmptyPipe } from "../../shared/pipes/empty.pipe";
-import { PipesModule } from "../../shared/pipes/pipes.module";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "../../shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
 import { SideNavComponent } from "../../shared/side-nav/side-nav.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
@@ -55,7 +49,7 @@ import { ZaakDetailsCardComponent } from "./zaak-details-card/zaak-details-card.
 import { ZaakInitiatorPanelComponent } from "./zaak-initiator-panel/zaak-initiator-panel.component";
 import { ZaakViewComponent } from "./zaak-view.component";
 
-const planItemsQuery = (planItems: GeneratedType<"RESTPlanItem">[]) =>
+const planItemsQuery = (planItems: GeneratedType<"RestPlanItem">[]) =>
   queryOptions({
     queryKey: ["fakePlanItems", planItems],
     queryFn: () => planItems,
@@ -95,7 +89,7 @@ describe(ZaakViewComponent.name, () => {
     }),
     indicaties: [],
     rechten: {
-      behandelen: true,
+      canBehandelen: true,
     },
     groep: {},
     vertrouwelijkheidaanduiding: "OPENBAAR",
@@ -129,15 +123,11 @@ describe(ZaakViewComponent.name, () => {
         StaticTextComponent,
         ZaakProcessFlowComponent,
         TranslateModule.forRoot(),
-        PipesModule,
-        MaterialModule,
         VertrouwelijkaanduidingToTranslationKeyPipe,
         NoopAnimationsModule,
         EmptyPipe,
       ],
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
         provideQueryClient(testQueryClient),
         PlanItemsService,
         {
@@ -161,7 +151,7 @@ describe(ZaakViewComponent.name, () => {
     jest
       .spyOn(zakenService, "readOpschortingZaak")
       .mockReturnValue(
-        of(fromPartial<GeneratedType<"RESTZaakOpschorting">>({})),
+        of(fromPartial<GeneratedType<"RestZaakOpschorting">>({})),
       );
 
     bagService = TestBed.inject(BAGService);
@@ -172,7 +162,7 @@ describe(ZaakViewComponent.name, () => {
       .spyOn(planItemsService, "listUserEventListenerPlanItemsQuery")
       .mockReturnValue(
         planItemsQuery([
-          fromPartial<GeneratedType<"RESTPlanItem">>({
+          fromPartial<GeneratedType<"RestPlanItem">>({
             userEventListenerActie: "INTAKE_AFRONDEN",
           }),
         ]),
@@ -284,9 +274,9 @@ describe(ZaakViewComponent.name, () => {
           queryOptions({
             queryKey: ["fakeBrpRechten"],
             queryFn: () =>
-              fromPartial<GeneratedType<"RestBrpRechten">>({ zoeken: true }),
+              fromPartial<GeneratedType<"RestBrpRechten">>({ canZoeken: true }),
             initialData: fromPartial<GeneratedType<"RestBrpRechten">>({
-              zoeken: true,
+              canZoeken: true,
             }),
           }) as ReturnType<PolicyService["readBrpRechten"]>,
         );
@@ -331,7 +321,7 @@ describe(ZaakViewComponent.name, () => {
     it("should render <zac-notities> when notitieRechten.lezen is true", () => {
       jest
         .spyOn(policyService, "readNotitieRechten")
-        .mockReturnValue(of({ lezen: true, wijzigen: false }));
+        .mockReturnValue(of({ canLezen: true, canWijzigen: false }));
       mockActivatedRoute.data.next({ zaak });
       fixture.detectChanges();
 
@@ -343,7 +333,7 @@ describe(ZaakViewComponent.name, () => {
     it("should render <zac-notities> when notitieRechten.wijzigen is true", () => {
       jest
         .spyOn(policyService, "readNotitieRechten")
-        .mockReturnValue(of({ lezen: false, wijzigen: true }));
+        .mockReturnValue(of({ canLezen: false, canWijzigen: true }));
       mockActivatedRoute.data.next({ zaak });
       fixture.detectChanges();
 
@@ -355,7 +345,7 @@ describe(ZaakViewComponent.name, () => {
     it("should not render <zac-notities> when both notitieRechten.lezen and wijzigen are false", () => {
       jest
         .spyOn(policyService, "readNotitieRechten")
-        .mockReturnValue(of({ lezen: false, wijzigen: false }));
+        .mockReturnValue(of({ canLezen: false, canWijzigen: false }));
       mockActivatedRoute.data.next({ zaak });
       fixture.detectChanges();
 
@@ -394,21 +384,55 @@ describe(ZaakViewComponent.name, () => {
     });
   });
 
+  describe("isZaakdataGearchiveerd", () => {
+    // The archief determination itself now happens on the backend (RestZaak.isZaakdataGearchiveerd);
+    // this only checks that the component threads the zaak's own value through to the menu unchanged.
+    const zaakWithZaakdata = (isZaakdataGearchiveerd: boolean) =>
+      fromPartial<GeneratedType<"RestZaak">>({
+        ...zaak,
+        zaakdata: { fakeKey: "fakeValue" },
+        rechten: { ...zaak.rechten, canBekijkenZaakdata: true },
+        isZaakdataGearchiveerd,
+      });
+
+    it("labels the zaakdata menu item as archief when the zaak reports it archived", () => {
+      mockActivatedRoute.data.next({ zaak: zaakWithZaakdata(true) });
+      fixture.detectChanges();
+
+      const titles = fixture.componentInstance["menu"]().map(
+        (item) => item.title,
+      );
+      expect(titles).toContain("actie.zaakdata.archief");
+      expect(titles).not.toContain("actie.zaakdata.bekijken");
+    });
+
+    it("labels the zaakdata menu item as bekijken when the zaak reports it not archived", () => {
+      mockActivatedRoute.data.next({ zaak: zaakWithZaakdata(false) });
+      fixture.detectChanges();
+
+      const titles = fixture.componentInstance["menu"]().map(
+        (item) => item.title,
+      );
+      expect(titles).toContain("actie.zaakdata.bekijken");
+      expect(titles).not.toContain("actie.zaakdata.archief");
+    });
+  });
+
   describe("side effects on zaak changes", () => {
     const opschortbareZaak = {
       ...zaak,
       isOpen: true,
       rechten: {
         ...zaak.rechten,
-        behandelen: true,
+        canBehandelen: true,
       },
       zaaktype: {
         ...zaak.zaaktype,
-        opschortingMogelijk: true,
+        isOpschortingMogelijk: true,
       },
       isHeropend: false,
       isOpgeschort: false,
-      eerdereOpschorting: false,
+      hasEerdereOpschorting: false,
       isProcesGestuurd: false,
     } satisfies GeneratedType<"RestZaak">;
 
@@ -436,7 +460,7 @@ describe(ZaakViewComponent.name, () => {
 
       zakenService.cacheZaak({
         ...opschortbareZaak,
-        rechten: { ...opschortbareZaak.rechten, behandelen: false },
+        rechten: { ...opschortbareZaak.rechten, canBehandelen: false },
       });
       fixture.detectChanges();
 

@@ -10,7 +10,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatExpansionPanelActionRow } from "@angular/material/expansion";
 import { MatIconModule } from "@angular/material/icon";
-import { MatSidenav } from "@angular/material/sidenav";
+import { MatDrawer } from "@angular/material/sidenav";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { IdentityService } from "../../identity/identity.service";
@@ -44,7 +44,7 @@ export class TaakEditComponent {
   private readonly takenService = inject(TakenService);
   private readonly translateService = inject(TranslateService);
 
-  protected readonly sideNav = input.required<MatSidenav>();
+  protected readonly sideNav = input.required<MatDrawer>();
   protected readonly task = input.required<GeneratedType<"RestTask">>();
 
   protected groups: GeneratedType<"RestGroup">[] = [];
@@ -52,7 +52,7 @@ export class TaakEditComponent {
   protected readonly groupDisplayValue = (
     group: GeneratedType<"RestGroup">,
   ): string =>
-    group.active === false
+    group.isActive === false
       ? `${group.naam ?? ""} (${this.translateService.instant("inactief").toLowerCase()})`
       : (group.naam ?? "");
 
@@ -93,7 +93,10 @@ export class TaakEditComponent {
           });
         });
 
-      if (this.task().status === "AFGEROND" || !this.task().rechten.toekennen) {
+      if (
+        this.task().status === "AFGEROND" ||
+        !this.task().rechten.canToekennen
+      ) {
         this.form.disable();
       }
     });

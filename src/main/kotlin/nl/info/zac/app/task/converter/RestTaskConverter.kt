@@ -12,7 +12,8 @@ import net.atos.zac.flowable.task.TaakVariabelenService.readZaakIdentificatie
 import net.atos.zac.flowable.task.TaakVariabelenService.readZaakUUID
 import net.atos.zac.flowable.task.TaakVariabelenService.readZaaktypeOmschrijving
 import net.atos.zac.flowable.task.TaakVariabelenService.readZaaktypeUUID
-import net.atos.zac.flowable.util.TaskUtil
+import nl.info.zac.flowable.util.isCmmnTask
+import nl.info.zac.flowable.util.taakStatus
 import nl.info.zac.util.time.convertToLocalDate
 import nl.info.zac.util.time.convertToZonedDateTime
 import nl.info.zac.admin.ZaaktypeCmmnConfigurationService
@@ -45,29 +46,29 @@ class RestTaskConverter @Inject constructor(
         val restTask = RestTask(
             id = taskInfo.id,
             naam = taskInfo.name,
-            status = TaskUtil.getTaakStatus(taskInfo),
+            status = taskInfo.taakStatus(),
             zaakUuid = readZaakUUID(taskInfo),
             zaakIdentificatie = readZaakIdentificatie(taskInfo),
             rechten = restTaakRechten,
-            zaaktypeOmschrijving = if (restTaakRechten.lezen) zaaktypeOmschrijving else null,
+            zaaktypeOmschrijving = if (restTaakRechten.canLezen) zaaktypeOmschrijving else null,
             zaaktypeUUID = readZaaktypeUUID(taskInfo),
-            toelichting = if (restTaakRechten.lezen) taskInfo.description else null,
-            creatiedatumTijd = if (restTaakRechten.lezen) {
+            toelichting = if (restTaakRechten.canLezen) taskInfo.description else null,
+            creatiedatumTijd = if (restTaakRechten.canLezen) {
                 taskInfo.createTime?.let(::convertToZonedDateTime)
             } else {
                 null
             },
-            toekenningsdatumTijd = if (restTaakRechten.lezen) {
+            toekenningsdatumTijd = if (restTaakRechten.canLezen) {
                 taskInfo.claimTime?.let(::convertToZonedDateTime)
             } else {
                 null
             },
-            fataledatum = if (restTaakRechten.lezen) {
+            fataledatum = if (restTaakRechten.canLezen) {
                 taskInfo.dueDate?.let(::convertToLocalDate)
             } else {
                 null
             },
-            behandelaar = if (restTaakRechten.lezen) {
+            behandelaar = if (restTaakRechten.canLezen) {
                 taskInfo.assignee?.let {
                     medewerkerConverter.convertUserId(
                         it
@@ -76,14 +77,14 @@ class RestTaskConverter @Inject constructor(
             } else {
                 null
             },
-            groep = if (restTaakRechten.lezen) {
+            groep = if (restTaakRechten.canLezen) {
                 extractGroupId(taskInfo.identityLinks)?.let { groepConverter.convertGroupId(it) }
             } else {
                 null
             },
-            taakinformatie = if (restTaakRechten.lezen) readTaskInformation(taskInfo) else null,
-            taakdata = if (restTaakRechten.lezen) readTaskData(taskInfo).toMutableMap() else null,
-            taakdocumenten = if (restTaakRechten.lezen) {
+            taakinformatie = if (restTaakRechten.canLezen) readTaskInformation(taskInfo) else null,
+            taakdata = if (restTaakRechten.canLezen) readTaskData(taskInfo).toMutableMap() else null,
+            taakdocumenten = if (restTaakRechten.canLezen) {
                 readTaskDocuments(
                     taskInfo
                 )
@@ -92,7 +93,7 @@ class RestTaskConverter @Inject constructor(
             },
             tabellen = HashMap()
         )
-        if (TaskUtil.isCmmnTask(taskInfo)) {
+        if (taskInfo.isCmmnTask()) {
             convertFormulierDefinitieEnReferentieTabellen(
                 restTask,
                 readZaaktypeUUID(taskInfo),

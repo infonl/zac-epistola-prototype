@@ -11,9 +11,11 @@ import {
   HttpTestingController,
   provideHttpClientTesting,
 } from "@angular/common/http/testing";
+import { Component, input } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { MatDialog, MatDialogRef } from "@angular/material/dialog";
 import { MatNavListItemHarness } from "@angular/material/list/testing";
+import { MatDrawer } from "@angular/material/sidenav";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { ActivatedRoute, provideRouter, Router } from "@angular/router";
 import { TranslateModule } from "@ngx-translate/core";
@@ -21,28 +23,30 @@ import { provideQueryClient } from "@tanstack/angular-query-experimental";
 import { config, of, ReplaySubject, Subject, throwError } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { sleep, testQueryClient } from "../../../../setupJest";
-import { ConfiguratieService } from "../../configuratie/configuratie.service";
 import { UtilService } from "../../core/service/util.service";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
-import { IdentityService } from "../../identity/identity.service";
 import { RedenDialogData } from "../../shared/dialog/reden-dialog-form/reden-dialog-form.component";
-import { DocumentIconComponent } from "../../shared/document-icon/document-icon.component";
-import { InformatieObjectIndicatiesComponent } from "../../shared/indicaties/informatie-object-indicaties/informatie-object-indicaties.component";
-import { MaterialFormBuilderModule } from "../../shared/material-form-builder/material-form-builder.module";
-import { MaterialModule } from "../../shared/material/material.module";
-import { PipesModule } from "../../shared/pipes/pipes.module";
-import { VertrouwelijkaanduidingToTranslationKeyPipe } from "../../shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
-import { SideNavComponent } from "../../shared/side-nav/side-nav.component";
-import { StaticTextComponent } from "../../shared/static-text/static-text.component";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { ZakenService } from "../../zaken/zaken.service";
+import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import { EpistolaGenerationDialogComponent } from "../epistola-generation-dialog/epistola-generation-dialog.component";
 import { EPISTOLA_GENERATION_FINISHED_DISPLAY_MS } from "../epistola-generation-progress/epistola-generation-progress.component";
 import { InformatieObjectEditComponent } from "../informatie-object-edit/informatie-object-edit.component";
-import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import { InformatieObjectenService } from "../informatie-objecten.service";
 import { FileFormat } from "../model/file-format";
 import { InformatieObjectViewComponent } from "./informatie-object-view.component";
+
+@Component({
+  selector: "zac-informatie-object-edit",
+  template: "",
+  standalone: true,
+})
+class InformatieObjectEditStubComponent {
+  readonly infoObject =
+    input<GeneratedType<"RestEnkelvoudigInformatieObjectVersieGegevens">>();
+  readonly sideNav = input.required<MatDrawer>();
+  readonly zaakUuid = input.required<string>();
+}
 
 describe(InformatieObjectViewComponent.name, () => {
   let component: InformatieObjectViewComponent;
@@ -93,16 +97,7 @@ describe(InformatieObjectViewComponent.name, () => {
     await TestBed.configureTestingModule({
       imports: [
         InformatieObjectViewComponent,
-        InformatieObjectEditComponent,
-        SideNavComponent,
-        StaticTextComponent,
-        MaterialModule,
-        InformatieObjectIndicatiesComponent,
         TranslateModule.forRoot(),
-        VertrouwelijkaanduidingToTranslationKeyPipe,
-        DocumentIconComponent,
-        PipesModule,
-        MaterialFormBuilderModule,
         NoopAnimationsModule,
       ],
       providers: [
@@ -114,12 +109,25 @@ describe(InformatieObjectViewComponent.name, () => {
           provide: ActivatedRoute,
           useValue: mockActivatedRoute,
         },
-        VertrouwelijkaanduidingToTranslationKeyPipe,
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(InformatieObjectViewComponent, {
+        remove: { imports: [InformatieObjectEditComponent] },
+        add: { imports: [InformatieObjectEditStubComponent] },
+      })
+      .compileComponents();
 
     informatieObjectenService = TestBed.inject(InformatieObjectenService);
     epistolaDocumentenService = TestBed.inject(EpistolaDocumentenService);
+    jest
+      .spyOn(epistolaDocumentenService, "readEpistolaDocument")
+      .mockReturnValue(
+        of(
+          fromPartial<GeneratedType<"RestEpistolaDocument">>({
+            isNewVersionAvailable: false,
+          }),
+        ),
+      );
     jest
       .spyOn(informatieObjectenService, "readEnkelvoudigInformatieobject")
       .mockReturnValue(of(enkelvoudigInformatieobject));
@@ -150,20 +158,6 @@ describe(InformatieObjectViewComponent.name, () => {
     zakenService = TestBed.inject(ZakenService);
     jest.spyOn(zakenService, "readZaakByID").mockReturnValue(of(zaak));
 
-    const identityService = TestBed.inject(IdentityService);
-    testQueryClient.setQueryData(identityService.readLoggedInUser().queryKey, {
-      id: "1234",
-      naam: "Test User",
-    });
-
-    const configuratieService = TestBed.inject(ConfiguratieService);
-    jest.spyOn(configuratieService, "listTalen").mockReturnValue(of([]));
-
-    const foutAfhandelingService = TestBed.inject(FoutAfhandelingService);
-    jest
-      .spyOn(foutAfhandelingService, "httpErrorAfhandelen")
-      .mockReturnValue(of());
-
     fixture = TestBed.createComponent(InformatieObjectViewComponent);
     component = fixture.componentInstance;
     loader = TestbedHarnessEnvironment.loader(fixture);
@@ -183,7 +177,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              toevoegenNieuweVersie: false,
+              canToevoegenNieuweVersie: false,
             }),
           }),
         );
@@ -205,7 +199,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              toevoegenNieuweVersie: true,
+              canToevoegenNieuweVersie: true,
             }),
           }),
         );
@@ -227,7 +221,7 @@ describe(InformatieObjectViewComponent.name, () => {
     const epistolaZaak = fromPartial<GeneratedType<"RestZaak">>({
       ...zaak,
       rechten: fromPartial<GeneratedType<"RestZaakRechten">>({
-        creerenDocument: true,
+        canCreerenDocument: true,
       }),
     });
 
@@ -242,7 +236,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              toevoegenNieuweVersie: canAddVersion,
+              canToevoegenNieuweVersie: canAddVersion,
             }),
           }),
         );
@@ -253,7 +247,7 @@ describe(InformatieObjectViewComponent.name, () => {
             : fromPartial<GeneratedType<"RestZaak">>({
                 ...zaak,
                 rechten: fromPartial<GeneratedType<"RestZaakRechten">>({
-                  creerenDocument: false,
+                  canCreerenDocument: false,
                 }),
               }),
         ),
@@ -465,7 +459,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              converteren: true,
+              canConverteren: true,
             }),
           }),
         );
@@ -487,7 +481,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              converteren: false,
+              canConverteren: false,
             }),
           }),
         );
@@ -509,7 +503,7 @@ describe(InformatieObjectViewComponent.name, () => {
           of({
             ...enkelvoudigInformatieobject,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              converteren: true,
+              canConverteren: true,
             }),
           }),
         );
@@ -537,7 +531,7 @@ describe(InformatieObjectViewComponent.name, () => {
             ...enkelvoudigInformatieobject,
             gelockedDoor: undefined,
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              ontgrendelen: true,
+              canOntgrendelen: true,
             }),
           }),
         );
@@ -560,7 +554,7 @@ describe(InformatieObjectViewComponent.name, () => {
             ...enkelvoudigInformatieobject,
             gelockedDoor: { id: "user-001", naam: "Test User" },
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              ontgrendelen: false,
+              canOntgrendelen: false,
             }),
           }),
         );
@@ -583,7 +577,7 @@ describe(InformatieObjectViewComponent.name, () => {
             ...enkelvoudigInformatieobject,
             gelockedDoor: { id: "user-001", naam: "Test User" },
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              ontgrendelen: true,
+              canOntgrendelen: true,
             }),
           }),
         );
@@ -613,7 +607,7 @@ describe(InformatieObjectViewComponent.name, () => {
             ...enkelvoudigInformatieobject,
             gelockedDoor: { id: "user-001", naam: "Test User" },
             rechten: fromPartial<GeneratedType<"RestDocumentRechten">>({
-              ontgrendelen: true,
+              canOntgrendelen: true,
             }),
           }),
         );

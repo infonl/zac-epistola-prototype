@@ -7,7 +7,7 @@ package nl.info.zac.search
 import jakarta.enterprise.inject.Instance
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
@@ -19,19 +19,21 @@ import nl.info.client.zgw.shared.model.Results
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.zrc.ZrcClientService
 import nl.info.client.zgw.zrc.model.ZaakListParameters
+import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.zrc.util.isZaakspecifiekGeautoriseerd
 import nl.info.zac.app.task.model.TaakSortering
 import nl.info.zac.authentication.systemUserContext
-import nl.info.zac.search.converter.AbstractZoekObjectConverter
+import nl.info.zac.search.converter.ZoekObjectConverter
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
 import nl.info.zac.search.model.zoekobject.ZoekObject
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import nl.info.zac.shared.model.SorteerRichting
+import nl.info.zac.solr.SolrClientFactory
 import nl.info.zac.util.AllOpen
+import nl.info.zac.zaak.ZaakspecifiekeAutorisatieService
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.SolrQuery
-import org.apache.solr.client.solrj.impl.Http2SolrClient
 import org.apache.solr.common.params.CursorMarkParams
-import org.eclipse.microprofile.config.ConfigProvider
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Level
@@ -63,10 +65,13 @@ internal data class ReindexSummary(val successCount: Int, val skippedCount: Int,
 @AllOpen
 @Suppress("TooManyFunctions")
 class ReindexSupportService @Inject constructor(
-    private val converterInstances: Instance<AbstractZoekObjectConverter<out ZoekObject>>,
+    private val converterInstances: Instance<ZoekObjectConverter<out ZoekObject>>,
     private val zrcClientService: ZrcClientService,
     private val drcClientService: DrcClientService,
-    private val flowableTaskService: FlowableTaskService
+    private val flowableTaskService: FlowableTaskService,
+    private val zaakspecifiekeAutorisatieService: ZaakspecifiekeAutorisatieService,
+    solrClientFactory: SolrClientFactory,
+    dispatcher: CoroutineDispatcher
 ) {
     companion object {
         private const val SOLR_MAX_RESULTS = 100
@@ -76,11 +81,9 @@ class ReindexSupportService @Inject constructor(
         private val LOG = Logger.getLogger(ReindexSupportService::class.java.name)
     }
 
-    private val pageConversionDispatcher = Dispatchers.IO.limitedParallelism(PAGE_CONVERSION_PARALLELISM)
+    private val pageConversionDispatcher = dispatcher.limitedParallelism(PAGE_CONVERSION_PARALLELISM)
 
-    private val solrClient: SolrClient = Http2SolrClient.Builder(
-        "${ConfigProvider.getConfig().getValue("solr.url", String::class.java)}/solr/${IndexingService.SOLR_CORE}"
-    ).build()
+    private val solrClient: SolrClient = solrClientFactory.createSolrClient(IndexingService.SOLR_CORE)
 
     fun commit() {
         runTranslatingToIndexingException {
@@ -98,19 +101,19 @@ class ReindexSupportService @Inject constructor(
             this.page = page
         }
 
-    internal fun getConverter(objectType: ZoekObjectType): AbstractZoekObjectConverter<out ZoekObject> =
+    internal fun getConverter(objectType: ZoekObjectType): ZoekObjectConverter<out ZoekObject> =
         converterInstances
             .firstOrNull { it.supports(objectType) }
             ?: throw IndexingException("[$objectType] No converter found")
 
     private fun convert(
-        converter: AbstractZoekObjectConverter<out ZoekObject>,
+        converter: ZoekObjectConverter<out ZoekObject>,
         objectType: ZoekObjectType,
         objectId: String,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): ConversionOutcome =
         try {
-            runTranslatingToIndexingException { converter.convert(objectId, isZaakspecifiekGeautoriseerd) }
+            runTranslatingToIndexingException { converter.convert(objectId, zaakAutorisatieGegevens) }
                 ?.let { ConversionOutcome.Converted(it) }
                 ?: ConversionOutcome.Skipped
         } catch (indexingException: IndexingException) {
@@ -130,18 +133,18 @@ class ReindexSupportService @Inject constructor(
 
     /**
      * Converts [objectIds] concurrently, sharing one
-     * [isZaakspecifiekGeautoriseerd] lookup across all of them by default, memoized per zaak UUID via
-     * [memoizedIsZaakspecifiekGeautoriseerd] so that objects linked to the same zaak (e.g. several
+     * [zaakAutorisatieGegevens] lookup across all of them by default, memoized per zaak UUID via
+     * [memoizedZaakAutorisatieGegevens] so that objects linked to the same zaak (e.g. several
      * documents of one zaak within a reindex page) share one ZGW call instead of each deriving the flag
      * on its own.
      */
     internal fun convertObjects(
         objectIds: List<String>,
         objectType: ZoekObjectType,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean = memoizedIsZaakspecifiekGeautoriseerd()
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens = memoizedZaakAutorisatieGegevens()
     ): List<ConversionOutcome> =
         getConverter(objectType).let { converter ->
-            runConcurrentPageConversions(objectIds) { objectId -> convert(converter, objectType, objectId, isZaakspecifiekGeautoriseerd) }
+            runConcurrentPageConversions(objectIds) { objectId -> convert(converter, objectType, objectId, zaakAutorisatieGegevens) }
         }
 
     /**
@@ -153,9 +156,9 @@ class ReindexSupportService @Inject constructor(
     internal fun indexeerDirectCountingSuccesses(
         objectIds: List<String>,
         objectType: ZoekObjectType,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean = memoizedIsZaakspecifiekGeautoriseerd()
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens = memoizedZaakAutorisatieGegevens()
     ): ReindexCounts {
-        val outcomes = convertObjects(objectIds, objectType, isZaakspecifiekGeautoriseerd)
+        val outcomes = convertObjects(objectIds, objectType, zaakAutorisatieGegevens)
         addToSolrIndex(outcomes.zoekObjecten(), performCommit = false)
         return ReindexCounts(
             successCount = outcomes.count { it is ConversionOutcome.Converted },
@@ -298,17 +301,42 @@ class ReindexSupportService @Inject constructor(
     }
 
     /**
-     * Returns an `isZaakspecifiekGeautoriseerd` lookup that memoizes [ZrcClientService.isZaakspecifiekGeautoriseerd]
-     * per zaak UUID, so that converting several zoekobjecten linked to the same zaak shares one call. Backed
-     * by a [ConcurrentHashMap] so that it is also safe to share across [convertObjects]' concurrent page
+     * Returns a [ZaakAutorisatieGegevens] lookup that memoizes the underlying zaakregister calls per zaak
+     * UUID, so that converting several zoekobjecten linked to the same zaak shares one call. Backed by a
+     * [ConcurrentHashMap] so that it is also safe to share across [convertObjects]' concurrent page
      * conversions, not just sequential callers.
      */
-    internal fun memoizedIsZaakspecifiekGeautoriseerd(): (UUID) -> Boolean {
-        val isZaakspecifiekGeautoriseerdByZaakUUID = ConcurrentHashMap<UUID, Boolean>()
+    internal fun memoizedZaakAutorisatieGegevens(): (UUID) -> ZaakAutorisatieGegevens {
+        val zaakAutorisatieGegevensByZaakUUID = ConcurrentHashMap<UUID, ZaakAutorisatieGegevens>()
         return { zaakUUID ->
-            isZaakspecifiekGeautoriseerdByZaakUUID.computeIfAbsent(zaakUUID, zrcClientService::isZaakspecifiekGeautoriseerd)
+            zaakAutorisatieGegevensByZaakUUID.computeIfAbsent(zaakUUID) { zaakAutorisatieGegevens(zaakUUID) }
         }
     }
+
+    /**
+     * Variant for callers that have already read the zaak, so that resolving its geautoriseerde
+     * medewerkers does not read it a second time.
+     */
+    internal fun zaakAutorisatieGegevens(zaak: Zaak) = zaakAutorisatieGegevens(zaak.uuid) { zaak }
+
+    /**
+     * The single place where the zaak-level data indexed for every zoekobject type is derived, so that
+     * the `ZAAK`, `TAAK` and `DOCUMENT` converters all index the same medewerkers for a given zaak.
+     */
+    internal fun zaakAutorisatieGegevens(zaakUUID: UUID) =
+        zaakAutorisatieGegevens(zaakUUID) { zrcClientService.readZaak(zaakUUID) }
+
+    private fun zaakAutorisatieGegevens(zaakUUID: UUID, zaakSupplier: () -> Zaak) =
+        zrcClientService.isZaakspecifiekGeautoriseerd(zaakUUID).let { isZaakspecifiekGeautoriseerd ->
+            ZaakAutorisatieGegevens(isZaakspecifiekGeautoriseerd = isZaakspecifiekGeautoriseerd) {
+                zaakspecifiekeAutorisatieService.readZaakToewijzing(
+                    zaak = zaakSupplier(),
+                    isZaakspecifiekGeautoriseerd = isZaakspecifiekGeautoriseerd
+                )
+                    .geautoriseerdeMedewerkerIds
+                    .toList()
+            }
+        }
 
     internal fun reindexAllZaken(): ReindexSummary? {
         val numberOfZaken = continueOnExceptions(ZoekObjectType.ZAAK) {
@@ -342,7 +370,7 @@ class ReindexSupportService @Inject constructor(
     }
 
     /**
-     * Reindexes every informatieobject, sharing one memoized `isZaakspecifiekGeautoriseerd` lookup across
+     * Reindexes every informatieobject, sharing one memoized `zaakAutorisatieGegevens` lookup across
      * every page of the reindex, instead of each document's conversion deriving the flag on its own — this
      * reindex can cover every informatieobject in the environment, so several documents linked to the same
      * zaak sharing one ZGW call matters here far more than within a single page.
@@ -364,11 +392,11 @@ class ReindexSupportService @Inject constructor(
         val numberOfPages: Int = (numberOfInformatieobjecten + Results.DEFAULT_ZGW_PAGE_SIZE.toInt() - 1) /
             Results.DEFAULT_ZGW_PAGE_SIZE.toInt()
 
-        val isZaakspecifiekGeautoriseerd = memoizedIsZaakspecifiekGeautoriseerd()
+        val zaakAutorisatieGegevens = memoizedZaakAutorisatieGegevens()
         var counts = ReindexCounts()
         for (pageNumber in ZgwApiService.FIRST_PAGE_NUMBER_ZGW_APIS..numberOfPages) {
             continueOnExceptions(ZoekObjectType.DOCUMENT) {
-                reindexInformatieobjectenPage(pageNumber, numberOfInformatieobjecten, isZaakspecifiekGeautoriseerd)
+                reindexInformatieobjectenPage(pageNumber, numberOfInformatieobjecten, zaakAutorisatieGegevens)
             }?.let { counts += it }
         }
         return ReindexSummary(counts.successCount, counts.skippedCount, numberOfInformatieobjecten)
@@ -377,20 +405,20 @@ class ReindexSupportService @Inject constructor(
     private fun reindexInformatieobjectenPage(
         pageNumber: Int,
         totalCount: Int,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): ReindexCounts {
         val informationObjectsResults = drcClientService.listEnkelvoudigInformatieObjecten(
             EnkelvoudigInformatieobjectListParameters().apply { page = pageNumber }
         )
         val ids = informationObjectsResults.results().map { it.url.extractUuid().toString() }
-        val counts = indexeerDirectCountingSuccesses(ids, ZoekObjectType.DOCUMENT, isZaakspecifiekGeautoriseerd)
+        val counts = indexeerDirectCountingSuccesses(ids, ZoekObjectType.DOCUMENT, zaakAutorisatieGegevens)
         val progress = (pageNumber - ZgwApiService.FIRST_PAGE_NUMBER_ZGW_APIS) * Results.DEFAULT_ZGW_PAGE_SIZE + ids.size
         LOG.info("[${ZoekObjectType.DOCUMENT}] Reindexed: $progress / $totalCount")
         return counts
     }
 
     /**
-     * Reindexes every open taak, sharing one memoized `isZaakspecifiekGeautoriseerd` lookup across every
+     * Reindexes every open taak, sharing one memoized `zaakAutorisatieGegevens` lookup across every
      * page of the reindex, instead of each taak's conversion deriving the flag on its own — several open
      * taken of the same zaak landing in different pages still share one ZGW call this way.
      */
@@ -404,11 +432,11 @@ class ReindexSupportService @Inject constructor(
 
         val numberOfPages: Int = (numberOfTasks.toInt() + TAKEN_MAX_RESULTS - 1) / TAKEN_MAX_RESULTS
 
-        val isZaakspecifiekGeautoriseerd = memoizedIsZaakspecifiekGeautoriseerd()
+        val zaakAutorisatieGegevens = memoizedZaakAutorisatieGegevens()
         var counts = ReindexCounts()
         for (pageNumber in 0 until numberOfPages) {
             continueOnExceptions(ZoekObjectType.TAAK) {
-                reindexTakenPage(pageNumber, numberOfTasks.toInt(), isZaakspecifiekGeautoriseerd)
+                reindexTakenPage(pageNumber, numberOfTasks.toInt(), zaakAutorisatieGegevens)
             }?.let { counts += it }
         }
         return ReindexSummary(counts.successCount, counts.skippedCount, numberOfTasks.toInt())
@@ -417,7 +445,7 @@ class ReindexSupportService @Inject constructor(
     private fun reindexTakenPage(
         pageNumber: Int,
         totalCount: Int,
-        isZaakspecifiekGeautoriseerd: (UUID) -> Boolean
+        zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens
     ): ReindexCounts {
         val firstResult = pageNumber * TAKEN_MAX_RESULTS
         val tasks = flowableTaskService.listOpenTasks(
@@ -429,7 +457,7 @@ class ReindexSupportService @Inject constructor(
         if (tasks.isEmpty()) {
             return ReindexCounts()
         }
-        val counts = indexeerDirectCountingSuccesses(tasks.map { it.id }, ZoekObjectType.TAAK, isZaakspecifiekGeautoriseerd)
+        val counts = indexeerDirectCountingSuccesses(tasks.map { it.id }, ZoekObjectType.TAAK, zaakAutorisatieGegevens)
         val progress = firstResult + tasks.size
         LOG.info("[${ZoekObjectType.TAAK}] Reindexed: $progress / $totalCount")
         return counts
