@@ -6,12 +6,10 @@
 ALTER TABLE ${schema}.zaaktype_configuration
     ADD COLUMN epistola_ingeschakeld                BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN epistola_catalog_id                  VARCHAR,
-    ADD COLUMN epistola_informatie_object_type_uuid UUID,
-    ADD COLUMN epistola_locale                      VARCHAR;
+    ADD COLUMN epistola_informatie_object_type_uuid UUID;
 
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_ingeschakeld IS 'Maak het aanmaken van documenten via Epistola mogelijk voor dit zaaktype';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_catalog_id IS 'Catalog in Epistola waarvan dit zaaktype alle templates aanbiedt; zolang dit leeg is, geldt de catalog van EPISTOLA_CATALOG_ID';
-COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_locale IS 'Taal (BCP-47-tag van system.locale in Epistola, zoals nl-NL) waarin ZAC Epistola om het document vraagt voor alle templates van dit zaaktype; zolang dit leeg is, vraagt ZAC om Nederlands als het template dat heeft';
 COMMENT ON COLUMN ${schema}.zaaktype_configuration.epistola_informatie_object_type_uuid IS 'Informatieobjecttype waaronder een met Epistola gegenereerd document in Open Zaak wordt opgeslagen';
 
 -- A template can have an informatieobjecttype of its own, and be switched off so that Document maken does not offer it.
@@ -43,14 +41,12 @@ COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.is_enabled IS 'O
 COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.aanmaakdatum IS 'Datum waarop de instelling van het template in deze tabel is opgeslagen';
 
 -- The PDF of an Epistola document lives in Open Zaak, and ZAC keeps no copy of it. This only remembers which Epistola
--- template produced the document there, in which catalog and language, so that a behandelaar can generate a
--- new version of it.
+-- template produced the document there, and from which catalog, so that a behandelaar can generate a new version of it.
 CREATE TABLE ${schema}.epistola_document
 (
     informatieobject_uuid UUID                     NOT NULL,
     template_id           VARCHAR                  NOT NULL,
     aanmaakdatum          TIMESTAMP WITH TIME ZONE NOT NULL,
-    locale                VARCHAR,
     catalog_id            VARCHAR,
     CONSTRAINT pk_epistola_document
         PRIMARY KEY (informatieobject_uuid)
@@ -59,5 +55,4 @@ CREATE TABLE ${schema}.epistola_document
 COMMENT ON COLUMN ${schema}.epistola_document.informatieobject_uuid IS 'UUID van het informatieobject in Open Zaak dat met Epistola is gegenereerd';
 COMMENT ON COLUMN ${schema}.epistola_document.template_id IS 'ID van het Epistola-template waarmee het document is gegenereerd';
 COMMENT ON COLUMN ${schema}.epistola_document.aanmaakdatum IS 'Moment waarop het document is gegenereerd';
-COMMENT ON COLUMN ${schema}.epistola_document.locale IS 'Taal waarin het document is gegenereerd, als BCP-47-tag van het Epistola-attribuut system.locale, zoals nl-NL; leeg als de varianten van het template geen taal hebben';
 COMMENT ON COLUMN ${schema}.epistola_document.catalog_id IS 'Catalog in Epistola waaruit het template komt waarmee het document is gegenereerd; leeg betekent de catalog van EPISTOLA_CATALOG_ID';

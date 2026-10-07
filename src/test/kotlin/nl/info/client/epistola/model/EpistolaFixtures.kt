@@ -89,12 +89,7 @@ fun createTemplateListResponse(
     .items(items)
     .page(PageMeta().number(pageNumber).totalPages(totalPages))
 
-fun createDutchAndEnglishLocales() = EpistolaLocales(locales = listOf("nl-NL", "en-GB"), defaultLocale = "nl-NL")
-
-fun createGenerationTemplate(
-    dataContract: Any? = null,
-    locales: EpistolaLocales = EpistolaLocales()
-) = EpistolaGenerationTemplate(dataContract = dataContract, locales = locales)
+fun createGenerationTemplate(dataContract: Any? = null) = EpistolaGenerationTemplate(dataContract = dataContract)
 
 fun createCatalog(
     slug: String? = "fake-catalog",

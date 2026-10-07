@@ -36,7 +36,7 @@ die ook slagen.
 Daarnaast zijn er **zes verstandige verbeteringen** die het ZAC-team zelf kan doen (VV-05, -06, -07, -09, -11, -16). De
 belangrijkste is een belastingtest (VV-05): een verzoek houdt een thread vast zolang Epistola rendert, bij één
 gebruiker 3 tot 10 seconden, en niemand heeft het met meerdere gebruikers tegelijk gemeten. VV-16 gaat over varianten: ZAC
-kiest alleen op taal, en Epistola weigert een verzoek waarbij meer varianten even goed passen. Er zijn
+kiest geen variant, dus elk document is de standaardvariant van zijn template, ook als het template er meer heeft. Er zijn
 verder **drie punten die van Epistola afhangen** (VV-04, VV-08, VV-10) en **drie uitbreidingen** die pas zin hebben na
 een besluit over de richting (VV-12, VV-13, VV-15).
 
@@ -165,17 +165,18 @@ veld noemen is de volgende stap.
 uploadformulieren van ZAC. Het is één regel (`DocumentCreationService.kt:236`), maar het ligt buiten dit prototype,
 want SmartDocuments mocht niet van gedrag veranderen (DoD 1). Het is een fout die daar al bestond.
 
-**VV-16 · Varianten kiezen op meer dan taal, en een duidelijke melding bij een dubbelzinnige variant** (#50) · S–M · ZAC-team
-*Aanleiding.* Een template mag varianten hebben die op meer verschillen dan taal, bijvoorbeeld kanaal, groot lettertype of
-eenvoudige taal. Sinds 7 oktober vraagt ZAC Epistola alleen om de taal (B32). Heeft een template in die taal meer dan één
-variant, zoals de besluitbrief met een Nederlandse variant voor post en een voor digitaal, of de testtemplate
-`zac-aanvullende-informatie`, dan geeft Epistola `409 Ambiguous Variant`. ZAC toont dan alleen de algemene melding
-*Epistola kon het verzoek van ZAC niet verwerken*. Tot 7 oktober koos ZAC ook op kanaal, met de keuzelijst *Variant* in
-*Document maken* (#47, #53) en een lijst met varianten in de beheerkaart. Dat staat nu op de branch
-`explore/epistola-variant-picker` en is een mogelijk vertrekpunt, maar het lost alleen de verschillen in kanaal op.
-*Voorstel.* (a) Laat de behandelaar kiezen uit de varianten van het template zelf (eventueel op titel), of laat ZAC de overige
-attributen als voorkeur meesturen. (b) Vertaal `Ambiguous Variant` naar een eigen foutcode die zegt welke varianten botsen.
-Tot dan: de beheerder zet zo'n template uit in de beheerkaart. Het sluit aan op #50.
+**VV-16 · Een andere variant kiezen dan de standaardvariant, en een duidelijke melding bij een dubbelzinnige variant** (#50) · S–M · ZAC-team
+*Aanleiding.* Een template mag varianten hebben, bijvoorbeeld per taal, per kanaal, met groot lettertype of in eenvoudige
+taal. Sinds 7 oktober vraagt ZAC Epistola om geen variant (B32), dus Epistola maakt altijd de standaardvariant van het
+template. Elk template werkt zo, maar een Engelse brief of een variant voor post is uit ZAC niet te krijgen. Eerder koos
+ZAC op taal, de taal van het zaaktype (#51, #52), en tot eerder die dag ook op kanaal, met de keuzelijst *Variant* in
+*Document maken* (#47, #53). Op taal alleen kreeg een template met meer dan één variant in die taal, zoals de besluitbrief met een
+Nederlandse variant voor post en een voor digitaal, `409 Ambiguous Variant`, en zag de behandelaar alleen de algemene
+melding *Epistola kon het verzoek van ZAC niet verwerken*. Beide keuzes staan nu op de branch
+`explore/epistola-variant-picker` en zijn een mogelijk vertrekpunt, maar ze dekken alleen taal en kanaal.
+*Voorstel.* (a) Laat de beheerder of de behandelaar kiezen uit de varianten van het template zelf (op titel of id), of
+laat ZAC attributen als voorkeur meesturen. (b) Vraagt ZAC weer op attributen, vertaal dan `Ambiguous Variant` naar een
+eigen foutcode die zegt welke varianten botsen. Tot dan krijgt elk document de standaardvariant. Het sluit aan op #50.
 
 ### C. Uitbreidingen: later
 

@@ -20,8 +20,6 @@ import jakarta.enterprise.inject.Instance
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
-import nl.info.client.epistola.model.EpistolaLocales
-import nl.info.client.epistola.model.createDutchAndEnglishLocales
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.createEnkelvoudigInformatieObject
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectWithLockRequest
@@ -97,12 +95,10 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
         fun givenANewVersionGenerated(
             zaak: Zaak,
             fileName: String,
-            locales: EpistolaLocales = EpistolaLocales(),
             catalogId: String = FAKE_CATALOG_ID,
             templateSettings: Map<String, EpistolaTemplateSetting> = emptyMap()
         ): EpistolaGeneratedDocument {
             val loggedInUser = createLoggedInUser(displayName = "fakeDisplayName")
-            val askedLocales = mutableListOf<String?>()
             val generatedDocument = EpistolaGeneratedDocument(
                 documentId = UUID.randomUUID(),
                 fileName = fileName,
@@ -118,7 +114,7 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             )
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
             every { epistolaClientService.readGenerationTemplate(catalogId, FAKE_TEMPLATE_ID) } returns
-                EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, locales = locales)
+                EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA)
             every {
                 epistolaClientService.generateDocument(
                     catalogId = catalogId,
@@ -126,10 +122,9 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                     data = any(),
                     fileName = fileName,
                     correlationId = zaak.uuid.toString(),
-                    locale = captureNullable(askedLocales),
                     onJobStatus = any()
                 )
-            } answers { generatedDocument.copy(locale = askedLocales.last()) }
+            } returns generatedDocument
             return generatedDocument
         }
 
@@ -226,141 +221,7 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             }
         }
 
-        given("a document Epistola generated in English, from a template that still has an English variant") {
-            val zaak = createZaak()
-            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
-            val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
-            val generatedDocument = givenANewVersionGenerated(
-                zaak = zaak,
-                fileName = FAKE_FILE_NAME,
-                locales = createDutchAndEnglishLocales()
-            )
-            val requestSlot = slot<EnkelvoudigInformatieObjectWithLockRequest>()
-            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns createEpistolaDocument(
-                informatieObjectUUID = informatieObjectUUID,
-                catalogId = FAKE_CATALOG_ID,
-                templateId = FAKE_TEMPLATE_ID,
-                locale = "en-GB"
-            )
-            every {
-                enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
-                    enkelvoudigInformatieObjectUUID = informatieObjectUUID,
-                    enkelvoudigInformatieObjectWithLockRequest = capture(requestSlot),
-                    toelichting = "Nieuwe versie gegenereerd met Epistola"
-                )
-            } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
-            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
-
-            `when`("a new version is created") {
-                epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
-
-                then("it is generated in English again, rather than in Dutch") {
-                    verify(exactly = 1) {
-                        epistolaClientService.generateDocument(
-                            catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            data = any(),
-                            fileName = FAKE_FILE_NAME,
-                            correlationId = zaak.uuid.toString(),
-                            locale = "en-GB",
-                            onJobStatus = any()
-                        )
-                    }
-                }
-
-                and("the new version is registered in English") {
-                    requestSlot.captured.taal shouldBe "eng"
-                }
-            }
-        }
-
-        given("a document Epistola generated in a language its template no longer has") {
-            val zaak = createZaak()
-            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
-            val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
-            val generatedDocument = givenANewVersionGenerated(
-                zaak = zaak,
-                fileName = FAKE_FILE_NAME,
-                locales = createDutchAndEnglishLocales()
-            )
-            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns createEpistolaDocument(
-                informatieObjectUUID = informatieObjectUUID,
-                catalogId = FAKE_CATALOG_ID,
-                templateId = FAKE_TEMPLATE_ID,
-                locale = "fr-FR"
-            )
-            every {
-                enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
-                    enkelvoudigInformatieObjectUUID = informatieObjectUUID,
-                    enkelvoudigInformatieObjectWithLockRequest = any(),
-                    toelichting = "Nieuwe versie gegenereerd met Epistola"
-                )
-            } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
-            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
-
-            `when`("a new version is created") {
-                epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
-
-                then("it is generated in Dutch, as the form would preselect") {
-                    verify(exactly = 1) {
-                        epistolaClientService.generateDocument(
-                            catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            data = any(),
-                            fileName = FAKE_FILE_NAME,
-                            correlationId = zaak.uuid.toString(),
-                            locale = "nl-NL",
-                            onJobStatus = any()
-                        )
-                    }
-                }
-            }
-        }
-
-        given("a document Epistola generated before ZAC stored languages, from a template that now has Dutch and English") {
-            val zaak = createZaak()
-            val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
-            val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
-            val generatedDocument = givenANewVersionGenerated(
-                zaak = zaak,
-                fileName = FAKE_FILE_NAME,
-                locales = createDutchAndEnglishLocales()
-            )
-            every { epistolaDocumentRepository.findEpistolaDocument(informatieObjectUUID) } returns
-                createEpistolaDocument(
-                    informatieObjectUUID = informatieObjectUUID,
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID
-                )
-            every {
-                enkelvoudigInformatieObjectUpdateService.updateEnkelvoudigInformatieObjectWithLockData(
-                    enkelvoudigInformatieObjectUUID = informatieObjectUUID,
-                    enkelvoudigInformatieObjectWithLockRequest = any(),
-                    toelichting = "Nieuwe versie gegenereerd met Epistola"
-                )
-            } returns createEnkelvoudigInformatieObject(uuid = informatieObjectUUID, versie = 2)
-            every { epistolaClientService.deleteDocument(generatedDocument.documentId) } just runs
-
-            `when`("a new version is created") {
-                epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
-
-                then("Dutch is asked for, which ZAC preferred before") {
-                    verify(exactly = 1) {
-                        epistolaClientService.generateDocument(
-                            catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            data = any(),
-                            fileName = FAKE_FILE_NAME,
-                            correlationId = zaak.uuid.toString(),
-                            locale = "nl-NL",
-                            onJobStatus = any()
-                        )
-                    }
-                }
-            }
-        }
-
-        given("a document Epistola generated without a language, from a template whose variants carry none") {
+        given("a document Epistola generated from a template") {
             val zaak = createZaak()
             val enkelvoudigInformatieObject = createEnkelvoudigInformatieObject(bestandsnaam = FAKE_FILE_NAME)
             val informatieObjectUUID = enkelvoudigInformatieObject.url.extractUuid()
@@ -384,7 +245,7 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
             `when`("a new version is created") {
                 epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
 
-                then("no language is asked for") {
+                then("it is generated again from that template") {
                     verify(exactly = 1) {
                         epistolaClientService.generateDocument(
                             catalogId = FAKE_CATALOG_ID,
@@ -392,7 +253,6 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                             data = any(),
                             fileName = FAKE_FILE_NAME,
                             correlationId = zaak.uuid.toString(),
-                            locale = null,
                             onJobStatus = any()
                         )
                     }
@@ -491,7 +351,6 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                             data = any(),
                             fileName = any(),
                             correlationId = any(),
-                            locale = any(),
                             onJobStatus = any()
                         )
                     }
@@ -527,7 +386,6 @@ class EpistolaDocumentVersionServiceTest : BehaviorSpec({
                             data = any(),
                             fileName = any(),
                             correlationId = any(),
-                            locale = any(),
                             onJobStatus = any()
                         )
                     }

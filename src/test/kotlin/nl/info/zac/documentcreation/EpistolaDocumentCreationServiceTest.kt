@@ -188,7 +188,6 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                         data = any(),
                         fileName = any(),
                         correlationId = any(),
-                        locale = any(),
                         onJobStatus = any()
                     )
                 }

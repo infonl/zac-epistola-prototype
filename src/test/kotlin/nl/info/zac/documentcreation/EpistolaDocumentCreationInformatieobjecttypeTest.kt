@@ -102,7 +102,6 @@ class EpistolaDocumentCreationInformatieobjecttypeTest : BehaviorSpec({
                 data = any(),
                 fileName = "$FAKE_TITLE.pdf",
                 correlationId = zaak.uuid.toString(),
-                locale = any(),
                 onJobStatus = any()
             )
         } returns generatedDocument

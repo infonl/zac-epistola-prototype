@@ -8,9 +8,8 @@ import java.util.UUID
 
 fun createRestEpistolaTemplate(
     id: String = "fake-template-id",
-    name: String = "fakeTemplateName",
-    locales: List<String>? = null
-) = RestEpistolaTemplate(id = id, name = name, locales = locales)
+    name: String = "fakeTemplateName"
+) = RestEpistolaTemplate(id = id, name = name)
 
 fun createRestEpistolaTemplateSetting(
     templateId: String = "fake-template-id",
@@ -30,12 +29,10 @@ fun createRestEpistolaCatalog(
 fun createRestEpistolaCatalogMapping(
     catalogId: String = "fake-catalog-id",
     informatieObjectTypeUUID: UUID? = UUID.randomUUID(),
-    locale: String? = null,
     templateSettings: List<RestEpistolaTemplateSetting> = emptyList()
 ) = RestEpistolaCatalogMapping(
     catalogId = catalogId,
     informatieObjectTypeUUID = informatieObjectTypeUUID,
-    locale = locale,
     templateSettings = templateSettings
 )
 

@@ -136,7 +136,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } returns generatedDocument
@@ -208,8 +207,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
                             catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            locale = null
+                            templateId = FAKE_TEMPLATE_ID
                         )
                     }
                 }
@@ -232,8 +230,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = any(),
                     catalogId = any(),
-                    templateId = any(),
-                    locale = any()
+                    templateId = any()
                 )
             } throws PersistenceException("fakeDatabaseFailure")
 
@@ -298,7 +295,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } answers {
@@ -561,7 +557,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } throws epistolaTemplateDataRejectedException
@@ -632,7 +627,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                             data = any(),
                             fileName = any(),
                             correlationId = any(),
-                            locale = any(),
                             onJobStatus = any()
                         )
                     }

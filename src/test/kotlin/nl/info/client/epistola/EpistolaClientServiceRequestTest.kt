@@ -15,7 +15,6 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
-import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.zac.configuration.createEpistolaSettings
 import org.json.JSONObject
 import java.net.InetSocketAddress
@@ -76,10 +75,6 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     generationTemplate.dataContract shouldBe mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
                 }
 
-                and("the languages are read from the variants' system locale, with that of the default variant") {
-                    generationTemplate.locales shouldBe EpistolaLocales(locales = listOf("nl-NL", "en-GB"), defaultLocale = "nl-NL")
-                }
-
                 and("the request names ZAC and its version as the client that sent it") {
                     epistolaServer.requestUserAgents.single() shouldContain "ZAC/$FAKE_ZAC_VERSION"
                 }
@@ -124,8 +119,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     JSONObject(epistolaServer.requestBodies.single()).getString("catalogId") shouldBe FAKE_CATALOG_ID
                 }
 
-                and("it asks for no variant, so Epistola renders the default one, and names no language") {
-                    generatedDocument.locale shouldBe null
+                and("it asks for no variant, so Epistola renders the default one") {
                     JSONObject(epistolaServer.requestBodies.single()).has("attributes") shouldBe false
                 }
 
@@ -133,59 +127,28 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     generatedDocument.content.toString(StandardCharsets.UTF_8) shouldBe FAKE_PDF_CONTENT
                 }
             }
-
-            `when`("a document is generated in a language") {
-                epistolaServer.clearRecordedRequests()
-                val generatedDocument = createService().generateDocument(
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
-                    fileName = FAKE_FILE_NAME,
-                    correlationId = FAKE_CORRELATION_ID,
-                    locale = "en-GB"
-                )
-
-                then("the document names the language it was asked for") {
-                    generatedDocument.locale shouldBe "en-GB"
-                }
-
-                and("only the language is required, in Epistola's own catalog") {
-                    val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
-                    attributes.length() shouldBe 1
-                    with(attributes.getJSONObject(0)) {
-                        getString("catalog") shouldBe "system"
-                        getString("key") shouldBe "locale"
-                        getString("value") shouldBe "en-GB"
-                        getBoolean("required") shouldBe true
-                    }
-                }
-            }
         }
     }
 
     context("previewing a document") {
         given("a configured tenant and a catalog") {
-            `when`("a preview is made in a language") {
+            `when`("a preview is made") {
                 epistolaServer.clearRecordedRequests()
                 val preview = createService().previewDocument(
                     catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
-                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
-                    locale = "nl-NL"
+                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie"))
                 )
 
                 then("Epistola is asked to preview inside that tenant, without submitting a generation job") {
                     epistolaServer.requestPaths.single() shouldBe "/tenants/$FAKE_TENANT_ID/documents/preview"
                 }
 
-                and("the request names the catalog and the template, and requires the language") {
+                and("the request names the catalog and the template, and asks for no variant, as when generating") {
                     val request = JSONObject(epistolaServer.requestBodies.single())
                     request.getString("catalogId") shouldBe FAKE_CATALOG_ID
                     request.getString("templateId") shouldBe FAKE_TEMPLATE_ID
-                    val attributes = request.getJSONArray("attributes")
-                    attributes.length() shouldBe 1
-                    attributes.getJSONObject(0).getString("value") shouldBe "nl-NL"
-                    attributes.getJSONObject(0).getBoolean("required") shouldBe true
+                    request.has("attributes") shouldBe false
                 }
 
                 and("the PDF Epistola answers with is returned") {

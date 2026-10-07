@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt op 6 oktober 2026 naar wat #3 tot en met #9, #30, #47 en #51 tot en met #53 hebben gebouwd, met contract en client 1.4.0, en nagegaan op de testtenant. Op 7 oktober bijgewerkt naar `main` zonder variantkeuze (B32) |
+| Stand | Bijgewerkt op 6 oktober 2026 naar wat #3 tot en met #9, #30, #47 en #51 tot en met #53 hebben gebouwd, met contract en client 1.4.0, en nagegaan op de testtenant. Op 7 oktober bijgewerkt naar `main` zonder variant- en taalkeuze (B32) |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
 | Blokkeert | #4 · #5 · #6 · #11 |
@@ -31,19 +31,16 @@ welke documentengine de installatie draait — dat is een beslissing van de behe
 zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verandert. De foutmeldingen van de
 gebouwde versie noemen Epistola wel (§5).
 
-1. **Zaaktypeconfiguratie** — een functioneel beheerder opent het zaaktype in ZAC Admin en kiest één Epistola-catalog,
-   één informatieobjecttype en één taal voor het zaaktype, in dezelfde kaart (#51). Het zaaktype biedt elk template in die
+1. **Zaaktypeconfiguratie** — een functioneel beheerder opent het zaaktype in ZAC Admin en kiest één Epistola-catalog
+   en één informatieobjecttype voor het zaaktype, in dezelfde kaart (#51). Het zaaktype biedt elk template in die
    catalog aan; de beheerder kiest geen templates, en ziet in de kaart welke de catalog heeft. De keuzes staan als
    kolommen op het zaaktype in ZAC's eigen database ([datamodel](datamodel.md)): configuratie, nooit zaakdata. Zonder
-   gekozen catalog geldt die van `EPISTOLA_CATALOG_ID`; zonder informatieobjecttype biedt het zaaktype niets aan. Alle
-   templates van het zaaktype worden in die taal gemaakt. De kaart biedt alleen de talen die elk template heeft dat
-   aanstaat; zonder keuze geldt Nederlands waar het template dat heeft ([§5](#verzoek)).
+   gekozen catalog geldt die van `EPISTOLA_CATALOG_ID`; zonder informatieobjecttype biedt het zaaktype niets aan.
    De kaart toont elk template van de catalog als item van een accordeon. Het kopje noemt de naam en welk documenttype
-   geldt; het item toont het id en de talen van het template. Per template kiest de beheerder een eigen documenttype,
-   en kan hij het template uitzetten. Heeft een template meer dan één variant in dezelfde taal, dan kan ZAC daar niet
-   tussen kiezen (#50): Epistola weigert dan het verzoek ([§5](#verzoek)). Zo'n template kan de beheerder uitzetten.
-   Tot 7 oktober toonde het item ook alle varianten met hun attributen; die lijst staat nu op de branch
-   `explore/epistola-variant-picker` (B32).
+   geldt; het item toont het id van het template. Per template kiest de beheerder een eigen documenttype, en kan hij
+   het template uitzetten. Elk template wordt gemaakt in zijn standaardvariant ([§5](#verzoek)).
+   Tot 7 oktober koos de beheerder in de kaart ook één taal voor het zaaktype, en toonde het item de talen en eerder ook
+   alle varianten met hun attributen; dat staat nu op de branch `explore/epistola-variant-picker` (B32).
    Het documenttype van het zaaktype blijft de standaard en blijft verplicht; een template zonder eigen documenttype
    gebruikt die. Een template dat uit staat, blijft in Epistola en in de kaart staan, maar *Document maken* biedt het
    niet meer aan.
@@ -56,12 +53,11 @@ gebouwde versie noemen Epistola wel (§5).
    vertrouwelijkheid zijn read-only en komen uit de configuratie van het zaaktype, zodat een behandelaar een document
    niet onder het verkeerde informatieobjecttype kan wegschrijven. Het documenttype is dat van het gekozen template, en
    anders dat van het zaaktype (`override ?: standaard`).
-   De behandelaar kiest geen taal en geen variant; er is geen keuzelijst *Taal* of *Variant*. De taal waar ZAC Epistola
-   om vraagt is die van het zaaktype, die de beheerder kiest in de beheerkaart (stap 1); zonder die keuze, of als het
-   template die taal niet heeft, is het Nederlands als het template dat heeft, anders de taal van de standaardvariant.
-   Epistola kiest de variant in die taal ([§5](#verzoek)). Tot 7 oktober bood de dialoog bij een template met varianten
-   voor twee of meer kanalen een keuzelijst **Variant** (#47, #53), voorgesteld door het communicatiekanaal van de
-   zaak. Die staat nu op de branch `explore/epistola-variant-picker` en gaat niet naar `main` (B32).
+   De behandelaar kiest geen taal en geen variant; er is geen keuzelijst *Taal* of *Variant*. ZAC vraagt Epistola om
+   geen variant, dus Epistola maakt de standaardvariant van het template ([§5](#verzoek)). Tot 7 oktober bood de dialoog
+   bij een template met varianten voor twee of meer kanalen een keuzelijst **Variant** (#47, #53), voorgesteld door het
+   communicatiekanaal van de zaak, en vroeg ZAC om de taal van het zaaktype. Dat staat nu op de branch
+   `explore/epistola-variant-picker` en gaat niet naar `main` (B32).
 4. **Generatie** — ZAC leest de zaak uit Open Zaak en de initiator uit de BRP of KvK *op dat moment*, bouwt
    de payload ([§3](#3--datamapping)) en dient hem in bij Epistola. Generatie is **asynchroon**: het
    indienen levert een job op, ZAC pollt die tot hij klaar is en downloadt dan de PDF
@@ -71,7 +67,7 @@ gebouwde versie noemen Epistola wel (§5).
    `EnkelvoudigInformatieObject` en aan de zaak gekoppeld als `ZaakInformatieObject` — binnen hetzelfde
    geauthenticeerde verzoek ([§2](#2--provider-abstractie)). ZAC houdt geen documentregistratie bij. Het onthoudt alleen welk
    template het document maakte, voor stap 7 ([datamodel](datamodel.md)), met de catalog waar het template uit kwam
-   (#51), en de taal waar ZAC Epistola om vroeg, of geen als het om geen vroeg (#52).
+   (#51).
 6. **Preview** — Solr-herindexering en de WebSocket-notificatie laten het document verschijnen op het
    tabblad Documenten van de zaak, waar het met metadata en een in-browserpreview opent zoals elk ander
    document.
@@ -89,8 +85,8 @@ gebouwde versie noemen Epistola wel (§5).
    Een nieuwe versie lukt ook voor een template dat de beheerder na het maken van het document heeft uitgezet: uitzetten
    verbergt het template alleen in *Document maken*. De nieuwe versie houdt het informatieobject, en dus het
    documenttype, dat het document al had.
-   De nieuwe versie vraagt om de taal die bij het document is opgeslagen, zolang het template die nog heeft, en anders
-   om de taal die ZAC voor het template kiest ([§5](#verzoek)).
+   Ook de nieuwe versie vraagt om geen variant, en is dus de standaardvariant die het template dan heeft
+   ([§5](#verzoek)).
 
 ---
 
@@ -435,7 +431,7 @@ dat contract gelezen en niet voorgesteld.
 | `DELETE /tenants/{tenantId}/documents/jobs/{requestId}` | Ja | `DOCUMENT_GENERATE` | Annuleert een job die de timeout overschrijdt. Een job die al klaar is, weigert dat met `409` |
 | `GET /tenants/{tenantId}/documents/{documentId}` | Ja | `DOCUMENT_VIEW` | Downloadt de PDF — `application/pdf` met een bestandsnaam en grootte |
 | `DELETE /tenants/{tenantId}/documents/{documentId}` | Ja, sinds #6 | `DOCUMENT_GENERATE` | Verwijdert de PDF bij Epistola zodra hij in Open Zaak staat, en ook als het opslaan mislukt (B20), in plaats van hem daar maanden te laten staan ([bewaartermijn](#bewaartermijn-bij-epistola)). Live nagegaan: `204`, daarna `404` |
-| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping). In dezelfde aanroep ook de varianten, waaruit ZAC de talen van het template leest, uit `system.locale` (#52) |
+| `GET /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}` | Ja | `TEMPLATE_VIEW` | Leest het JSON Schema (`dataModel`) van het gekozen template: de allow-list uit [§3](#3--datamapping). Tot 7 oktober las ZAC er ook de talen van de varianten uit, uit `system.locale` (#52, B32) |
 | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` | Ja | `TEMPLATE_VIEW` | De templates van één catalog: in de beheerkaart die van de gekozen catalog, en in *Document maken* die van de catalog van het zaaktype (#51) |
 | `GET /tenants/{tenantId}/catalogs` | Ja | `CATALOG_VIEW` | De catalogs van de tenant, eigen en geabonneerde, waaruit de beheerder er per zaaktype één kiest (#51). ZAC laat `system` weg, Epistola's eigen catalog met de attributen en zonder templates. Bij het opslaan toetst ZAC de gekozen catalog aan deze lijst |
 | `POST /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}/validate` | Nee | `TEMPLATE_VIEW` | Toetst data tegen het contract zonder te genereren. Waarom ZAC het niet vooraf aanroept, staat in [§3](#ontbrekende-optionele-velden) |
@@ -462,9 +458,9 @@ open voor elke gebruiker.
 | Endpoint | Wat het doet |
 |---|---|
 | `GET epistola-catalogs` | De catalogs van de tenant, zonder `system`, op naam |
-| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart: elk met de talen van zijn varianten (BCP-47-tags uit `system.locale`), uit één leesverzoek per template. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30) en ontbreken de talen (`locales` is dan `null`; een template zonder talen geeft een lege lijst). De keuzelijst *Taal* rekent de gedeelde talen in de kaart zelf uit de talen van de templates die aanstaan. Tot 7 oktober gaf het ook de kanalen en alle varianten met hun attributen (B32) |
-| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog, het informatieobjecttype en de taal van het zaaktype, en de instellingen per template (`templateSettings`: `templateId`, `informatieObjectTypeUUID`, `isEnabled`). Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID`, en zonder gekozen taal leeg |
-| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat alle drie op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat, een informatieobjecttype dat niet bij het zaaktype hoort, en een taal die geen taalcode is. Een lege taal wist de keuze. De lijst `templateSettings` vervangt wat er stond (de beheerkaart stuurt hem elke keer geheel); een informatieobjecttype per template toetst ze zoals dat van het zaaktype, en de instelling van een template dat niet in de gekozen catalog staat, laat ze vallen. Een template dat aanstaat en geen eigen documenttype heeft, krijgt geen rij |
+| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart: elk alleen met `id` en `name`, uit één lijstverzoek bij Epistola. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30). Tot 7 oktober las het daarnaast elk template apart, voor zijn talen en eerder ook zijn kanalen en alle varianten met hun attributen (B32) |
+| `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog en het informatieobjecttype van het zaaktype, en de instellingen per template (`templateSettings`: `templateId`, `informatieObjectTypeUUID`, `isEnabled`). Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID` |
+| `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ze op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat en een informatieobjecttype dat niet bij het zaaktype hoort. De lijst `templateSettings` vervangt wat er stond (de beheerkaart stuurt hem elke keer geheel); een informatieobjecttype per template toetst ze zoals dat van het zaaktype, en de instelling van een template dat niet in de gekozen catalog staat, laat ze vallen. Een template dat aanstaat en geen eigen documenttype heeft, krijgt geen rij |
 | `GET {zaaktypeUuid}/epistola-templates` | De templates van de catalog van het zaaktype die aanstaan, elk met zijn informatieobjecttype: het eigen, en anders dat van het zaaktype. Leeg als het zaaktype geen Epistola-templates aanbiedt |
 
 Het endpoint voor de keuzelijst *Variant*
@@ -501,32 +497,19 @@ markering in een contract zegt wat er verandert, niet waarom, en dat laatste moe
 ### Verzoek
 
 Een generatieverzoek benoemt het template en ofwel een expliciete `variantId` ofwel `attributes` voor
-automatische variantkeuze — nooit allebei. ZAC stuurt alleen de taal, als vereist attribuut `system.locale`, voor een
-template waarvan de varianten een taal hebben (#52). De behandelaar kiest geen taal en geen variant. Het zaaktype kiest
-zijn taal (#51), in de beheerkaart, en ZAC vraagt om die taal als het template ze heeft. Heeft het template ze niet, of
-heeft het zaaktype er geen, dan vraagt ZAC om Nederlands als het template dat heeft (`nl-NL`, anders een andere
-Nederlandse regio) en anders om de taal van de standaardvariant; heeft de standaardvariant geen taal, dan vraagt het om
-geen. ZAC vraagt alleen om een taal die het template heeft, zodat Epistola nooit ongemerkt terugvalt op de
-standaardvariant in een andere taal. ZAC leest de talen uit de varianten en houdt zelf geen talenlijst bij. Een nieuwe
-versie vraagt eerst om de taal die het document opgeslagen heeft, zolang het template die nog heeft, en anders om die van
-het zaaktype; heeft het template ook die niet, of heeft het zaaktype er geen, dan geldt de keuze van hierboven. De
-voorvertoning en het genereren vragen om dezelfde taal, omdat ze die op dezelfde plaats bepalen. De beheerkaart biedt
-alleen talen die elk template heeft dat aanstaat, uit de varianten van die templates (één `GET …/templates/{templateId}`
-per template, zonder dat ZAC iets bewaart); een template waarvan de varianten geen taal hebben, telt niet mee, omdat ZAC
-daar geen taal voor vraagt. Mislukt dat lezen, dan krijgt de beheerkaart de foutmelding die ook de lijst met templates
-krijgt. Het informatieobject in Open Zaak krijgt de gevraagde taal als ISO 639-2/B-code, zoals `eng`, en `dut` als ZAC
-om geen taal vroeg. ZAC slaat de gevraagde taal bij het document op. Zonder taal stuurt ZAC geen `attributes` en kiest
-Epistola de standaardvariant.
+automatische variantkeuze — nooit allebei. ZAC stuurt geen van beide: geen taal, geen kanaal en geen variant-id (B32).
+Epistola maakt dan de standaardvariant van het template. Dat geldt voor het genereren, de voorvertoning en een nieuwe
+versie, dus die geven dezelfde variant. Omdat ZAC niets vraagt, wijst het verzoek altijd één variant aan, en komt
+`409 Ambiguous Variant` niet voor: elk template werkt, altijd in zijn standaardvariant. De beheerder en de behandelaar
+kiezen geen taal en geen variant. Het informatieobject in Open Zaak krijgt de taal `dut` (Nederlands), zoals vóór
+#52; een nieuwe versie laat de taal van het informatieobject zoals ze was.
 
-**Een template met meer dan één variant in dezelfde taal** krijgt van Epistola `409 Ambiguous Variant`, want de taal
-alleen wijst dan geen variant aan. Voorbeelden zijn een besluitbrief met een Nederlandse variant voor post en een
-Nederlandse voor digitaal, en het template `zac-aanvullende-informatie`. De behandelaar ziet de algemene melding
-"Epistola kon het verzoek van ZAC niet verwerken." ([foutafhandeling](#foutafhandeling)). Tot 7 oktober brak ZAC die
-gelijkstand met een kanaal (`post` of `digitaal`): het kanaal uit de keuzelijst *Variant*, voorgesteld door het
-communicatiekanaal van de zaak, anders het kanaal van de standaardvariant in die taal, en bij een nieuwe versie het
-kanaal dat bij het document stond (#47, #53). Dat staat nu op de branch `explore/epistola-variant-picker` (B32). Zo'n
-template zet de beheerder per zaaktype uit in de beheerkaart. Een variant-id of andere attributen kiezen is het vervolg
-in #50.
+Tot 7 oktober vroeg ZAC om een taal, als attribuut `system.locale`: die van het zaaktype, die de beheerder in de
+beheerkaart koos (#51), en anders Nederlands waar het template dat had (#52). ZAC sloeg die taal bij het document op en
+gaf ze het informatieobject als ISO 639-2/B-code, zoals `eng`. Had een template meer dan één variant in die taal, dan
+koos ZAC eerst ook een kanaal (`post` of `digitaal`), uit de keuzelijst *Variant* (#47, #53); zonder die keuzelijst
+kreeg zo'n template `409 Ambiguous Variant`. Beide staan nu op de branch `explore/epistola-variant-picker` (B32). Een
+andere variant dan de standaardvariant kiezen, op taal, kanaal, id of attributen, is het vervolg in #50.
 
 Het verzoek draagt de catalogus (die van het zaaktype, en bij een nieuwe versie die van het document, #51),
 de templatevariabelen uit [§3](#3--datamapping) en
@@ -555,7 +538,6 @@ nagegaan.
 | Pollen mislukt, bijvoorbeeld een 503 of een verbroken verbinding | ZAC annuleert de job en geeft de fout door | "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." | TS-33 |
 | Job mislukt bij het renderen, om een andere reden | Er is niets opgeslagen. ZAC geeft Epistola's reden door | "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder." | TS-32 |
 | 400 bij het indienen | Een verzoek dat ZAC verkeerd opbouwt, bijvoorbeeld zonder `catalogId` | "Epistola kon het verzoek van ZAC niet verwerken. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
-| 409 bij het indienen | Een template met meer dan één variant in de gevraagde taal: Epistola kan geen variant kiezen (`Ambiguous Variant`, [§5](#verzoek)) | "Epistola kon het verzoek van ZAC niet verwerken. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
 | 401 / 403 | De API key is afgewezen, verlopen of ingetrokken, of mist een van de twee rollen | "ZAC heeft geen toegang tot Epistola. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
 | 404 op een template | Onbekend template of onbekende tenant — meestal een template dat uit de catalog is verdwenen nadat de dialoog de lijst las, of bij een nieuwe versie uit de catalog van het document (#51) | "Het gekozen template bestaat niet meer in Epistola. Neem contact op met de beheerder." | TS-34 |
 | 429 rate limited | Herhaalbaar na wachten | "Epistola krijgt op dit moment te veel verzoeken. Probeer het over een paar minuten opnieuw." | `EpistolaRequestFailedExceptionTest` |
@@ -634,14 +616,12 @@ Er zijn drie, elk voor iets anders:
   komt. Alleen wat de beheerder uitzet, is verborgen in *Document maken*. Het documenttype van het zaaktype blijft
   verplicht. Per template staat er alleen een rij (`zaaktype_epistola_template_settings`) als het een eigen documenttype
   heeft of uit staat. Uitzetten verbergt het template alleen in de keuzelijst: een nieuwe versie van een document dat er
-  al uit gemaakt is, blijft kunnen. Alleen de talen van de templates die aanstaan, bepalen welke talen de beheerder kan
-  kiezen, want uit een template dat uit staat wordt niets gemaakt.
-- ***De taal kiest het zaaktype, niet de behandelaar*** (#51). Eén taal voor alle templates van het zaaktype, in
-  de kaart naast de catalog, als kolom `epistola_locale` op `zaaktype_configuration`. De keuzelijst biedt alleen talen die
-  elk template van de catalog heeft dat aanstaat, zodat geen template van het zaaktype zonder de gekozen taal blijft; templates zonder talen
-  tellen niet mee. De beheerder mag ook geen taal kiezen, en dan geldt Nederlands waar het template dat heeft. Een
-  nieuwe versie houdt de taal van het document zolang het template die heeft. Een nieuwe versie van het zaaktype in ZAC
-  neemt de taal over, zoals de catalog, en ook de instellingen per template.
+  al uit gemaakt is, blijft kunnen.
+- ***De taal koos het zaaktype, niet de behandelaar*** (#51). Eén taal voor alle templates van het zaaktype, in
+  de kaart naast de catalog, als kolom `epistola_locale` op `zaaktype_configuration`. De keuzelijst bood alleen talen
+  die elk template van de catalog had dat aanstond, en zonder keuze gold Nederlands waar het template dat had. Sinds
+  7 oktober kiest niemand meer een taal: de keuzelijst en de kolom staan op de branch `explore/epistola-variant-picker`
+  (B32).
 - ***Document maken* heeft voor Epistola geen veld *Templategroep*.** Het veld *Template* biedt de templates van de
   catalog meteen, en kiest het enige zelf ([§1](#1--functioneel-ontwerp), stap 3). SmartDocuments houdt zijn groepveld
   en zijn eigen namen. De dialoog heeft daardoor niet meer bij beide providers dezelfde velden ([wireframes](wireframes.md)).
@@ -652,12 +632,15 @@ Er zijn drie, elk voor iets anders:
 
 ### Besloten op 7 oktober, door Symon
 
-- **De kanaal- en variantkeuze gaat uit `main`, naar de branch `explore/epistola-variant-picker`** (B32). Die branch
-  wordt niet gemerged. Weg zijn de keuzelijst *Variant* in *Document maken* (#47, #49, #53, #57), het endpoint
-  `…/varianten`, het veld `variant` in het verzoek voor genereren en voorbeeld, de vertaling van het communicatiekanaal
-  naar `post` of `digitaal`, de kolom `epistola_document.kanaal` en de lijst met varianten in de beheerkaart. ZAC vraagt
-  Epistola alleen nog om een taal ([§5](#verzoek)). Een template met meer dan één variant in dezelfde taal krijgt
-  daardoor `409 Ambiguous Variant`; de beheerder kan het per zaaktype uitzetten, en #50 is het vervolg.
+- **De kanaal-, taal- en variantkeuze gaat uit `main`, naar de branch `explore/epistola-variant-picker`** (B32). Die
+  branch wordt niet gemerged. Eerst ging de kanaalkeuze eruit: de keuzelijst *Variant* in *Document maken* (#47, #49,
+  #53, #57), het endpoint `…/varianten`, het veld `variant` in het verzoek voor genereren en voorbeeld, de vertaling van
+  het communicatiekanaal naar `post` of `digitaal`, de kolom `epistola_document.kanaal` en de lijst met varianten in de
+  beheerkaart. Daarna, dezelfde dag, ook de taalkeuze, want een taal is ook een variant: de keuzelijst *Taal* in de
+  beheerkaart en de kolom `zaaktype_configuration.epistola_locale` (#51), de talen in de accordeon, het attribuut
+  `system.locale` in het verzoek en de kolom `epistola_document.locale` (#52). ZAC vraagt Epistola nu om geen variant,
+  dus Epistola maakt altijd de standaardvariant van het template ([§5](#verzoek)), en `409 Ambiguous Variant` komt niet
+  meer voor. Het informatieobject krijgt weer `dut`. Een andere variant kiezen is het vervolg in #50.
 
 ### Beslist bij de bouw van #8, met Symon
 
@@ -674,8 +657,8 @@ Er zijn drie, elk voor iets anders:
   gebruiker kan wijzigen. Dit wijkt af van de formulering van 21 september dat ZAC geen documentregistratie bijhoudt.
   Er staat geen inhoud, titel, status of zaak in, alleen het informatieobject en het template ([datamodel](datamodel.md)).
   Een document zonder rij heeft geen actie. Of de tabel mag blijven, staat onder *Nog open*.
-  Er staat ook de taal in waar ZAC Epistola om vroeg (#52), zodat een nieuwe versie in dezelfde taal komt, en de
-  catalog van het template (#51). Tot 7 oktober stond er ook het kanaal in (#47); die kolom is met B32 vervallen.
+  Er staat ook de catalog van het template in (#51). Tot 7 oktober stonden er ook het kanaal (#47) en de taal (#52)
+  in waar ZAC Epistola om vroeg; die kolommen zijn met B32 vervallen.
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
   hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
 
@@ -691,10 +674,9 @@ Er zijn drie, elk voor iets anders:
   prototype in ZAC willen opnemen; voor het prototype zelf hoeft het niet beslist te worden (30 september).
 - **Dekt de bestaande BRP-doelbinding per zaaktype ook documentcreatie?** Een vraag voor de privacy officer. Niet
   blokkerend voor het prototype, niet beantwoord.
-- **Templates met meer dan één variant in dezelfde taal.** ZAC vraagt alleen om de taal, dus Epistola weigert zo'n
-  template met `409 Ambiguous Variant` ([§5](#verzoek)). Tot een oplossing kan de beheerder het uitzetten. Een
-  variant-id of andere attributen kiezen staat op #50; de kanaalkeuze van vóór B32 staat op
-  `explore/epistola-variant-picker`.
+- **Alleen de standaardvariant.** ZAC vraagt Epistola om geen variant, dus elk document is de standaardvariant van
+  zijn template ([§5](#verzoek)). Een andere variant kiezen, op taal, kanaal, id of attributen, staat op #50; de taal-
+  en kanaalkeuze van vóór B32 staan op `explore/epistola-variant-picker`.
 - **BPMN-zaken.** Epistola werkt alleen voor CMMN-zaken (DoD 2). Wat ondersteuning voor BPMN kost, staat als
   verbetervoorstel in #40.
 

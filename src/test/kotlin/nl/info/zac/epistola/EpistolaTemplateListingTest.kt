@@ -15,7 +15,6 @@ import io.mockk.verify
 import jakarta.ws.rs.ProcessingException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
-import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.createTemplateSummary
 import nl.info.zac.configuration.DocumentCreationProviderConfiguration
@@ -42,8 +41,6 @@ class EpistolaTemplateListingTest : BehaviorSpec({
     }
 
     context("listing the templates of a catalog") {
-        fun localesOf(vararg locales: String) = EpistolaLocales(locales = locales.toList())
-
         given("Epistola is the active provider and the catalog holds three templates") {
             givenActiveProvider(DocumentCreationProvider.EPISTOLA)
             every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
@@ -51,34 +48,26 @@ class EpistolaTemplateListingTest : BehaviorSpec({
                 createTemplateSummary(id = "fake-template-2", name = "Besluit evenementenvergunning"),
                 createTemplateSummary(id = "fake-template-3", name = "Ontvangstbevestiging")
             )
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-1") } returns
-                createGenerationTemplate(locales = localesOf("nl-NL", "en-GB"))
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-2") } returns
-                createGenerationTemplate(locales = localesOf("nl-NL"))
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-3") } returns
-                createGenerationTemplate()
 
             `when`("the templates are listed") {
                 val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
-                then("all three are returned, ordered by name ignoring case, with the languages Epistola gave them") {
+                then("all three are returned, ordered by name ignoring case, without reading each template") {
                     templates shouldBe listOf(
                         RestEpistolaTemplate(
                             id = "fake-template-2",
-                            name = "Besluit evenementenvergunning",
-                            locales = listOf("nl-NL")
+                            name = "Besluit evenementenvergunning"
                         ),
                         RestEpistolaTemplate(
                             id = "fake-template-3",
-                            name = "Ontvangstbevestiging",
-                            locales = emptyList()
+                            name = "Ontvangstbevestiging"
                         ),
                         RestEpistolaTemplate(
                             id = "fake-template-1",
-                            name = "verlenging beslistermijn",
-                            locales = listOf("en-GB", "nl-NL")
+                            name = "verlenging beslistermijn"
                         )
                     )
+                    verify(exactly = 0) { epistolaClientService.readGenerationTemplate(any(), any()) }
                 }
             }
         }
@@ -88,18 +77,15 @@ class EpistolaTemplateListingTest : BehaviorSpec({
             every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
                 createTemplateSummary(id = "fake-deprecated-id", slug = "fake-template-slug", name = "fakeName")
             )
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-slug") } returns
-                createGenerationTemplate(locales = localesOf("nl-NL"))
 
             `when`("the templates are listed") {
                 val templates = epistolaTemplatesService.listTemplates("fake-catalog")
 
-                then("the template is identified, and read, by its slug") {
+                then("the template is identified by its slug") {
                     templates shouldBe listOf(
                         RestEpistolaTemplate(
                             id = "fake-template-slug",
-                            name = "fakeName",
-                            locales = listOf("nl-NL")
+                            name = "fakeName"
                         )
                     )
                 }
@@ -111,8 +97,6 @@ class EpistolaTemplateListingTest : BehaviorSpec({
             every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
                 createTemplateSummary(id = "fake-template-id", slug = null, name = "fakeName")
             )
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-id") } returns
-                createGenerationTemplate()
 
             `when`("the templates are listed") {
                 val templates = epistolaTemplatesService.listTemplates("fake-catalog")
@@ -121,8 +105,7 @@ class EpistolaTemplateListingTest : BehaviorSpec({
                     templates shouldBe listOf(
                         RestEpistolaTemplate(
                             id = "fake-template-id",
-                            name = "fakeName",
-                            locales = emptyList()
+                            name = "fakeName"
                         )
                     )
                 }
@@ -138,63 +121,6 @@ class EpistolaTemplateListingTest : BehaviorSpec({
 
                 then("none are returned") {
                     templates.shouldBeEmpty()
-                }
-            }
-        }
-
-        given("an Epistola that stops answering after the listing") {
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
-                createTemplateSummary(id = "fake-template-1", name = "Eerste"),
-                createTemplateSummary(id = "fake-template-2", name = "Tweede"),
-                createTemplateSummary(id = "fake-template-3", name = "Derde")
-            )
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-3") } returns
-                createGenerationTemplate(locales = localesOf("nl-NL"))
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-1") } throws
-                EpistolaRequestFailedException(
-                    errorCode = ERROR_CODE_EPISTOLA_UNAVAILABLE,
-                    message = "fakeMessage",
-                    cause = ProcessingException("fakeCause")
-                )
-
-            `when`("the templates are listed") {
-                val templates = epistolaTemplatesService.listTemplates("fake-catalog")
-
-                then("every template is still listed by name, those not read have no details, and the rest are not asked for") {
-                    templates shouldBe listOf(
-                        RestEpistolaTemplate(
-                            id = "fake-template-3",
-                            name = "Derde",
-                            locales = listOf("nl-NL")
-                        ),
-                        RestEpistolaTemplate(id = "fake-template-1", name = "Eerste"),
-                        RestEpistolaTemplate(id = "fake-template-2", name = "Tweede")
-                    )
-                    verify(exactly = 0) { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-2") }
-                }
-            }
-        }
-
-        given("an Epistola that refuses ZAC access to a template") {
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { epistolaClientService.listTemplates("fake-catalog") } returns listOf(
-                createTemplateSummary(id = "fake-template-1")
-            )
-            every { epistolaClientService.readGenerationTemplate("fake-catalog", "fake-template-1") } throws
-                EpistolaRequestFailedException(
-                    errorCode = ERROR_CODE_EPISTOLA_ACCESS_DENIED,
-                    message = "fakeMessage",
-                    cause = ProcessingException("fakeCause")
-                )
-
-            `when`("the templates are listed") {
-                val epistolaRequestFailedException = shouldThrow<EpistolaRequestFailedException> {
-                    epistolaTemplatesService.listTemplates("fake-catalog")
-                }
-
-                then("the failure reaches the caller, as it says something the beheerder needs to see") {
-                    epistolaRequestFailedException.errorCode shouldBe ERROR_CODE_EPISTOLA_ACCESS_DENIED
                 }
             }
         }

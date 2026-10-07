@@ -7,7 +7,7 @@
 | Bouwt op | #14 ontwerp · #2 provider-abstractie |
 | Gaat naar | #20 verbetervoorstellen · #10 Confluence |
 | Basis | De fork op `aeb888cc2` |
-| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, met contract en client 1.4.0 van Epistola |
+| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, met contract en client 1.4.0 van Epistola. Op 7 oktober bijgewerkt: ZAC bewaart geen taal meer bij een document (B32) |
 
 Why the Epistola document creation integration is defensible against Common Ground, the AVG and ZAC's own security
 practice — and what would still have to change before it could carry real citizen data. [The improvement
@@ -38,15 +38,14 @@ Nothing about the case is cached for document creation. Every generation reads t
 or the KvK, and the task from Flowable — all at the moment the behandelaar presses the button. A stale document is
 therefore impossible by construction, not by cache invalidation.
 
-The datamodel in #14 confirms this from the other side: the integration adds four columns on
+The datamodel in #14 confirms this from the other side: the integration adds three columns on
 `zaaktype_configuration`, a table with the settings per template and the table `epistola_document`, and no table that
 holds zaakdata. The generated PDF is an `EnkelvoudigInformatieObject` in Open Zaak's Documenten API, linked through a
 `ZaakInformatieObject`; versioning is Open Zaak's `versie` field rather than ZAC state. ZAC stores the configuration,
 the registry stores the record.
 
 For a new version of a document (#9), ZAC remembers which template made each Epistola document, in the table
-`epistola_document`. It holds the informatieobject, the template and its catalog, and the language (#52) ZAC asked
-Epistola for, and no content, title, status or zaak, so the versions themselves are still Open Zaak's
+`epistola_document`. It holds the informatieobject, the template and its catalog, and no content, title, status or zaak, so the versions themselves are still Open Zaak's
 `versie` field. Whether ZAC may keep that table is for the stakeholders to decide if they take the prototype into ZAC.
 
 ### API-first

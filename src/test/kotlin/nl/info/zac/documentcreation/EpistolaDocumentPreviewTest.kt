@@ -21,8 +21,6 @@ import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
-import nl.info.client.epistola.model.EpistolaLocales
-import nl.info.client.epistola.model.createDutchAndEnglishLocales
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.util.extractUuid
 import nl.info.client.zgw.ztc.ZtcClientService
@@ -75,18 +73,15 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
 
     fun givenATemplateThatIsOffered(
         zaakUuid: UUID,
-        dataContract: Any? = TEMPLATE_SCHEMA,
-        locales: EpistolaLocales = EpistolaLocales(),
-        zaaktypeLocale: String? = null
+        dataContract: Any? = TEMPLATE_SCHEMA
     ) {
         every { epistolaTemplatesService.readCatalogOfferingTemplate(zaakUuid, any()) } returns
             OfferedEpistolaCatalog(
                 catalogId = FAKE_CATALOG_ID,
-                informatieObjectTypeUuid = UUID.randomUUID(),
-                locale = zaaktypeLocale
+                informatieObjectTypeUuid = UUID.randomUUID()
             )
         every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = dataContract, locales = locales)
+            EpistolaGenerationTemplate(dataContract = dataContract)
     }
 
     afterEach { checkUnnecessaryStub() }
@@ -131,7 +126,6 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                             data = any(),
                             fileName = any(),
                             correlationId = any(),
-                            locale = any(),
                             onJobStatus = any()
                         )
                     }
@@ -139,20 +133,19 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
             }
         }
 
-        given("a task, and a template with Dutch and English variants") {
+        given("a task of the zaak") {
             val loggedInUser = createLoggedInUser()
             val zaak = createZaak()
             every { loggedInUserInstance.get() } returns loggedInUser
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, "fakeTaskId") } returns createData()
 
-            `when`("a preview is made") {
-                givenATemplateThatIsOffered(zaakUuid = zaak.zaaktype.extractUuid(), locales = createDutchAndEnglishLocales())
+            `when`("a preview is made from the task") {
+                givenATemplateThatIsOffered(zaak.zaaktype.extractUuid())
                 every {
                     epistolaClientService.previewDocument(
                         catalogId = FAKE_CATALOG_ID,
                         templateId = FAKE_TEMPLATE_ID,
-                        data = any(),
-                        locale = "nl-NL"
+                        data = any()
                     )
                 } returns FAKE_PREVIEW
 
@@ -162,53 +155,12 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                     taskId = "fakeTaskId"
                 )
 
-                then("the task's data is read and the Dutch variant is previewed, as it would be generated") {
+                then("the task's data is read and previewed, as it would be generated") {
                     verify(exactly = 1) {
                         epistolaClientService.previewDocument(
                             catalogId = FAKE_CATALOG_ID,
                             templateId = FAKE_TEMPLATE_ID,
-                            data = any(),
-                            locale = "nl-NL"
-                        )
-                    }
-                }
-            }
-        }
-
-        given("a task, in a zaaktype set to English") {
-            val loggedInUser = createLoggedInUser()
-            val zaak = createZaak()
-            every { loggedInUserInstance.get() } returns loggedInUser
-            every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, "fakeTaskId") } returns createData()
-
-            `when`("a preview is made of a template with Dutch and English variants") {
-                givenATemplateThatIsOffered(
-                    zaakUuid = zaak.zaaktype.extractUuid(),
-                    locales = createDutchAndEnglishLocales(),
-                    zaaktypeLocale = "en-GB"
-                )
-                every {
-                    epistolaClientService.previewDocument(
-                        catalogId = FAKE_CATALOG_ID,
-                        templateId = FAKE_TEMPLATE_ID,
-                        data = any(),
-                        locale = "en-GB"
-                    )
-                } returns FAKE_PREVIEW
-
-                epistolaDocumentCreationService.previewDocument(
-                    zaak = zaak,
-                    templateId = FAKE_TEMPLATE_ID,
-                    taskId = "fakeTaskId"
-                )
-
-                then("the English variant is previewed, as it would be generated") {
-                    verify(exactly = 1) {
-                        epistolaClientService.previewDocument(
-                            catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            data = any(),
-                            locale = "en-GB"
+                            data = any()
                         )
                     }
                 }
@@ -232,8 +184,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                         epistolaClientService.previewDocument(
                             catalogId = any(),
                             templateId = any(),
-                            data = any(),
-                            locale = any()
+                            data = any()
                         )
                     }
                 }
@@ -258,8 +209,7 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                         epistolaClientService.previewDocument(
                             catalogId = any(),
                             templateId = any(),
-                            data = any(),
-                            locale = any()
+                            data = any()
                         )
                     }
                 }

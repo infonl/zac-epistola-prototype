@@ -31,12 +31,10 @@ import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
 import nl.info.client.epistola.model.createTemplate
-import nl.info.client.epistola.model.createVariantSummary
 import nl.info.zac.configuration.createEpistolaSettings
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE
@@ -543,7 +541,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             }
         }
 
-        given("a template that declares no schema and has no variants") {
+        given("a template that declares no schema") {
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate()
@@ -553,30 +551,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
                 then("it has no data contract, so the caller decides what an unrestricted template means") {
                     generationTemplate.dataContract shouldBe null
-                }
-
-                and("it has no languages") {
-                    generationTemplate.locales shouldBe EpistolaLocales()
-                }
-            }
-        }
-
-        given("a template whose variants are written in Dutch and in English, with an English default") {
-            every {
-                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
-            } returns createTemplate(
-                variants = listOf(
-                    createVariantSummary(id = "fake-dutch", attributes = mapOf("system.locale" to "nl-NL")),
-                    createVariantSummary(id = "fake-english", isDefault = true, attributes = mapOf("system.locale" to "en-GB")),
-                    createVariantSummary(id = "fake-no-attributes", attributes = null)
-                )
-            )
-
-            `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
-
-                then("it has both languages, with that of the default variant") {
-                    generationTemplate.locales shouldBe EpistolaLocales(locales = listOf("nl-NL", "en-GB"), defaultLocale = "en-GB")
                 }
             }
         }

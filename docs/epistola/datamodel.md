@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober. Alle Epistola-tabellen staan in `V102__epistola.sql` |
+| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober. Op 7 oktober zijn de kolommen voor de taal en het kanaal eruit gehaald (B32). Alle Epistola-tabellen staan in `V102__epistola.sql` |
 | Schema | ZAC PostgreSQL · `zaakafhandelcomponent` |
-| Raakt | #2, #3, #6, #9, #52, #51 |
+| Raakt | #2, #3, #6, #9, #51 |
 
-De zaaktypeconfiguratietabellen zoals ze er nu staan, en wat Epistola eraan toevoegt: vier kolommen op
+De zaaktypeconfiguratietabellen zoals ze er nu staan, en wat Epistola eraan toevoegt: drie kolommen op
 `zaaktype_configuration`, een tabel met de instellingen per template en de tabel `epistola_document` (#51).
 Epistola spiegelt de templatetabellen van SmartDocuments niet, want een zaaktype kiest een catalog en geen
 templates. De twee providers delen geen templatetabel, zodat een wijziging aan de één de ander niet kan
@@ -40,7 +40,6 @@ erDiagram
         boolean epistola_ingeschakeld "NIEUW"
         varchar epistola_catalog_id "NIEUW"
         uuid epistola_informatie_object_type_uuid "NIEUW"
-        varchar epistola_locale "NIEUW"
     }
     zaaktype_cmmn {
         bigint id PK,FK
@@ -70,7 +69,6 @@ erDiagram
     epistola_document {
         uuid informatieobject_uuid PK "NIEUW, geen FK"
         varchar template_id
-        varchar locale
         varchar catalog_id
     }
 ```
@@ -114,7 +112,6 @@ nieuwe versie van het zaaktype in ZAC neemt de rijen over.
 | `informatieobject_uuid` | uuid | nee | PK. Het informatieobject in Open Zaak dat met Epistola is gegenereerd. Geen FK: dat object staat in een ander systeem |
 | `template_id` | varchar | nee | Identificatie van het template waarmee het document is gegenereerd |
 | `aanmaakdatum` | timestamptz | nee | Wanneer het document is gegenereerd |
-| `locale` | varchar | ja | De taal waar ZAC Epistola om vroeg, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (#52). De kolom heet naar het attribuut. Leeg als ZAC om geen taal vroeg, omdat de varianten van het template geen taal hebben. Een nieuwe versie vraagt om de opgeslagen taal zolang het template die nog heeft. Is de kolom leeg terwijl het template nu wel talen heeft, of heeft het template de taal niet meer, dan vraagt ze om de taal die ZAC voor het template kiest: de taal van het zaaktype, `zaaktype_configuration.epistola_locale`, als het template die heeft, anders Nederlands als het template dat heeft, anders die van de standaardvariant. De behandelaar kiest geen taal. ZAC vraagt alleen om een taal: heeft een template in die taal meer dan één variant, dan weigert Epistola het verzoek (`409 Ambiguous Variant`, #50) |
 | `catalog_id` | varchar | ja | De catalog waaruit het template kwam (#51). Een nieuwe versie leest het template daaruit, ook als het zaaktype inmiddels een andere catalog heeft. Leeg betekent de catalog van `EPISTOLA_CATALOG_ID` |
 
 Er staat één rij per gegenereerd document, geschreven nadat het in Open Zaak staat. Een document zonder rij, omdat het
@@ -122,16 +119,21 @@ schrijven van de rij mislukte, heeft geen actie *Nieuwe versie genereren*. Een r
 dat later is verwijderd blijft staan. Dat doet geen kwaad, want ze wordt alleen gelezen met de UUID van een bestaand
 document.
 
-### `zaaktype_configuration` *(vier nieuwe kolommen)*
+### `zaaktype_configuration` *(drie nieuwe kolommen)*
 
 | Kolom | Type | Null | Toelichting |
 |---|---|---|---|
 | `epistola_ingeschakeld` | boolean | nee | Standaard `false`. Poort per zaaktype, spiegelt `smartdocuments_ingeschakeld`, dat sinds `V94` ook `NOT NULL DEFAULT FALSE` is |
 | `epistola_catalog_id` | varchar | ja | De catalog in Epistola waarvan het zaaktype elk template aanbiedt (#51). Zolang hij leeg is, geldt de catalog van `EPISTOLA_CATALOG_ID` |
 | `epistola_informatie_object_type_uuid` | uuid | ja | Het informatieobjecttype waaronder elk Epistola-document van het zaaktype in Open Zaak komt (#51). Zolang het leeg is, biedt het zaaktype geen Epistola-templates aan |
-| `epistola_locale` | varchar | ja | De taal waarin ZAC Epistola om elk document van het zaaktype vraagt, als BCP-47-tag van Epistola's attribuut `system.locale`, zoals `nl-NL` of `en-GB` (#51). De kolom heet naar het attribuut, zoals `epistola_document.locale`. De beheerder kiest de taal in de beheerkaart, uit de talen die elk template van de catalog heeft dat aanstaat. Zolang hij leeg is, vraagt ZAC om Nederlands waar het template dat heeft. Heeft een template de taal niet, dan geldt dezelfde terugval. De behandelaar kiest geen taal |
 
-Een nieuwe versie van een zaaktype neemt alle vier de kolommen over, zoals `epistola_ingeschakeld`.
+Een nieuwe versie van een zaaktype neemt alle drie de kolommen over, zoals `epistola_ingeschakeld`.
+
+Tot 7 oktober stond hier ook `epistola_locale`, de taal die de beheerder voor alle templates van het zaaktype koos (#51),
+en had `epistola_document` een kolom `locale` met de taal waar ZAC Epistola om vroeg (#52). ZAC vraagt Epistola nu om
+geen variant, dus Epistola maakt altijd de standaardvariant van het template, en er is geen taal meer om te bewaren. Beide
+kolommen zijn uit `V102` zelf gehaald, zoals eerder `epistola_document.kanaal` (B32), dus een lokale ZAC-database die de
+oude `V102` draaide, moet opnieuw worden aangemaakt. De taalkeuze staat op de branch `explore/epistola-variant-picker`.
 
 ## Ontwerpbesluiten
 
@@ -162,8 +164,8 @@ Gegenereerde PDF's worden in Open Zaak geregistreerd als `EnkelvoudigInformatieO
 Tot #9 bewaarde ZAC ook geen verwijzing. Een nieuwe versie genereren heeft die wel nodig: ZAC moet weten *dat* Epistola
 het document maakte, en met welk template. Open Zaak kent geen veld voor die herkomst, en `beschrijving` of `titel`
 ervoor gebruiken zou een tekstveld dat een gebruiker kan wijzigen tot bron van waarheid maken. Daarom onthoudt
-`epistola_document` per informatieobject alleen het template en de catalog ervan (#51), en de taal (#52) waar ZAC
-Epistola om vroeg. Tot 7 oktober bewaarde het ook het kanaal (#47); dat staat sinds B32 alleen op de branch
+`epistola_document` per informatieobject alleen het template en de catalog ervan (#51). Tot 7 oktober bewaarde het
+ook het kanaal (#47) en de taal (#52) waar ZAC Epistola om vroeg; die staan sinds B32 alleen op de branch
 `explore/epistola-variant-picker`. Het is geen documentregistratie: er staat geen inhoud,
 titel, status of zaak in, want die leest ZAC bij elke aanroep uit Open Zaak.
 
@@ -200,7 +202,7 @@ gebouwd **zonder kolom**: `EpistolaTemplatesService` onthoudt in het geheugen, p
 geslaagde lijst uit de catalogus. Is Epistola daarna niet bereikbaar (geen verbinding, of een 5xx), dan leest ZAC de
 mapping met die namen, zodat de dialoog de templates blijft tonen. *Document maken* toont dan de templates van de catalog
 van het zaaktype (#51). De beheerkaart leest de catalogs altijd live, en de templates van een catalog, als Epistola niet
-bereikbaar is, met de onthouden namen en zonder talen.
+bereikbaar is, met de onthouden namen.
 
 Waarom geen kolom: die zou bij het lezen moeten schrijven. De prijs is dat een herstart van ZAC het geheugen leegt. Is
 Epistola dan nog onbereikbaar, dan geldt de melding uit #8 zoals voorheen.
@@ -217,4 +219,4 @@ Datamodel voor het Epistola-prototype, afgeleid van de JPA-entiteiten in `nl.inf
 `nl.info.zac.smartdocuments.templates.model` op de examenfork. Bestaande structuren zijn tegen de code
 geverifieerd. De nieuwe structuren staan in `V102__epistola.sql`: de kolommen op `ZaaktypeConfiguration` en de
 entiteit `ZaaktypeEpistolaTemplateSettings` in `nl.info.zac.admin.model` (#3, #51), en de entiteit `EpistolaDocument` in
-`nl.info.zac.epistola.documents.model` (#9, #47, #52).
+`nl.info.zac.epistola.documents.model` (#9).

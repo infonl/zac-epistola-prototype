@@ -7,7 +7,7 @@
 | Opdrachtgever | Team Geneva · Hanneke van de Horst |
 | Periode | 9 september – 9 oktober 2026 |
 | Bronnen | Examenafspraken v5 (getekend) · projectbeschrijving *PRJ-Epistola integration in ZAC* |
-| Stand | Afgestemd met de stakeholders op 21 september 2026, met de feedback verwerkt. Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober |
+| Stand | Afgestemd met de stakeholders op 21 september 2026, met de feedback verwerkt. Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, en op 7 oktober naar B32 |
 
 What the client wants from the Epistola integration, what counts as done, what falls outside a user story, and in
 which order it gets built.
@@ -32,7 +32,7 @@ system. §5 records what that distinction costs.
 ### Afbakening
 
 **Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of the Epistola catalog whose
-templates the zaaktype offers, the language of its documents, and the document type they are stored under, with an own
+templates the zaaktype offers and the document type they are stored under, with an own
 type per template and the option to switch a template off (#51); generation, storage in Open Zaak and linking to the
 zaak; a new version of a generated document (the optional DoD 11, #9); the admin and behandelaar frontends;
 authorisation; error handling; test execution and knowledge transfer.
@@ -126,7 +126,7 @@ new one is missing.
 
 - Zaakdata is read from Open Zaak at generation time; no copy is kept in ZAC.
 - The generated PDF lives in the registry, not in ZAC's database. For a new version of a document (#9), ZAC remembers
-  which template made each Epistola document, with its catalog and the language ZAC asked for, in the table
+  which template made each Epistola document, with its catalog, in the table
   `epistola_document`. It holds no content, title, status or zaak; see the [datamodel](datamodel.md).
 - The integration is API-first and the provider is replaceable by configuration.
 
@@ -196,7 +196,9 @@ shown as steps ([PR #46](https://github.com/infonl/zac-epistola-prototype/pull/4
 chosen by kanaal ([PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49)). By decision B25 of 1 October they
 get no test case in [the test plan](testplan.md#versie); their evidence is the unit and integration tests and the live
 checks in their PRs. On 7 October (B32) #47 left `main` again: the variant by kanaal lives on, unmerged, on the branch
-`explore/epistola-variant-picker`.
+`explore/epistola-variant-picker`. The same day the language choice (#51, #52) followed it there, because a language
+is also a variant. ZAC now asks Epistola for no variant, so every document is the template's default variant; choosing
+another one is the follow-up #50.
 
 Board: the 22 planned issues (#2 to #23, 70 estimate points) across werkprocessen B1-K1-W1 through W5 and B1-K2-W1
 through W3, plus follow-up items, such as #30 and #31 from the overleg of 28 September and #35 to #40 from the
