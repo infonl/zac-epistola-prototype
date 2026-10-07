@@ -3,18 +3,32 @@
  * SPDX-License-Identifier: EUPL-1.2+
  */
 
+import { HttpErrorResponse } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { queryOptions } from "@tanstack/angular-query-experimental";
+import {
+  mutationOptions,
+  queryOptions,
+} from "@tanstack/angular-query-experimental";
 import { lastValueFrom, map, Observable } from "rxjs";
 import { UtilService } from "../core/service/util.service";
-import { DeleteBody, PostBody, PutBody } from "../shared/http/http-client";
+import { FoutAfhandelingService } from "../fout-afhandeling/fout-afhandeling.service";
+import {
+  DeleteBody,
+  HttpClient,
+  PathParameters,
+  PostBody,
+  PutBody,
+} from "../shared/http/http-client";
 import { mergeMutationOptions } from "../shared/http/merge-mutation-options";
+import { parseBlobError } from "../shared/http/parse-blob-error";
 import { SKIP_GLOBAL_ERROR_HANDLING } from "../shared/http/query-client";
 import { ZacHttpClient } from "../shared/http/zac-http-client";
 import { StaleTimes, ZacQueryClient } from "../shared/http/zac-query-client";
 import { GeneratedType } from "../shared/utils/generated-types";
 
 const EPISTOLA_STATUS_POLL_INTERVAL = 1000;
+const EPISTOLA_PREVIEW_PATH =
+  "/rest/document-creation/epistola/preview-document";
 
 @Injectable({
   providedIn: "root",
@@ -23,6 +37,8 @@ export class InformatieObjectenService {
   private basepath = "/rest/informatieobjecten";
   private readonly zacHttpClient = inject(ZacHttpClient);
   private readonly zacQueryClient = inject(ZacQueryClient);
+  private readonly httpClient = inject(HttpClient);
+  private readonly foutAfhandelingService = inject(FoutAfhandelingService);
   private readonly utilService = inject(UtilService);
 
   readEnkelvoudigInformatieobject(uuid: string) {
@@ -100,6 +116,37 @@ export class InformatieObjectenService {
     return this.zacQueryClient.POST(
       "/rest/document-creation/epistola/create-document",
     );
+  }
+
+  /**
+   * Epistola renders the preview at once and ZAC keeps nothing, so this changes no zaak. The mutation
+   * is only used for its pending state. Bypasses the {@link ZacQueryClient} because a failure of a
+   * request for a Blob must be parsed before the error handler can read the reason.
+   */
+  previewEpistolaDocumentMutation() {
+    return mutationOptions<
+      Blob,
+      HttpErrorResponse,
+      PostBody<typeof EPISTOLA_PREVIEW_PATH>,
+      void
+    >({
+      mutationKey: [EPISTOLA_PREVIEW_PATH],
+      mutationFn: async (body) => {
+        try {
+          return await lastValueFrom(
+            this.httpClient.POST(EPISTOLA_PREVIEW_PATH, body, {
+              responseType: "blob",
+            } as PathParameters<typeof EPISTOLA_PREVIEW_PATH, "post"> &
+              Record<string, unknown>) as unknown as Observable<Blob>,
+          );
+        } catch (error) {
+          throw error instanceof HttpErrorResponse
+            ? await parseBlobError(error)
+            : error;
+        }
+      },
+      onError: (error) => this.foutAfhandelingService.foutAfhandelen(error),
+    });
   }
 
   /**

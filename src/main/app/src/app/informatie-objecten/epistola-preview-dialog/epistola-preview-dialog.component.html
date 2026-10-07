@@ -1,0 +1,22 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<zac-generic-dialog
+  titleKey="epistola.voorbeeld.titel"
+  icon="visibility"
+  [uitleg]="'epistola.voorbeeld.hint' | translate"
+  (cancelled)="close()"
+>
+  <p>{{ data.templateName }}</p>
+  <object
+    type="application/pdf"
+    [data]="pdfUrl"
+    [title]="data.templateName"
+    width="100%"
+    height="600px"
+  >
+    <p>{{ "epistola.voorbeeld.niet-te-tonen" | translate }}</p>
+  </object>
+</zac-generic-dialog>
