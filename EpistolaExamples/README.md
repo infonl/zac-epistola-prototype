@@ -1,9 +1,9 @@
 # Epistola example templates
 
 Scripts that author ZAC's test templates in an Epistola catalog. Their variants carry the catalog attribute `kanaal`
-(`post`/`digitaal`) next to `system.locale`, which is what the kanaal/variant picker on this branch
-(`explore/epistola-variant-picker`) chooses by. ZAC's `main` asks Epistola only for a language (decision B32,
-7 October 2026), so a template here with two variants in one language gets `409 Ambiguous Variant` from `main`.
+(`post`/`digitaal`) next to `system.locale`, which is what the kanaal/variant picker and the language choice on this
+branch (`explore/epistola-variant-picker`) choose by. ZAC's `main` asks Epistola for no variant at all (decision B32,
+7 October 2026), so from `main` every template here renders its default variant.
 
 | Script | Template | Variants |
 |---|---|---|

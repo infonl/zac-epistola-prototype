@@ -1,14 +1,15 @@
-# Een variant kiezen op kanaal
+# Een variant kiezen op kanaal en taal
 
 | | |
 |---|---|
-| Soort | Verkenning. Gebouwd als extra buiten de Definition of Done (#47, [PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49); op 5 oktober hernoemd naar *Variant*, #53). Geen onderdeel van het testplan (B25) |
+| Soort | Verkenning. De variant per kanaal is gebouwd als extra buiten de Definition of Done (#47, [PR #49](https://github.com/infonl/zac-epistola-prototype/pull/49); op 5 oktober hernoemd naar *Variant*, #53), de taal na het overleg van 5 oktober (#52, B27; [PR #58](https://github.com/infonl/zac-epistola-prototype/pull/58), per zaaktype in [PR #59](https://github.com/infonl/zac-epistola-prototype/pull/59)). Geen onderdeel van het testplan (B25) |
 | Branch | `explore/epistola-variant-picker`. **Wordt niet in `main` gemerged** |
 | Stand | **7 oktober 2026.** Op `main` tot en met `83555f5ff`; daarna uit `main` gehaald (B32). Deze branch is `main` van dat moment |
 
 > **Waarom deze branch bestaat.** Het attribuut `kanaal` is niet van Epistola, niet van ZAC en niet van de
 > stakeholders: dit prototype heeft het op 1 oktober zelf bedacht om #47 te kunnen laten zien. Symon besloot op
-> 7 oktober (B32) dat het niet in `main` hoort. Hier blijft het staan, voor wie het later wil oppakken.
+> 7 oktober (B32) dat het niet in `main` hoort, en daarna dat ook de taal eruit gaat, omdat een taal net zo goed een
+> variant is. Hier blijft het allebei staan, voor wie het later wil oppakken.
 
 ## Wat er op deze branch wel is en op `main` niet
 
@@ -20,14 +21,18 @@
 - ZAC vraagt Epistola om `<catalog>.kanaal` naast `system.locale`, allebei verplicht. In één taal kiest het kanaal van
   de standaardvariant tussen twee varianten die anders gelijk zouden eindigen.
 - De kolom `epistola_document.kanaal`: een nieuwe versie vraagt om hetzelfde kanaal zolang het template dat nog heeft.
-- In de beheerkaart van het zaaktype toont een opengeklapt template ook zijn varianten: titel, *Standaard*, en per
-  variant de taal, het kanaal en andere attributen.
+- In de beheerkaart van het zaaktype toont een opengeklapt template ook zijn talen en zijn varianten: titel,
+  *Standaard*, en per variant de taal, het kanaal en andere attributen.
+- De taal: de beheerder kiest per zaaktype een taal (*Taal*, alleen talen die elk template van de catalog heeft; leeg
+  is Nederlands waar het template dat heeft). ZAC vraagt Epistola om `system.locale`, bewaart de taal bij het document
+  (`epistola_document.locale`) en registreert het informatieobject in die taal. Een nieuwe versie vraagt om dezelfde
+  taal zolang het template die nog heeft.
 
 ## Op `main`
 
-ZAC vraagt alleen om een taal (`system.locale`). Heeft een template in die taal meer dan één variant, dan antwoordt
-Epistola `409 Ambiguous Variant`; de beheerder zet zo'n template dan uit in de beheerkaart. Een variant kiezen op id of
-op andere attributen is #50.
+ZAC vraagt Epistola om geen enkele variant: Epistola maakt altijd de standaardvariant van het template, en het
+informatieobject wordt als Nederlands geregistreerd. Een andere variant kiezen, op taal, kanaal, id of andere
+attributen, is #50.
 
 ## Templates om het mee te proberen
 
