@@ -1,0 +1,452 @@
+{
+ "modelVersion": 1,
+ "root": "n-root",
+ "themeRef": {
+  "type": "inherit"
+ },
+ "nodes": {
+  "n-root": {
+   "id": "n-root",
+   "type": "root",
+   "slots": [
+    "s-root-children"
+   ],
+   "styles": null,
+   "stylePreset": null,
+   "props": null
+  },
+  "n-afzender": {
+   "id": "n-afzender",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "25px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Gemeente Deventer"
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.groep"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-geadresseerde": {
+   "id": "n-geadresseerde",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "25px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.naam"
+         }
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.straat"
+         }
+        },
+        {
+         "type": "text",
+         "text": " "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.huisnummer"
+         }
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.postcode"
+         }
+        },
+        {
+         "type": "text",
+         "text": "  "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.woonplaats"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-kenmerk": {
+   "id": "n-kenmerk",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "20px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Kenmerk: "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.identificatie"
+         }
+        },
+        {
+         "type": "text",
+         "text": "        Datum: "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.startdatum"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-onderwerp": {
+   "id": "n-onderwerp",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "20px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Betreft: "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.omschrijving"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-aanhef": {
+   "id": "n-aanhef",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "15px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Geachte "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "aanvrager.naam"
+         }
+        },
+        {
+         "type": "text",
+         "text": ","
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-body": {
+   "id": "n-body",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "15px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Wij hebben uw zaak van het type "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.zaaktype"
+         }
+        },
+        {
+         "type": "text",
+         "text": " in behandeling genomen. De huidige status is "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.status"
+         }
+        },
+        {
+         "type": "text",
+         "text": "."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.toelichting"
+         }
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Uw zaak wordt behandeld door "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.behandelaar"
+         }
+        },
+        {
+         "type": "text",
+         "text": ". Wij handelen uw zaak uiterlijk af op "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.uiterlijkeEinddatumAfdoening"
+         }
+        },
+        {
+         "type": "text",
+         "text": ". De geplande einddatum is "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.einddatumGepland"
+         }
+        },
+        {
+         "type": "text",
+         "text": "."
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Wij communiceren met u via "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.communicatiekanaal"
+         }
+        },
+        {
+         "type": "text",
+         "text": ". Deze zaak is geregistreerd met vertrouwelijkheidsaanduiding "
+        },
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "zaak.vertrouwelijkheidaanduiding"
+         }
+        },
+        {
+         "type": "text",
+         "text": "."
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  "n-slot": {
+   "id": "n-slot",
+   "type": "text",
+   "slots": [],
+   "styles": {
+    "marginBottom": "0px"
+   },
+   "stylePreset": null,
+   "props": {
+    "content": {
+     "type": "doc",
+     "content": [
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Met vriendelijke groet,"
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "expression",
+         "attrs": {
+          "isNew": false,
+          "expression": "gebruiker.naam"
+         }
+        }
+       ]
+      },
+      {
+       "type": "paragraph",
+       "content": [
+        {
+         "type": "text",
+         "text": "Gemeente Deventer"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  }
+ },
+ "slots": {
+  "s-root-children": {
+   "id": "s-root-children",
+   "nodeId": "n-root",
+   "name": "children",
+   "children": [
+    "n-afzender",
+    "n-geadresseerde",
+    "n-kenmerk",
+    "n-onderwerp",
+    "n-aanhef",
+    "n-body",
+    "n-slot"
+   ]
+  }
+ },
+ "pageSettingsOverride": {
+  "format": "A4",
+  "orientation": "portrait",
+  "margins": {
+   "top": 40,
+   "right": 40,
+   "bottom": 40,
+   "left": 40
+  },
+  "backgroundColor": null
+ },
+ "documentStylesOverride": {
+  "color": "#333333",
+  "fontSize": "10pt",
+  "fontFamily": "Helvetica",
+  "lineHeight": "1.5"
+ }
+}
