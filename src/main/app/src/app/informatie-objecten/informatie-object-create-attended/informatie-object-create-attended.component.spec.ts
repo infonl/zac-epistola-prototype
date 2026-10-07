@@ -223,6 +223,13 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     expect(screen.getByRole("option", { name: "Group One" })).toBeVisible();
   });
 
+  it("leaves the template group to the user when the zaaktype offers more than one", async () => {
+    await setup();
+
+    expect(field("sjabloonGroep")).toHaveValue("");
+    expect(field("sjabloon")).toBeDisabled();
+  });
+
   it("offers the templates of the chosen template group", async () => {
     await setup();
 
@@ -277,6 +284,14 @@ describe(InformatieObjectCreateAttendedComponent.name, () => {
     await setup();
 
     expect(field("auteur")).toHaveValue("fakeUserName1");
+  });
+
+  it("offers no preview of the document, which only Epistola can make", async () => {
+    await setup();
+
+    expect(
+      screen.queryByRole("button", { name: "actie.epistola.voorbeeld" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps the submit disabled until the form is filled in", async () => {

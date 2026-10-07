@@ -252,6 +252,23 @@ describe(EpistolaDocumentCreateComponent.name, () => {
     expect(field("auteur")).toBeDisabled();
   });
 
+  it("keeps Genereren disabled until a title is filled in", async () => {
+    await setupEpistola();
+    await choose("template", "Standaardbrief");
+    await sleep();
+    httpTestingController
+      .expectOne(EPISTOLA_VARIANTEN_URL)
+      .flush(withoutChoice);
+    await sleep();
+    fixture.detectChanges();
+
+    expect(generateButton()).toBeDisabled();
+
+    await user.type(field("titel"), "Ontvangstbevestiging aanvraag");
+
+    expect(generateButton()).toBeEnabled();
+  });
+
   it("generates the document, reports that it was added to the zaak, and opens no wizard", async () => {
     const windowOpen = jest.spyOn(window, "open").mockReturnValue(null);
     const invalidateQueries = jest.spyOn(testQueryClient, "invalidateQueries");
