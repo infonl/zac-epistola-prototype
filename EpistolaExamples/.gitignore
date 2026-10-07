@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 INFO.nl
+# SPDX-License-Identifier: EUPL-1.2+
+
+# What the scripts render, and the situation sketch they draw and cache
+*.pdf
+*.png
+__pycache__/
