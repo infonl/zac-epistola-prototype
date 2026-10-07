@@ -6,6 +6,7 @@
 package nl.info.zac.itest
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.kotest.core.annotation.Isolate
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import nl.info.zac.itest.client.ItestHttpClient
@@ -33,10 +34,11 @@ import nl.info.zac.itest.config.SMART_DOCUMENTS_ROOT_TEMPLATE_2_ID
 import nl.info.zac.itest.config.SMART_DOCUMENTS_ROOT_TEMPLATE_2_NAME
 import nl.info.zac.itest.config.SMART_DOCUMENTS_TEMPLATE_MAPPINGS
 import nl.info.zac.itest.util.shouldEqualJsonIgnoringOrder
-import java.net.HttpURLConnection.HTTP_BAD_REQUEST
+import java.net.HttpURLConnection.HTTP_INTERNAL_ERROR
 import java.net.HttpURLConnection.HTTP_NO_CONTENT
 import java.net.HttpURLConnection.HTTP_OK
 
+@Isolate
 class ZaaktypeCmmnConfigurationRestServiceSmartDocumentsTest : BehaviorSpec({
     val logger = KotlinLogging.logger {}
     val itestHttpClient = ItestHttpClient()
@@ -201,7 +203,7 @@ class ZaaktypeCmmnConfigurationRestServiceSmartDocumentsTest : BehaviorSpec({
                 val storeResponseBody = storeResponse.bodyAsString
                 logger.info { "Response: $storeResponseBody" }
 
-                storeResponse.code shouldBe HTTP_BAD_REQUEST
+                storeResponse.code shouldBe HTTP_INTERNAL_ERROR
                 storeResponseBody shouldBe """{"message":"msg.error.smartdocuments.not.configured"}"""
             }
         }

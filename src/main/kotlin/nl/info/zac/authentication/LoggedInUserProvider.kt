@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asContextElement
 import kotlinx.coroutines.launch
+import nl.info.client.pabc.ROLE_NAME_SYSTEEMROL_BEHANDELAAR_ALLE_ZAAKTYPEN
 import nl.info.zac.authentication.LoggedInUserProvider.Companion.FUNCTIONEEL_GEBRUIKER
 import nl.info.zac.authentication.LoggedInUserProvider.Companion.LOGGED_IN_USER_SESSION_ATTRIBUTE
 import java.io.Serial
@@ -46,13 +47,13 @@ class LoggedInUserProvider @Inject constructor(
          * Requests to these internal API calls are typically initiated from external systems or cron jobs.
          */
         val FUNCTIONEEL_GEBRUIKER = LoggedInUser(
-            "FG",
-            "",
-            "Functionele gebruiker",
-            "Functionele gebruiker",
-            null,
-            emptySet(),
-            emptySet()
+            id = "FG",
+            firstName = "",
+            lastName = "Functionele gebruiker",
+            displayName = "Functionele gebruiker",
+            email = null,
+            roles = emptySet(),
+            groupIds = emptySet()
         )
 
         /**
@@ -61,13 +62,14 @@ class LoggedInUserProvider @Inject constructor(
          * not fixed, so it is not named after one: the zaak records it in its toelichting instead.
          */
         val PRODUCTAANVRAAG_GEBRUIKER = LoggedInUser(
-            "PA",
-            "",
-            "Productaanvraag",
-            "Productaanvraag",
-            null,
-            emptySet(),
-            emptySet()
+            id = "PA",
+            firstName = "",
+            lastName = "Productaanvraag",
+            displayName = "Productaanvraag",
+            email = null,
+            roles = emptySet(),
+            groupIds = emptySet(),
+            overallRoles = setOf(ROLE_NAME_SYSTEEMROL_BEHANDELAAR_ALLE_ZAAKTYPEN),
         )
 
         val systemUser: ThreadLocal<Boolean> = ThreadLocal.withInitial { false }
@@ -108,7 +110,12 @@ class LoggedInUserProvider @Inject constructor(
     private fun fallBackToFunctioneelGebruiker(): LoggedInUser {
         val origin = fallbackOrigin()
         if (loggedFallbackOrigins.add(origin) && loggedFallbackOrigins.size <= MAX_LOGGED_FALLBACK_ORIGINS) {
-            LOG.warning { "No logged-in user in scope, using the functionele gebruiker. Called from: $origin" }
+            LOG.warning {
+                "No user specified, fell back to the functionele gebruiker. This fallback is deprecated. " +
+                    "Beheerders: no action needed, please report this to the ZAC developers. " +
+                    "Developers: wrap the background work that leads here in runAsSystemUser or runAsLoggedInUser. " +
+                    "Called from: $origin"
+            }
         }
         return FUNCTIONEEL_GEBRUIKER
     }

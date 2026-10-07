@@ -8,6 +8,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.kotest.assertions.json.shouldContainJsonKeyValue
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.assertions.nondeterministic.eventuallyConfig
+import io.kotest.core.annotation.Isolate
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.comparables.shouldBeGreaterThan
 import io.kotest.matchers.date.shouldBeBetween
@@ -24,6 +25,7 @@ import nl.info.zac.itest.config.ItestConfiguration.DATE_TIME_2024_01_31
 import nl.info.zac.itest.config.ItestConfiguration.VERTROUWELIJKHEIDAANDUIDING_OPENBAAR
 import nl.info.zac.itest.config.ItestConfiguration.OPEN_ZAAK_BASE_URI
 import nl.info.zac.itest.config.ItestConfiguration.OPEN_ZAAK_EXTERNAL_URI
+import nl.info.zac.itest.config.ItestConfiguration.ROLTYPE_NAME_BEHANDELAAR
 import nl.info.zac.itest.config.ItestConfiguration.START_DATE
 import nl.info.zac.itest.config.ItestConfiguration.TEST_TXT_FILE_NAME
 import nl.info.zac.itest.config.ItestConfiguration.TEXT_MEDIA_TYPE
@@ -46,6 +48,7 @@ import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+@Isolate
 class SignaleringRestServiceTest : BehaviorSpec({
     val logger = KotlinLogging.logger {}
     val itestHttpClient = ItestHttpClient()
@@ -62,10 +65,10 @@ class SignaleringRestServiceTest : BehaviorSpec({
     given("A logged-in behandelaar") {
         `when`("dashboard signaleringen are turned on for all signalering types") {
             val notificationBodies = arrayOf(
-                """{"dashboard":true,"mail":false,"subjecttype":"ZAAK","type":"ZAAK_DOCUMENT_TOEGEVOEGD"}""",
-                """{"dashboard":true,"mail":false,"subjecttype":"ZAAK","type":"ZAAK_OP_NAAM"}""",
-                """{"dashboard":true,"mail":false,"subjecttype":"ZAAK","type":"ZAAK_VERLOPEND"}""",
-                """{"dashboard":true,"mail":false,"subjecttype":"TAAK","type":"TAAK_OP_NAAM"}"""
+                """{"isDashboardEnabled":true,"isMailEnabled":false,"subjecttype":"ZAAK","type":"ZAAK_DOCUMENT_TOEGEVOEGD"}""",
+                """{"isDashboardEnabled":true,"isMailEnabled":false,"subjecttype":"ZAAK","type":"ZAAK_OP_NAAM"}""",
+                """{"isDashboardEnabled":true,"isMailEnabled":false,"subjecttype":"ZAAK","type":"ZAAK_VERLOPEND"}""",
+                """{"isDashboardEnabled":true,"isMailEnabled":false,"subjecttype":"TAAK","type":"TAAK_OP_NAAM"}"""
             )
             notificationBodies.forEach {
                 val response = itestHttpClient.performPutRequest(
@@ -109,9 +112,13 @@ class SignaleringRestServiceTest : BehaviorSpec({
         val responseBody = zaakRollenResponse.bodyAsString
         logger.info { "Response: $responseBody" }
         zaakRollenResponse.code shouldBe HTTP_OK
-        val zaakRollenUrl = JSONObject(responseBody)
-            .getJSONArray("results")
-            .getJSONObject(0)
+        val zaakRollen = JSONObject(responseBody).getJSONArray("results")
+        val zaakRollenUrl = (0 until zaakRollen.length())
+            .map(zaakRollen::getJSONObject)
+            .single {
+                it.getString("omschrijving") == ROLTYPE_NAME_BEHANDELAAR &&
+                    it.getString("betrokkeneType") == "medewerker"
+            }
             .getString("url")
             .replace(OPEN_ZAAK_EXTERNAL_URI, OPEN_ZAAK_BASE_URI)
         val now = ZonedDateTime.now(ZoneId.of("UTC"))
@@ -273,7 +280,7 @@ class SignaleringRestServiceTest : BehaviorSpec({
             val zaakInformatieObjectenResponse = itestHttpClient.performZgwApiGetRequest(
                 url = "$OPEN_ZAAK_EXTERNAL_URI/zaken/api/v1/zaakinformatieobjecten?zaak=$OPEN_ZAAK_EXTERNAL_URI/$zaakPath"
             )
-            var responseBody = zaakInformatieObjectenResponse.bodyAsString
+            val responseBody = zaakInformatieObjectenResponse.bodyAsString
             logger.info { "Response: $responseBody" }
             val now = ZonedDateTime.now(ZoneId.of("UTC"))
             zaakInformatieObjectenResponse.code shouldBe HTTP_OK

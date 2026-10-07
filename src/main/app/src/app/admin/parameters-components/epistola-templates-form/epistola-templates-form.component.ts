@@ -29,6 +29,7 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { injectQuery } from "@tanstack/angular-query-experimental";
+import { VertrouwelijkaanduidingToTranslationKeyPipe } from "src/app/shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
 import { epistolaVariantLabel } from "src/app/shared/utils/epistola-variant-label";
 import { GeneratedType } from "src/app/shared/utils/generated-types";
 import { EpistolaTemplatesService } from "../../epistola-templates.service";
@@ -53,6 +54,7 @@ type TemplateSettingsForm = FormGroup<{
     MatSelectModule,
     MatSlideToggleModule,
     TranslateModule,
+    VertrouwelijkaanduidingToTranslationKeyPipe,
   ],
 })
 export class EpistolaTemplatesFormComponent {

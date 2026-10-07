@@ -70,7 +70,7 @@ abstract class ZaaktypeConfiguration {
     var defaultBehandelaarId: String? = null
 
     @Column(name = "smartdocuments_ingeschakeld")
-    var smartDocumentsEnabled: Boolean = false
+    var isSmartDocumentsEnabled: Boolean = false
 
     @Column(name = "epistola_ingeschakeld")
     var isEpistolaEnabled: Boolean = false
@@ -95,6 +95,12 @@ abstract class ZaaktypeConfiguration {
 
     @Column(name = "niet_ontvankelijk_resultaattype_uuid")
     var nietOntvankelijkResultaattype: UUID? = null
+
+    @Column(name = "einddatum_gepland_waarschuwing")
+    var einddatumGeplandWaarschuwing: Int? = null
+
+    @Column(name = "uiterlijke_einddatum_afdoening_waarschuwing")
+    var uiterlijkeEinddatumAfdoeningWaarschuwing: Int? = null
 
     @OneToOne(
         mappedBy = "zaaktypeConfiguration",
@@ -130,6 +136,32 @@ abstract class ZaaktypeConfiguration {
     )
     var epistolaTemplateSettings: MutableSet<ZaaktypeEpistolaTemplateSettings> = mutableSetOf()
 
+    // The set is necessary for Hibernate when you have more than one eager collection on an entity.
+    @OneToMany(
+        mappedBy = "zaaktypeConfiguration",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.EAGER,
+        orphanRemoval = true
+    )
+    private var zaaktypeMailtemplateKoppelingen: MutableSet<ZaaktypeMailtemplateParameters>? = null
+
+    @OneToOne(
+        mappedBy = "zaaktypeConfiguration",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.EAGER,
+        orphanRemoval = true
+    )
+    var zaaktypeEmailParameters: ZaaktypeEmailParameters? = null
+
+    // The set is necessary for Hibernate when you have more than one eager collection on an entity.
+    @OneToMany(
+        mappedBy = "zaaktypeConfiguration",
+        cascade = [CascadeType.ALL],
+        fetch = FetchType.EAGER,
+        orphanRemoval = true
+    )
+    private var zaaktypeZaakafzenderParameters: MutableSet<ZaaktypeZaakafzenderParameters>? = null
+
     abstract fun getConfigurationType(): ZaaktypeConfigurationType
 
     fun readEpistolaTemplateSettings(): Map<String, EpistolaTemplateSetting> =
@@ -163,53 +195,6 @@ abstract class ZaaktypeConfiguration {
     fun getBrpParameters(): ZaaktypeBrpParameters =
         zaaktypeBrpParameters ?: ZaaktypeBrpParameters()
 
-    fun mapBetrokkeneKoppelingen(
-        previousZaaktypeConfiguration: ZaaktypeConfiguration,
-        newZaaktypeConfiguration: ZaaktypeConfiguration
-    ) = newZaaktypeConfiguration.apply {
-        zaaktypeBetrokkeneParameters = ZaaktypeBetrokkeneParameters().apply {
-            zaaktypeConfiguration = newZaaktypeConfiguration
-            brpKoppelen = previousZaaktypeConfiguration.zaaktypeBetrokkeneParameters?.brpKoppelen
-            kvkKoppelen = previousZaaktypeConfiguration.zaaktypeBetrokkeneParameters?.kvkKoppelen
-        }
-    }
-
-    fun mapBrpDoelbindingen(
-        previousZaaktypeConfiguration: ZaaktypeConfiguration,
-        newZaaktypeConfiguration: ZaaktypeConfiguration
-    ) = newZaaktypeConfiguration.apply {
-        zaaktypeBrpParameters = ZaaktypeBrpParameters().apply {
-            zaaktypeConfiguration = newZaaktypeConfiguration
-            zoekWaarde = previousZaaktypeConfiguration.zaaktypeBrpParameters?.zoekWaarde
-            raadpleegWaarde = previousZaaktypeConfiguration.zaaktypeBrpParameters?.raadpleegWaarde
-            verwerkingregisterWaarde = previousZaaktypeConfiguration.zaaktypeBrpParameters?.verwerkingregisterWaarde
-        }
-    }
-
-    fun mapCompletionParameters(
-        previousZaaktypeConfiguration: ZaaktypeConfiguration,
-        newZaaktypeConfiguration: ZaaktypeConfiguration
-    ) {
-        newZaaktypeConfiguration.apply {
-            zaaktypeCompletionParameters = mutableSetOf()
-            previousZaaktypeConfiguration.getZaakbeeindigParameters().forEach { previousParameter ->
-                val newParameter = ZaaktypeCompletionParameters().apply {
-                    id = previousParameter.id
-                    zaaktypeConfiguration = newZaaktypeConfiguration
-                    zaakbeeindigReden = previousParameter.zaakbeeindigReden
-
-                    resultaattype = previousParameter.resultaattype
-                }
-                // If the zaaktypeUuid has changed, this indicates the configuration is being copied.
-                // In that case, we need to reset the id to ensure a new entity is created
-                if (previousZaaktypeConfiguration.zaaktypeUuid != newZaaktypeConfiguration.zaaktypeUuid) {
-                    newParameter.id = null
-                }
-                zaaktypeCompletionParameters?.add(newParameter)
-            }
-        }
-    }
-
     @Suppress("TooGenericExceptionThrown")
     fun readZaakbeeindigParameter(zaakbeeindigRedenId: Long): ZaaktypeCompletionParameters =
         getZaakbeeindigParameters().firstOrNull {
@@ -219,7 +204,7 @@ abstract class ZaaktypeConfiguration {
         )
 
     fun getZaakbeeindigParameters(): Set<ZaaktypeCompletionParameters> =
-        zaaktypeCompletionParameters ?: emptySet()
+        zaaktypeCompletionParameters.orEmpty()
 
     fun setZaakbeeindigParameters(newZaaktypeCompletionParameters: Collection<ZaaktypeCompletionParameters>) {
         val completionParameters = zaaktypeCompletionParameters ?: mutableSetOf<ZaaktypeCompletionParameters>().also {
@@ -228,6 +213,32 @@ abstract class ZaaktypeConfiguration {
         val desiredParameters = newZaaktypeCompletionParameters.toHashSet()
         newZaaktypeCompletionParameters.forEach { setZaakbeeindigParameter(it) }
         completionParameters.removeIf { it !in desiredParameters }
+    }
+
+    fun getMailtemplateKoppelingen(): Set<ZaaktypeMailtemplateParameters> = zaaktypeMailtemplateKoppelingen.orEmpty()
+
+    fun setMailtemplateKoppelingen(desired: Collection<ZaaktypeMailtemplateParameters>) {
+        val mailtemplateKoppelingen = zaaktypeMailtemplateKoppelingen
+            ?: mutableSetOf<ZaaktypeMailtemplateParameters>().also { zaaktypeMailtemplateKoppelingen = it }
+        desired.forEach {
+            it.zaaktypeConfiguration = this
+            setComponent(mailtemplateKoppelingen, it)
+        }
+        mailtemplateKoppelingen.removeIf { existing -> isElementNotInCollection(desired, existing) }
+    }
+
+    fun getAutomaticEmailConfirmation(): ZaaktypeEmailParameters? = zaaktypeEmailParameters
+
+    fun getZaakAfzenders(): Set<ZaaktypeZaakafzenderParameters> = zaaktypeZaakafzenderParameters.orEmpty()
+
+    fun setZaakAfzenders(desired: Collection<ZaaktypeZaakafzenderParameters>) {
+        val zaakAfzenders = zaaktypeZaakafzenderParameters
+            ?: mutableSetOf<ZaaktypeZaakafzenderParameters>().also { zaaktypeZaakafzenderParameters = it }
+        desired.forEach {
+            it.zaaktypeConfiguration = this
+            setComponent(zaakAfzenders, it)
+        }
+        zaakAfzenders.removeIf { existing -> isElementNotInCollection(desired, existing) }
     }
 
     private fun setZaakbeeindigParameter(param: ZaaktypeCompletionParameters) {

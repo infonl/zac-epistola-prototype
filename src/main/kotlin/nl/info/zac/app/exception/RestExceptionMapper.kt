@@ -16,6 +16,7 @@ import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
 import net.atos.zac.flowable.cmmn.exception.FlowableZgwValidationErrorException
 import nl.info.client.bag.BagClientService
 import nl.info.client.brp.BrpClientService
+import nl.info.client.brp.exception.BrpTemporaryPersonIdNotCachedException
 import nl.info.client.klant.KlantClientService
 import nl.info.client.or.`object`.ObjectsClientService
 import nl.info.client.zgw.brc.BrcClientService
@@ -24,6 +25,7 @@ import nl.info.client.zgw.drc.DrcClientService
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.shared.exception.ZgwRuntimeException
 import nl.info.client.zgw.zrc.ZrcClientService
+import nl.info.client.zgw.zrc.exception.ZaakGeometrieNotSupportedException
 import nl.info.client.zgw.zrc.exception.ZrcRuntimeException
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.exception.ZtcRuntimeException
@@ -33,11 +35,13 @@ import nl.info.zac.exception.ErrorCode.ERROR_CODE_BAG_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_BETROKKENE_WAS_ALREADY_ADDED_TO_ZAAK
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_BRC_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_BRP_CLIENT
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_BRP_TEMPORARY_PERSON_ID_EXPIRED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_DRC_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_FORBIDDEN
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_KLANTINTERACTIES_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_OBJECTS_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_SERVER_GENERIC
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_ZAAK_GEOMETRIE_NOT_SUPPORTED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_ZRC_CLIENT
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_ZTC_CLIENT
 import nl.info.zac.exception.InputValidationFailedException
@@ -83,6 +87,12 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
     @Suppress("CyclomaticComplexMethod", "LongMethod")
     override fun toResponse(exception: Exception): Response =
         when (exception) {
+            is BrpTemporaryPersonIdNotCachedException -> generateResponse(
+                responseStatus = Response.Status.GONE,
+                errorCode = ERROR_CODE_BRP_TEMPORARY_PERSON_ID_EXPIRED,
+                exception = exception,
+                logLevel = Level.FINE
+            )
             is WebApplicationException if
             Response.Status.Family.familyOf(exception.response.status) != Response.Status.Family.SERVER_ERROR -> {
                 createResponse(exception)
@@ -96,6 +106,12 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
                 ) != Response.Status.Family.SERVER_ERROR -> {
                 createResponse(exception.cause as WebApplicationException)
             }
+            is ZaakGeometrieNotSupportedException -> generateResponse(
+                responseStatus = Response.Status.BAD_REQUEST,
+                errorCode = ERROR_CODE_ZAAK_GEOMETRIE_NOT_SUPPORTED,
+                exception = exception,
+                logLevel = Level.WARNING
+            )
             is ZgwRuntimeException -> handleZgwRuntimeException(exception)
             is ZgwValidationErrorException -> handleZgwValidationErrorException(exception)
             is FlowableZgwValidationErrorException -> handleZgwValidationErrorException(exception.cause)
@@ -224,21 +240,21 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
     private fun handleProcessingException(exception: Exception): Response =
         exception.stackTraceToString().let {
             when {
-                it.contains(BagClientService::class.simpleName!!) ->
+                it.contains(BagClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_BAG_CLIENT)
-                it.contains(BrcClientService::class.simpleName!!) ->
+                it.contains(BrcClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_BRC_CLIENT)
-                it.contains(BrpClientService::class.simpleName!!) ->
+                it.contains(BrpClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_BRP_CLIENT)
-                it.contains(DrcClientService::class.simpleName!!) ->
+                it.contains(DrcClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_DRC_CLIENT)
-                it.contains(ObjectsClientService::class.simpleName!!) ->
+                it.contains(ObjectsClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_OBJECTS_CLIENT)
-                it.contains(KlantClientService::class.simpleName!!) ->
+                it.contains(KlantClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_KLANTINTERACTIES_CLIENT)
-                it.contains(ZrcClientService::class.simpleName!!) ->
+                it.contains(ZrcClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_ZRC_CLIENT)
-                it.contains(ZtcClientService::class.simpleName!!) ->
+                it.contains(ZtcClientService::class.java.simpleName) ->
                     generateServerErrorResponse(exception = exception, errorCode = ERROR_CODE_ZTC_CLIENT)
                 else -> generateServerErrorResponse(exception)
             }
@@ -256,7 +272,16 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
         return Response.status(exception.response.status)
             .type(MediaType.APPLICATION_JSON)
             .entity(jsonErrorMessage)
-            .build()
+            .build().also {
+                log(
+                    logger = LOG,
+                    level = Level.FINE,
+                    message = exception.message ?: "Exception was thrown. Returning response with status: '${
+                        exception.response.status
+                    }'.",
+                    throwable = exception
+                )
+            }
     }
 
     private fun generateResponse(
@@ -269,7 +294,7 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
         .type(MediaType.APPLICATION_JSON)
         .entity(
             getJSONMessage(
-                errorMessage = errorCode?.value ?: "",
+                errorMessage = errorCode?.value.orEmpty(),
                 exceptionMessage = exceptionMessage
             )
         )
@@ -301,7 +326,12 @@ class RestExceptionMapper : ExceptionMapper<Exception> {
             exceptionMessage?.let { errorJsonHashMap["exception"] = it }
             ObjectMapper().writeValueAsString(errorJsonHashMap)
         } catch (jsonProcessingException: JsonProcessingException) {
-            log(LOG, Level.SEVERE, JSON_CONVERSION_ERROR_MESSAGE, jsonProcessingException)
+            log(
+                logger = LOG,
+                level = Level.SEVERE,
+                message = JSON_CONVERSION_ERROR_MESSAGE,
+                throwable = jsonProcessingException
+            )
             JSON_CONVERSION_ERROR_MESSAGE
         }
 }

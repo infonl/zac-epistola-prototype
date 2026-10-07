@@ -19,7 +19,8 @@ import nl.info.client.zgw.zrc.util.isHoofdzaak
 import nl.info.client.zgw.zrc.util.isOpen
 import nl.info.client.zgw.zrc.util.isOpgeschort
 import nl.info.client.zgw.zrc.util.isVerlengd
-import nl.info.client.zgw.zrc.util.isZaakspecifiekGeautoriseerd
+import nl.info.zac.search.ReindexSupportService
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.identity.model.Group
@@ -37,26 +38,29 @@ class ZaakZoekObjectConverter @Inject constructor(
     private val ztcClientService: ZtcClientService,
     private val zgwApiService: ZgwApiService,
     private val identityService: IdentityService,
-    private val flowableTaskService: FlowableTaskService
-) : AbstractZoekObjectConverter<ZaakZoekObject>() {
+    private val flowableTaskService: FlowableTaskService,
+    private val reindexSupportService: ReindexSupportService
+) : ZoekObjectConverter<ZaakZoekObject> {
 
     override fun convert(id: String): ZaakZoekObject =
-        convert(id, zrcClientService::isZaakspecifiekGeautoriseerd)
+        zrcClientService.readZaak(UUID.fromString(id)).let { zaak ->
+            convert(zaak) { reindexSupportService.zaakAutorisatieGegevens(zaak) }
+        }
 
     /**
-     * Converts [id], looking up the zaakspecifiek geautoriseerd flag through [isZaakspecifiekGeautoriseerd]
-     * instead of always calling [ZrcClientService.isZaakspecifiekGeautoriseerd] directly. Used by
-     * [nl.info.zac.search.IndexingService] to memoize that lookup per zaak UUID across the taken of one zaak.
+     * Converts [id], looking up the zaak-level data through [zaakAutorisatieGegevens] instead of always
+     * deriving it directly. Used by [nl.info.zac.search.IndexingService] to memoize that lookup per zaak
+     * UUID across the taken of one zaak.
      */
-    override fun convert(id: String, isZaakspecifiekGeautoriseerd: (UUID) -> Boolean): ZaakZoekObject {
+    override fun convert(id: String, zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens): ZaakZoekObject {
         val zaak = zrcClientService.readZaak(UUID.fromString(id))
-        return convert(zaak, isZaakspecifiekGeautoriseerd)
+        return convert(zaak, zaakAutorisatieGegevens)
     }
 
     override fun supports(objectType: ZoekObjectType) = objectType == ZoekObjectType.ZAAK
 
     @Suppress("LongMethod")
-    fun convert(zaak: Zaak, isZaakspecifiekGeautoriseerd: (UUID) -> Boolean): ZaakZoekObject {
+    fun convert(zaak: Zaak, zaakAutorisatieGegevens: (UUID) -> ZaakAutorisatieGegevens): ZaakZoekObject {
         val roles = zrcClientService.listRollen(zaak)
         val zaaktype = ztcClientService.readZaaktype(zaak.zaaktype)
         val zaakZoekObject = ZaakZoekObject(
@@ -67,7 +71,14 @@ class ZaakZoekObjectConverter @Inject constructor(
             zaaktypeOmschrijving = zaaktype.omschrijving,
             zaaktypeUuid = zaaktype.url.extractUuid().toString()
         ).apply {
-            this.isZaakspecifiekGeautoriseerd = isZaakspecifiekGeautoriseerd(zaak.uuid)
+            zaakAutorisatieGegevens(zaak.uuid).let { gegevens ->
+                this.isZaakspecifiekGeautoriseerd = gegevens.isZaakspecifiekGeautoriseerd
+                zaakGeautoriseerdeMedewerkers = if (gegevens.isZaakspecifiekGeautoriseerd) {
+                    gegevens.geautoriseerdeMedewerkers
+                } else {
+                    emptyList()
+                }
+            }
             omschrijving = zaak.omschrijving
             toelichting = zaak.toelichting
             registratiedatum = zaak.registratiedatum?.let(::convertToDate)
@@ -137,7 +148,7 @@ class ZaakZoekObjectConverter @Inject constructor(
             // In this case, we treat the rol as an empty 'orphaned' role and ignore it here.
             role.toBetrokkeneIdentification()?.run {
                 zaakZoekObject.addBetrokkene(
-                    rol = role.omschrijving.orEmpty(),
+                    rol = role.omschrijving,
                     identificatie = this.toSolrFormatting()
                 )
             }

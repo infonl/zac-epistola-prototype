@@ -16,6 +16,7 @@ import nl.info.zac.documentcreation.model.DocumentCreationProvider
 import java.time.Duration
 import java.util.Optional
 
+@Suppress("LongParameterList")
 private fun configuration(
     provider: String? = null,
     smartDocumentsEnabled: Boolean? = null,
@@ -34,6 +35,7 @@ private fun configuration(
     epistolaGenerationTimeoutSeconds = epistolaGenerationTimeoutSeconds
 )
 
+@Suppress("LongParameterList")
 private fun epistolaConfiguration(
     smartDocumentsEnabled: Boolean? = null,
     epistolaRestUrl: String? = "https://epistola.example.com",

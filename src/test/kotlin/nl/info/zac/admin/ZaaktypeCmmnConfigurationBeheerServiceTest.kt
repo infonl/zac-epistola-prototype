@@ -37,7 +37,11 @@ import nl.info.zac.epistola.model.EpistolaTemplateSetting
 import nl.info.zac.admin.model.ZaaktypeBetrokkeneParameters
 import nl.info.zac.admin.model.ZaaktypeCmmnConfiguration
 import nl.info.zac.admin.model.ZaaktypeConfiguration.Companion.ZAAKTYPE_UUID_VARIABLE_NAME
+import nl.info.zac.admin.model.createBetrokkeneKoppelingen
+import nl.info.zac.admin.model.createZaakbeeindigReden
+import nl.info.zac.admin.model.createZaaktypeBrpParameters
 import nl.info.zac.admin.model.createZaaktypeCmmnConfiguration
+import nl.info.zac.admin.model.createZaaktypeCompletionParameters
 import nl.info.zac.smartdocuments.SmartDocumentsTemplatesService
 import java.net.URI
 import java.time.ZonedDateTime
@@ -213,7 +217,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
 
         `when`("Publishing a new zaaktype") {
             val exception = shouldThrow<ZaaktypeConfigurationNotFoundException> {
-                zaaktypeCmmnConfigurationBeheerService.upsertZaaktypeCmmnConfiguration(zaakType)
+                zaaktypeCmmnConfigurationBeheerService.upsertConfiguration(zaakType)
             }
 
             then("exception is thrown") {
@@ -247,8 +251,8 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
         )
 
         val betrokkeneKoppelingen = ZaaktypeBetrokkeneParameters().apply {
-            brpKoppelen = true
-            kvkKoppelen = false
+            isBrpKoppelenEnabled = true
+            isKvkKoppelenEnabled = false
             zaaktypeConfiguration = originalZaaktypeCmmnConfiguration
         }
 
@@ -280,7 +284,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                 entityManager.merge(capture(slotPersistZaaktypeCmmnConfiguration))
             } answers { ZaaktypeCmmnConfiguration() }
 
-            zaaktypeCmmnConfigurationBeheerService.upsertZaaktypeCmmnConfiguration(zaakType)
+            zaaktypeCmmnConfigurationBeheerService.upsertConfiguration(zaakType)
 
             then("The related zaaktypeCmmnConfiguration is stored through the entity manager") {
                 slotPersistZaaktypeCmmnConfiguration.isCaptured shouldBe true
@@ -310,7 +314,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
 
             every { smartDocumentsTemplatesService.copySmartDocumentsTemplateMappings(any(), any()) } just runs
 
-            zaaktypeCmmnConfigurationBeheerService.upsertZaaktypeCmmnConfiguration(zaakType)
+            zaaktypeCmmnConfigurationBeheerService.upsertConfiguration(zaakType)
 
             then("The zaaktype simple values have been copied from the original") {
                 with(slotPersistZaaktypeCmmnConfiguration.captured) {
@@ -325,7 +329,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                     intakeMail shouldBe originalZaaktypeCmmnConfiguration.intakeMail
                     afrondenMail shouldBe originalZaaktypeCmmnConfiguration.afrondenMail
                     productaanvraagtype shouldBe originalZaaktypeCmmnConfiguration.productaanvraagtype
-                    smartDocumentsEnabled shouldBe originalZaaktypeCmmnConfiguration.smartDocumentsEnabled
+                    isSmartDocumentsEnabled shouldBe originalZaaktypeCmmnConfiguration.isSmartDocumentsEnabled
                 }
             }
 
@@ -338,7 +342,7 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                     new.zaaktypeCmmnConfiguration shouldNotBe original.zaaktypeCmmnConfiguration
                     new.zaaktypeCmmnConfiguration shouldBe slotPersistZaaktypeCmmnConfiguration.captured
                     new.groepID shouldNotBe original.groepID
-                    new.actief shouldBe original.actief
+                    new.isActief shouldBe original.isActief
                     new.doorlooptijd shouldBe original.doorlooptijd
                     new.getFormulierDefinitieID() shouldBe original.getFormulierDefinitieID()
                     new.doorlooptijd shouldBe original.doorlooptijd
@@ -378,8 +382,8 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                     it zip originalZaaktypeCmmnConfiguration.getMailtemplateKoppelingen()
                 }.forEach { (new, original) ->
                     new.id shouldBe null
-                    new.zaaktypeCmmnConfiguration shouldNotBe original.zaaktypeCmmnConfiguration
-                    new.zaaktypeCmmnConfiguration shouldBe slotPersistZaaktypeCmmnConfiguration.captured
+                    new.zaaktypeConfiguration shouldNotBe original.zaaktypeConfiguration
+                    new.zaaktypeConfiguration shouldBe slotPersistZaaktypeCmmnConfiguration.captured
                     new.mailTemplate shouldBe original.mailTemplate
                 }
             }
@@ -390,9 +394,9 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                     it zip originalZaaktypeCmmnConfiguration.getZaakAfzenders()
                 }.forEach { (new, original) ->
                     new.id shouldBe null
-                    new.zaaktypeCmmnConfiguration shouldNotBe original.zaaktypeCmmnConfiguration
-                    new.zaaktypeCmmnConfiguration shouldBe slotPersistZaaktypeCmmnConfiguration.captured
-                    new.defaultMail shouldBe original.defaultMail
+                    new.zaaktypeConfiguration shouldNotBe original.zaaktypeConfiguration
+                    new.zaaktypeConfiguration shouldBe slotPersistZaaktypeCmmnConfiguration.captured
+                    new.isDefaultMail shouldBe original.isDefaultMail
                     new.mail shouldBe original.mail
                     new.replyTo shouldBe original.replyTo
                 }
@@ -400,8 +404,8 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
 
             and("The betrokkene koppelingen should get copied") {
                 slotPersistZaaktypeCmmnConfiguration.captured.getBetrokkeneParameters().let {
-                    it.brpKoppelen shouldBe originalZaaktypeCmmnConfiguration.getBetrokkeneParameters().brpKoppelen
-                    it.kvkKoppelen shouldBe originalZaaktypeCmmnConfiguration.getBetrokkeneParameters().kvkKoppelen
+                    it.isBrpKoppelenEnabled shouldBe originalZaaktypeCmmnConfiguration.getBetrokkeneParameters().isBrpKoppelenEnabled
+                    it.isKvkKoppelenEnabled shouldBe originalZaaktypeCmmnConfiguration.getBetrokkeneParameters().isKvkKoppelenEnabled
                 }
             }
 
@@ -456,11 +460,163 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
             }
 
             and("The automatic email confirmation should be copied") {
-                slotPersistZaaktypeCmmnConfiguration.captured.zaaktypeCmmnEmailParameters.let {
-                    it?.enabled shouldBe originalZaaktypeCmmnConfiguration.zaaktypeCmmnEmailParameters?.enabled
-                    it?.templateName shouldBe originalZaaktypeCmmnConfiguration.zaaktypeCmmnEmailParameters?.templateName
-                    it?.emailSender shouldBe originalZaaktypeCmmnConfiguration.zaaktypeCmmnEmailParameters?.emailSender
-                    it?.emailReply shouldBe originalZaaktypeCmmnConfiguration.zaaktypeCmmnEmailParameters?.emailReply
+                slotPersistZaaktypeCmmnConfiguration.captured.zaaktypeEmailParameters.let {
+                    it?.isEnabled shouldBe originalZaaktypeCmmnConfiguration.zaaktypeEmailParameters?.isEnabled
+                    it?.templateName shouldBe originalZaaktypeCmmnConfiguration.zaaktypeEmailParameters?.templateName
+                    it?.emailSender shouldBe originalZaaktypeCmmnConfiguration.zaaktypeEmailParameters?.emailSender
+                    it?.emailReply shouldBe originalZaaktypeCmmnConfiguration.zaaktypeEmailParameters?.emailReply
+                }
+            }
+        }
+    }
+
+    context("upserting the configuration for a zaaktype") {
+        fun resultaattypeUri() = URI("https://example.com/resultaattype/${UUID.randomUUID()}")
+
+        given("a configuration for a previous version of the zaaktype whose resultaattypen are not the first ones of the new version") {
+            val previousToegekendResultaattypeUuid = UUID.randomUUID()
+            val previousNietOntvankelijkResultaattypeUuid = UUID.randomUUID()
+            val previousVervallenResultaattypeUuid = UUID.randomUUID()
+            val newVerlengdResultaattypeUri = resultaattypeUri()
+            val newToegekendResultaattypeUri = resultaattypeUri()
+            val newNietOntvankelijkResultaattypeUri = resultaattypeUri()
+            val zaakType = createZaakType(
+                resultTypes = listOf(
+                    newVerlengdResultaattypeUri,
+                    newToegekendResultaattypeUri,
+                    newNietOntvankelijkResultaattypeUri
+                )
+            )
+            val previousConfiguration = createZaaktypeCmmnConfiguration(
+                zaaktypeBrpParameters = createZaaktypeBrpParameters(raadpleegWaarde = "fakeRaadpleegWaarde"),
+                zaaktypeBetrokkeneParameters = createBetrokkeneKoppelingen(brpKoppelen = false),
+                nietOntvankelijkResultaattype = previousNietOntvankelijkResultaattypeUuid,
+                zaaktypeCompletionParameters = setOf(
+                    createZaaktypeCompletionParameters(
+                        zaakbeeindigReden = createZaakbeeindigReden(name = "fakeZaakbeeindigReden"),
+                        resultaattype = previousToegekendResultaattypeUuid
+                    ),
+                    createZaaktypeCompletionParameters(
+                        id = 5678L,
+                        zaakbeeindigReden = createZaakbeeindigReden(id = 5678L, name = "fakeVervallenReden"),
+                        resultaattype = previousVervallenResultaattypeUuid
+                    )
+                ),
+                groupId = "fakeGroupId",
+                defaultBehandelaarId = "fakeDefaultBehandelaarId",
+                smartDocumentsEnabled = true,
+                productaanvraagtype = "fakeProductaanvraagtype"
+            )
+
+            every { zaaktypeCmmnConfigurationService.clearListCache() } returns "Cache cleared"
+            every { zaaktypeCmmnConfigurationService.cacheRemoveZaaktypeCmmnConfiguration(any()) } just runs
+            every { smartDocumentsTemplatesService.copySmartDocumentsTemplateMappings(any(), any()) } just runs
+            every { ztcClientService.readResultaattype(newVerlengdResultaattypeUri) } returns
+                createResultaatType(url = newVerlengdResultaattypeUri, omschrijving = "Verlengd")
+            every { ztcClientService.readResultaattype(newToegekendResultaattypeUri) } returns
+                createResultaatType(url = newToegekendResultaattypeUri, omschrijving = "Toegekend")
+            every { ztcClientService.readResultaattype(newNietOntvankelijkResultaattypeUri) } returns
+                createResultaatType(url = newNietOntvankelijkResultaattypeUri, omschrijving = "Niet ontvankelijk")
+            every { ztcClientService.readResultaattype(previousToegekendResultaattypeUuid) } returns
+                createResultaatType(omschrijving = "Toegekend")
+            every { ztcClientService.readResultaattype(previousNietOntvankelijkResultaattypeUuid) } returns
+                createResultaatType(omschrijving = "Niet ontvankelijk")
+            every { ztcClientService.readResultaattype(previousVervallenResultaattypeUuid) } returns
+                createResultaatType(omschrijving = "Vervallen in de nieuwe versie")
+
+            val criteriaQuery = mockk<CriteriaQuery<ZaaktypeCmmnConfiguration>>(relaxed = true)
+            every { entityManager.criteriaBuilder } returns mockk(relaxed = true) {
+                every { createQuery(ZaaktypeCmmnConfiguration::class.java) } returns criteriaQuery
+            }
+            every { entityManager.createQuery(criteriaQuery) } returns mockk {
+                every { setMaxResults(1) } returns this
+                every { resultList } returns emptyList() andThen listOf(previousConfiguration)
+            }
+            val configurationSlot = slot<ZaaktypeCmmnConfiguration>()
+            every { entityManager.persist(capture(configurationSlot)) } just runs
+
+            `when`("upserting the configuration") {
+                zaaktypeCmmnConfigurationBeheerService.upsertConfiguration(zaakType)
+
+                then("the resultaattypen are matched by omschrijving onto those of the new zaaktype") {
+                    with(configurationSlot.captured) {
+                        zaaktypeUuid shouldBe zaakType.url.extractUuid()
+                        nietOntvankelijkResultaattype shouldBe newNietOntvankelijkResultaattypeUri.extractUuid()
+                        getZaakbeeindigParameters().map { it.resultaattype } shouldBe
+                            listOf(newToegekendResultaattypeUri.extractUuid())
+                    }
+                }
+
+                and("the configuration data shared with BPMN configurations is copied") {
+                    with(configurationSlot.captured) {
+                        groepID shouldBe "fakeGroupId"
+                        defaultBehandelaarId shouldBe "fakeDefaultBehandelaarId"
+                        isSmartDocumentsEnabled shouldBe true
+                        productaanvraagtype shouldBe "fakeProductaanvraagtype"
+                        zaaktypeOmschrijving shouldBe zaakType.omschrijving
+                        with(zaaktypeBetrokkeneParameters!!) {
+                            isKvkKoppelenEnabled shouldBe true
+                            isBrpKoppelenEnabled shouldBe false
+                        }
+                        zaaktypeBrpParameters!!.raadpleegWaarde shouldBe "fakeRaadpleegWaarde"
+                    }
+                }
+
+                and("the SmartDocuments template mappings are copied onto the new zaaktype version") {
+                    verify(exactly = 1) {
+                        smartDocumentsTemplatesService.copySmartDocumentsTemplateMappings(
+                            previousConfiguration.zaaktypeUuid,
+                            zaakType.url.extractUuid()
+                        )
+                    }
+                }
+            }
+        }
+
+        given("an existing configuration for the zaaktype itself") {
+            val previousToegekendResultaattypeUuid = UUID.randomUUID()
+            val newToegekendResultaattypeUri = resultaattypeUri()
+            val zaakType = createZaakType(resultTypes = listOf(newToegekendResultaattypeUri))
+            val existingConfiguration = createZaaktypeCmmnConfiguration(
+                zaaktypeUUID = zaakType.url.extractUuid(),
+                nietOntvankelijkResultaattype = previousToegekendResultaattypeUuid,
+                groupId = "fakeGroupId"
+            )
+
+            every { zaaktypeCmmnConfigurationService.clearListCache() } returns "Cache cleared"
+            every { zaaktypeCmmnConfigurationService.cacheRemoveZaaktypeCmmnConfiguration(any()) } just runs
+            every { ztcClientService.readResultaattype(newToegekendResultaattypeUri) } returns
+                createResultaatType(url = newToegekendResultaattypeUri, omschrijving = "Toegekend")
+            every { ztcClientService.readResultaattype(previousToegekendResultaattypeUuid) } returns
+                createResultaatType(omschrijving = "Toegekend")
+
+            val criteriaQuery = mockk<CriteriaQuery<ZaaktypeCmmnConfiguration>>(relaxed = true)
+            every { entityManager.criteriaBuilder } returns mockk(relaxed = true) {
+                every { createQuery(ZaaktypeCmmnConfiguration::class.java) } returns criteriaQuery
+            }
+            every { entityManager.createQuery(criteriaQuery) } returns mockk {
+                every { setMaxResults(1) } returns this
+                every { resultList } returns listOf(existingConfiguration)
+            }
+            val configurationSlot = slot<ZaaktypeCmmnConfiguration>()
+            every { entityManager.merge(capture(configurationSlot)) } returns existingConfiguration
+
+            `when`("upserting the configuration") {
+                zaaktypeCmmnConfigurationBeheerService.upsertConfiguration(zaakType)
+
+                then("its resultaattypen are remapped in place instead of a copy being made") {
+                    configurationSlot.captured shouldBe existingConfiguration
+                    existingConfiguration.nietOntvankelijkResultaattype shouldBe
+                        newToegekendResultaattypeUri.extractUuid()
+                }
+
+                and("no SmartDocuments template mappings are copied") {
+                    verify(exactly = 0) {
+                        smartDocumentsTemplatesService.copySmartDocumentsTemplateMappings(
+                            any(),
+                            zaakType.url.extractUuid()
+                        )
+                    }
                 }
             }
         }

@@ -43,7 +43,7 @@ import { UtilService } from "../../core/service/util.service";
 import { GebruikersvoorkeurenService } from "../../gebruikersvoorkeuren/gebruikersvoorkeuren.service";
 import { ZoekFilters } from "../../gebruikersvoorkeuren/zoekopdracht/zoekfilters.model";
 import { ZoekopdrachtComponent } from "../../gebruikersvoorkeuren/zoekopdracht/zoekopdracht.component";
-import { InformatieObjectenModule } from "../../informatie-objecten/informatie-objecten.module";
+import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectenService } from "../../informatie-objecten/informatie-objecten.service";
 import {
   ConfirmDialogComponent,
@@ -52,6 +52,7 @@ import {
 import { WerklijstComponent } from "../../shared/dynamic-table/datasource/werklijst-component";
 import { PutBody } from "../../shared/http/http-client";
 import { injectMutation } from "../../shared/http/inject-mutation";
+import { runQuery } from "../../shared/http/run-query";
 import { DatumPipe } from "../../shared/pipes/datum.pipe";
 import { ReadMoreComponent } from "../../shared/read-more/read-more.component";
 import {
@@ -95,7 +96,7 @@ import { InboxDocumentenService } from "../inbox-documenten.service";
     ReadMoreComponent,
     ZoekopdrachtComponent,
     DatumPipe,
-    InformatieObjectenModule,
+    InformatieObjectLinkComponent,
   ],
 })
 export class InboxDocumentenListComponent
@@ -156,7 +157,7 @@ export class InboxDocumentenListComponent
 
   ngOnInit() {
     super.ngOnInit();
-    this.utilService.setTitle("title.documenten.inboxDocumenten");
+    this.utilService.setTitle("title.documenten.inbox-documenten");
     this.listParameters = SessionStorageUtil.getItem(
       "INBOX_DOCUMENTEN_ZOEKPARAMETERS" satisfies WerklijstZoekParameter,
       this.createDefaultParameters(),
@@ -172,10 +173,13 @@ export class InboxDocumentenListComponent
           this.isLoadingResults = true;
           this.utilService.setLoading(true);
           this.updateListParameters();
-          return this.inboxDocumentenService.list({
-            ...this.listParametersSort,
-            ...this.listParameters,
-          });
+          return runQuery(
+            this.queryClient,
+            this.inboxDocumentenService.list({
+              ...this.listParametersSort,
+              ...this.listParameters,
+            }),
+          );
         }),
         map((data) => {
           this.isLoadingResults = false;

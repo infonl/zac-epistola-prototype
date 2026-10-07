@@ -47,8 +47,8 @@ class ConfigurationRestServiceTest : BehaviorSpec({
     }
 
     given("Multiple languages are available") {
-        val taal1 = createTaal(1L, "nl", "Nederlands", "Dutch", "nl_NL")
-        val taal2 = createTaal(2L, "en", "Engels", "English", "en_US")
+        val taal1 = createTaal(id = 1L, code = "nl", naam = "Nederlands", name = "Dutch", local = "nl_NL")
+        val taal2 = createTaal(id = 2L, code = "en", naam = "Engels", name = "English", local = "en_US")
         val talen = listOf(taal1, taal2)
 
         every { configurationService.listTalen() } returns talen
@@ -85,7 +85,7 @@ class ConfigurationRestServiceTest : BehaviorSpec({
     }
 
     given("A default language is available") {
-        val defaultTaal = createTaal(1L, "nl", "Nederlands", "Dutch", "nl_NL")
+        val defaultTaal = createTaal(id = 1L, code = "nl", naam = "Nederlands", name = "Dutch", local = "nl_NL")
         every { configurationService.findDefaultTaal() } returns defaultTaal
 
         `when`("readDefaultTaal is called") {
@@ -172,10 +172,10 @@ class ConfigurationRestServiceTest : BehaviorSpec({
         every { configurationService.readBrpConfiguration() } returns brpConfiguration
 
         `when`("readBrpDoelbindingSetupEnabled is called") {
-            val result = configurationRestService.readBrpDoelbindingSetupEnabled()
+            val isBrpDoelbindingSetupEnabled = configurationRestService.readBrpDoelbindingSetupEnabled()
 
             then("it should return true") {
-                result shouldBe true
+                isBrpDoelbindingSetupEnabled shouldBe true
             }
         }
     }
@@ -186,10 +186,10 @@ class ConfigurationRestServiceTest : BehaviorSpec({
         every { configurationService.readBrpConfiguration() } returns brpConfiguration
 
         `when`("readBrpDoelbindingSetupEnabled is called") {
-            val result = configurationRestService.readBrpDoelbindingSetupEnabled()
+            val isBrpDoelbindingSetupEnabled = configurationRestService.readBrpDoelbindingSetupEnabled()
 
             then("it should return false") {
-                result shouldBe false
+                isBrpDoelbindingSetupEnabled shouldBe false
             }
         }
     }

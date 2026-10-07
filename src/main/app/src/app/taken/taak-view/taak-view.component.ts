@@ -2,16 +2,16 @@
  * SPDX-FileCopyrightText: 2021 - 2022 Atos, 2024 Dimpact, 2024 INFO.nl
  * SPDX-License-Identifier: EUPL-1.2+
  */
-
 import { CommonModule } from "@angular/common";
 import {
   ChangeDetectorRef,
   Component,
-  computed,
   OnDestroy,
   OnInit,
-  signal,
   ViewChild,
+  computed,
+  inject,
+  signal,
 } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -20,6 +20,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import {
+  MatDrawer,
   MatSidenav,
   MatSidenavContainer,
   MatSidenavModule,
@@ -31,8 +32,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute } from "@angular/router";
 import { FormioForm } from "@formio/angular";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
-import { injectQuery } from "@tanstack/angular-query-experimental";
-import { lastValueFrom } from "rxjs";
+import { QueryClient, injectQuery } from "@tanstack/angular-query-experimental";
 import { ZaakDocumentenComponent } from "src/app/zaken/zaak-documenten/zaak-documenten.component";
 import { UtilService } from "../../core/service/util.service";
 import { ObjectType } from "../../core/websocket/model/object-type";
@@ -52,8 +52,8 @@ import {
 } from "../../formulieren/taken/taak.utils";
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { IdentityService } from "../../identity/identity.service";
-import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
 import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
+import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
 import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectenService } from "../../informatie-objecten/informatie-objecten.service";
 import { ActionsViewComponent } from "../../shared/abstract-view/actions-view-component";
@@ -67,6 +67,8 @@ import { PatchBody, PutBody } from "../../shared/http/http-client";
 import { injectMutation } from "../../shared/http/inject-mutation";
 import { DatumPipe } from "../../shared/pipes/datum.pipe";
 import { EmptyPipe } from "../../shared/pipes/empty.pipe";
+import { I18nKeyPipe } from "../../shared/pipes/i18n-key.pipe";
+import { I18nLabelPipe } from "../../shared/pipes/i18n-label.pipe";
 import { MimetypeToExtensionPipe } from "../../shared/pipes/mimetypeToExtension.pipe";
 import { ReadMoreComponent } from "../../shared/read-more/read-more.component";
 import { ButtonMenuItem } from "../../shared/side-nav/menu-item/button-menu-item";
@@ -101,6 +103,8 @@ import { FormioSetupService } from "./formio/formio-setup-service";
     TranslateModule,
     DatumPipe,
     EmptyPipe,
+    I18nKeyPipe,
+    I18nLabelPipe,
     MimetypeToExtensionPipe,
     FormioWrapperComponent,
     InformatieObjectAddComponent,
@@ -119,7 +123,7 @@ export class TaakViewComponent
   extends ActionsViewComponent
   implements OnInit, OnDestroy
 {
-  @ViewChild("actionsSidenav") actionsSidenav!: MatSidenav;
+  @ViewChild("actionsSidenav") actionsSidenav!: MatDrawer;
   @ViewChild("menuSidenav") menuSidenav!: MatSidenav;
   @ViewChild("sideNavContainer") sideNavContainer!: MatSidenavContainer;
   @ViewChild("historieSort") historieSort!: MatSort;
@@ -183,6 +187,7 @@ export class TaakViewComponent
       this.completeTaakMutation.isPending(),
   );
 
+  private readonly queryClient = inject(QueryClient);
   private readonly lastSubmitFailed = signal(false);
   protected readonly hasFailed = this.lastSubmitFailed.asReadonly();
 
@@ -323,7 +328,7 @@ export class TaakViewComponent
         ...(taak.taakdocumenten ?? []),
         ...mapStringToDocumentenStrings(taak.taakdata?.bijlagen),
       ];
-      const attachments = await lastValueFrom(
+      const attachments = await this.queryClient.fetchQuery(
         this.informatieObjectenService.listEnkelvoudigInformatieobjecten({
           zaakUUID: zaak.uuid,
           informatieobjectUUIDs: allAttachments,
@@ -357,14 +362,14 @@ export class TaakViewComponent
   }
 
   protected isReadonly() {
-    return this.taak?.status === "AFGEROND" || !this.taak?.rechten.wijzigen;
+    return this.taak?.status === "AFGEROND" || !this.taak?.rechten.canWijzigen;
   }
 
   private setupMenu() {
     this.menu = [];
     this.menu.push(new HeaderMenuItem("taak"));
 
-    if (this.taak?.rechten.toevoegenDocument) {
+    if (this.taak?.rechten.canToevoegenDocument) {
       this.menu.push(
         new ButtonMenuItem(
           "actie.document.toevoegen",
@@ -375,9 +380,9 @@ export class TaakViewComponent
 
       if (
         this.zaak?.zaaktype.zaakafhandelparameters?.smartDocuments
-          .enabledGlobally &&
+          .isEnabledGlobally &&
         this.zaak?.zaaktype?.zaakafhandelparameters.smartDocuments
-          .enabledForZaaktype
+          .isEnabledForZaaktype
       ) {
         this.menu.push(
           new ButtonMenuItem(

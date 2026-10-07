@@ -44,10 +44,10 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     // for Weld to choose between, and the deployment fails. Weld injects an empty Optional for a config
     // property that is not set, so the defaults bought nothing anyway.
     @ConfigProperty(name = ENV_VAR_DOCUMENT_CREATION_PROVIDER)
-    private val configuredProvider: Optional<String>,
+    configuredProvider: Optional<String>,
 
     @ConfigProperty(name = ENV_VAR_SMARTDOCUMENTS_ENABLED)
-    private val smartDocumentsEnabled: Optional<Boolean>,
+    smartDocumentsEnabled: Optional<Boolean>,
 
     @ConfigProperty(name = ENV_VAR_EPISTOLA_CLIENT_MP_REST_URL)
     private val epistolaRestUrl: Optional<String>,
@@ -92,7 +92,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     private val requestedProvider: String? = configuredProvider.getOrNull()?.takeIf { it.isNotBlank() }
 
     /** Kept nullable: the error messages below distinguish an unset flag from one explicitly set to false. */
-    private val smartDocumentsFlag: Boolean? = smartDocumentsEnabled.getOrNull()
+    private val isSmartDocumentsEnabled: Boolean? = smartDocumentsEnabled.getOrNull()
 
     /**
      * An unrecognised value resolves to [DocumentCreationProvider.NONE] so that construction stays free
@@ -117,7 +117,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
         LOG.info {
             "Active document creation provider: '$activeProvider' " +
                 "($ENV_VAR_DOCUMENT_CREATION_PROVIDER='${requestedProvider ?: "<not set>"}', " +
-                "$ENV_VAR_SMARTDOCUMENTS_ENABLED='${smartDocumentsFlag ?: "<not set>"}')"
+                "$ENV_VAR_SMARTDOCUMENTS_ENABLED='${isSmartDocumentsEnabled ?: "<not set>"}')"
         }
     }
 
@@ -144,14 +144,14 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     private fun verifySmartDocumentsConfiguration() {
         if (requestedProvider == null) return
         when {
-            activeProvider == DocumentCreationProvider.SMARTDOCUMENTS && smartDocumentsFlag != true ->
+            activeProvider == DocumentCreationProvider.SMARTDOCUMENTS && isSmartDocumentsEnabled != true ->
                 throw InvalidDocumentCreationProviderConfigurationException(
                     "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects SmartDocuments but " +
-                        "$ENV_VAR_SMARTDOCUMENTS_ENABLED is '${smartDocumentsFlag ?: "<not set>"}'. " +
+                        "$ENV_VAR_SMARTDOCUMENTS_ENABLED is '${isSmartDocumentsEnabled ?: "<not set>"}'. " +
                         "Set it to 'true'."
                 )
 
-            activeProvider != DocumentCreationProvider.SMARTDOCUMENTS && smartDocumentsFlag == true ->
+            activeProvider != DocumentCreationProvider.SMARTDOCUMENTS && isSmartDocumentsEnabled == true ->
                 throw InvalidDocumentCreationProviderConfigurationException(
                     "$ENV_VAR_DOCUMENT_CREATION_PROVIDER selects $activeProvider but " +
                         "$ENV_VAR_SMARTDOCUMENTS_ENABLED is 'true'. ZAC supports one document creation " +
@@ -165,7 +165,7 @@ class DocumentCreationProviderConfiguration @Inject constructor(
     }
 
     private fun derivedFromSmartDocumentsFlag() =
-        if (smartDocumentsFlag == true) {
+        if (isSmartDocumentsEnabled == true) {
             DocumentCreationProvider.SMARTDOCUMENTS
         } else {
             DocumentCreationProvider.NONE

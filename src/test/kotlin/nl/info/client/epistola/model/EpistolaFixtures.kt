@@ -24,6 +24,7 @@ fun createGenerationJobResponse(
     .requestId(requestId)
     .status(status)
 
+@Suppress("LongParameterList")
 fun createDocumentGenerationItem(
     id: UUID = UUID.randomUUID(),
     status: DocumentGenerationItemDto.StatusEnum = DocumentGenerationItemDto.StatusEnum.COMPLETED,

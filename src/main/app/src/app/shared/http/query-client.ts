@@ -6,7 +6,31 @@
 import { HttpErrorResponse } from "@angular/common/http";
 import { inject, InjectionToken } from "@angular/core";
 import { QueryCache, QueryClient } from "@tanstack/angular-query-experimental";
-import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
+import {
+  FoutAfhandelingService,
+  isLoggedOut,
+} from "../../fout-afhandeling/fout-afhandeling.service";
+
+export type ZacMeta = {
+  /**
+   * `false` for a request that reports its own failure. The blocking dialog
+   * then does not appear, and the caller is on the hook for telling the user
+   * what went wrong. Defaults to reporting.
+   */
+  reportErrors?: boolean;
+};
+
+declare module "@tanstack/angular-query-experimental" {
+  interface Register {
+    queryMeta: ZacMeta;
+    mutationMeta: ZacMeta;
+  }
+}
+
+/** @see ZacMeta.reportErrors */
+export function reportsErrors(meta: ZacMeta | undefined) {
+  return meta?.reportErrors !== false;
+}
 
 /**
  * A mutation reports its own failures through `onError`; a query has no such
@@ -17,14 +41,7 @@ import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.
  * then rethrows the message it built, so what reaches the cache is a string
  * rather than a response. Reporting that too would close the dialog it just
  * opened and replace it with a generic one, so only a response is reported.
- *
- * A read that repeats itself, or that only adds detail to a request that reports
- * its own outcome, sets `meta: SKIP_GLOBAL_ERROR_HANDLING` to report nothing.
  */
-export const SKIP_GLOBAL_ERROR_HANDLING = {
-  skipGlobalErrorHandling: true,
-} as const;
-
 export const QUERY_CLIENT = new InjectionToken<QueryClient>("QUERY_CLIENT", {
   providedIn: "root",
   factory: () => {
@@ -34,7 +51,12 @@ export const QUERY_CLIENT = new InjectionToken<QueryClient>("QUERY_CLIENT", {
       queryCache: new QueryCache({
         onError: (error, query) => {
           if (!(error instanceof HttpErrorResponse)) return;
-          if (query.meta?.skipGlobalErrorHandling) return;
+          if (!reportsErrors(query.meta)) return;
+
+          if (query.state.data !== undefined && !isLoggedOut(error)) {
+            console.error(error);
+            return;
+          }
 
           foutAfhandelingService.foutAfhandelen(error);
         },

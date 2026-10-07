@@ -36,30 +36,34 @@
         [task]="taak"
       />
     }
-    <zac-document-create
-      *ngSwitchCase="'actie.document.maken'"
-      [sideNav]="actionsSidenav"
-      [zaak]="zaak"
-      [taak]="taak"
-      [smartDocumentsGroupId]="smartDocumentsGroupId"
-      [smartDocumentsTemplateId]="smartDocumentsTemplateId"
-      (document)="documentCreated()"
-    ></zac-document-create>
-    <zac-informatie-object-add
-      *ngSwitchCase="'actie.document.toevoegen'"
-      [sideNav]="actionsSidenav"
-      [zaakUuid]="taak!.zaakUuid"
-      [taakId]="taak!.id"
-      (document)="updateTaakdocumenten($event)"
-    ></zac-informatie-object-add>
-    <zac-informatie-object-link
-      *ngSwitchCase="'actie.document.verplaatsen'"
-      actionLabel="actie.document.verplaatsen"
-      [infoObject]="documentToMove"
-      [sideNav]="actionsSidenav"
-      [source]="zaak?.identificatie"
-      (informationObjectLinked)="updateZaakDocumentList()"
-    />
+    @if (zaak) {
+      <zac-document-create
+        *ngSwitchCase="'actie.document.maken'"
+        [sideNav]="actionsSidenav"
+        [zaak]="zaak"
+        [taak]="taak"
+        [smartDocumentsGroupId]="smartDocumentsGroupId"
+        [smartDocumentsTemplateId]="smartDocumentsTemplateId"
+        (document)="documentCreated()"
+      ></zac-document-create>
+      <zac-informatie-object-link
+        *ngSwitchCase="'actie.document.verplaatsen'"
+        actionLabel="actie.document.verplaatsen"
+        [infoObject]="documentToMove"
+        [sideNav]="actionsSidenav"
+        [source]="zaak.identificatie"
+        (informationObjectLinked)="updateZaakDocumentList()"
+      />
+    }
+    @if (taak) {
+      <zac-informatie-object-add
+        *ngSwitchCase="'actie.document.toevoegen'"
+        [sideNav]="actionsSidenav"
+        [zaakUuid]="taak.zaakUuid"
+        [taakId]="taak.id"
+        (document)="updateTaakdocumenten($event)"
+      ></zac-informatie-object-add>
+    }
   </mat-drawer>
   <mat-drawer-content>
     <div class="flex-row flex-wrap gap-10">
@@ -113,7 +117,9 @@
                   />
                   <zac-static-text
                     label="taak.status"
-                    [value]="'taak.status.' + taak?.status | translate"
+                    [value]="
+                      'taak.status.' + taak?.status | i18nKey | translate
+                    "
                     class="flex-item"
                   />
                 </div>
@@ -143,9 +149,9 @@
                     [value]="taak?.groep?.naam"
                     class="flex-item"
                   >
-                    @if (taak?.groep?.active === false) {
-                      <em position="content-after"
-                        >&nbsp;({{ "inactief" | translate | lowercase }})</em
+                    @if (taak?.groep?.isActive === false) {
+                      <em position="content-after" class="inactive-label"
+                        >({{ "inactief" | translate | lowercase }})</em
                       >
                     }
                   </zac-static-text>
@@ -159,7 +165,7 @@
                     taak &&
                     taak.zaaktypeUUID &&
                     taak.status !== "AFGEROND" &&
-                    taak.rechten.toekennen
+                    taak.rechten.canToekennen
                   ) {
                     <button
                       mat-icon-button
@@ -202,7 +208,7 @@
                       </th>
                       <td mat-cell *matCellDef="let regel">
                         <read-more
-                          [text]="regel.attribuutLabel | translate"
+                          [text]="regel.attribuutLabel | i18nLabel"
                           [maxLength]="20"
                         ></read-more>
                       </td>
@@ -271,14 +277,14 @@
     </div>
     <zac-zaak-documenten
       #zaakDocumentenComponent
-      *ngIf="initialized"
+      *ngIf="initialized && zaak"
       [zaak]="zaak"
       (documentMoveToCase)="documentMoveToCase($event)"
     ></zac-zaak-documenten>
     <mat-card *ngIf="!initialized">
       <mat-card-header>
         <mat-card-title>{{
-          "enkelvoudigInformatieObjecten" | translate
+          "enkelvoudig-informatie-objecten" | translate
         }}</mat-card-title>
       </mat-card-header>
       <mat-card-content>

@@ -10,7 +10,7 @@ package net.atos.zac.taak
 import data.net.atos.zac.rol.beheerder
 import data.net.atos.zac.rol.behandelaar
 import data.net.atos.zac.rol.coordinator
-import data.net.atos.zac.rol.raadpleger
+import data.net.atos.zac.rol.leesrollen
 import data.net.atos.zac.rol.recordmanager
 import data.net.atos.zac.rol.zaakspecifiekGeautoriseerd
 import input.user
@@ -34,8 +34,9 @@ zaaktype_allowed if {
 
 # zaak_allowed guards access to a taak of a zaakspecifiek geautoriseerde zaak: unrestricted for a taak
 # whose zaak is not zaakspecifiek geautoriseerd, otherwise only for a user who also holds the
-# zaakspecifiek_geautoriseerd application role - regardless of which other application role(s)
-# (including recordmanager or beheerder) the user holds.
+# zaakspecifiek_geautoriseerd application role - regardless of which other application role(s) the user
+# holds - or who is individually authorised for the taak's zaak: its current behandelaar, or a
+# medewerker holding the "Zaakspecifiek geautoriseerde medewerker" rol.
 default zaak_allowed := false
 zaak_allowed if {
     not taak.zaakspecifiekGeautoriseerd
@@ -43,13 +44,16 @@ zaak_allowed if {
 zaak_allowed if {
     zaakspecifiekGeautoriseerd.rol in user.rollen
 }
+zaak_allowed if {
+    taak.loggedInUserIsGeautoriseerdeMedewerker
+}
 
 default lezen := false
 lezen if {
     zaaktype_allowed
     zaak_allowed
-    some role in {raadpleger, behandelaar, coordinator, recordmanager, beheerder}
-    role.rol in user.rollen
+    some rol in leesrollen
+    rol in user.rollen
 }
 
 default wijzigen := false

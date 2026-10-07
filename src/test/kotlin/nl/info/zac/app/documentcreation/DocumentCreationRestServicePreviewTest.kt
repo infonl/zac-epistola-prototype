@@ -28,6 +28,7 @@ import nl.info.zac.documentcreation.EpistolaDocumentCreationService
 import nl.info.zac.policy.PolicyService
 import nl.info.zac.policy.exception.PolicyException
 import nl.info.zac.policy.output.createZaakRechtenAllDeny
+import nl.info.zac.smartdocuments.SmartDocumentsService
 import java.util.UUID
 
 private val FAKE_PREVIEW = "fakePreviewPdfContent".toByteArray()
@@ -46,7 +47,8 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
         zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>(),
         flowableTaskService = flowableTaskService,
         loggedInUserInstance = loggedInUserInstance,
-        documentCreationUserStore = mockk<DocumentCreationUserStore>()
+        documentCreationUserStore = mockk<DocumentCreationUserStore>(),
+        smartDocumentsService = mockk<SmartDocumentsService>()
     )
 
     isolationMode = IsolationMode.InstancePerTest
@@ -70,7 +72,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns true
+            every { policyService.readTaakRechten(task).canCreerenDocument } returns true
             every {
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
@@ -95,7 +97,14 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
+                verify(exactly = 0) {
+                    epistolaDocumentCreationService.previewDocument(
+                        zaak = any(),
+                        templateId = any(),
+                        taskId = any(),
+                        variant = any()
+                    )
+                }
             }
         }
 
@@ -104,14 +113,21 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                 creerenDocument = true
             )
             every { flowableTaskService.findOpenTask(taskId) } returns task
-            every { policyService.readTaakRechten(task).creerenDocument } returns false
+            every { policyService.readTaakRechten(task).canCreerenDocument } returns false
 
             shouldThrow<PolicyException> {
                 documentCreationRestService.previewEpistolaDocument(restEpistolaDocumentPreviewData)
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
+                verify(exactly = 0) {
+                    epistolaDocumentCreationService.previewDocument(
+                        zaak = any(),
+                        templateId = any(),
+                        taskId = any(),
+                        variant = any()
+                    )
+                }
             }
         }
 
@@ -128,7 +144,14 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
             }
 
             then("it is refused before any zaak data reaches Epistola") {
-                verify(exactly = 0) { epistolaDocumentCreationService.previewDocument(any(), any(), any(), any()) }
+                verify(exactly = 0) {
+                    epistolaDocumentCreationService.previewDocument(
+                        zaak = any(),
+                        templateId = any(),
+                        taskId = any(),
+                        variant = any()
+                    )
+                }
             }
         }
     }

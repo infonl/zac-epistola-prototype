@@ -1,6 +1,6 @@
 # zaakafhandelcomponent
 
-![Version: 1.0.329](https://img.shields.io/badge/Version-1.0.329-informational?style=flat-square) ![AppVersion: 5.7](https://img.shields.io/badge/AppVersion-5.7-informational?style=flat-square)
+![Version: 1.0.341](https://img.shields.io/badge/Version-1.0.341-informational?style=flat-square) ![AppVersion: 5.9](https://img.shields.io/badge/AppVersion-5.9-informational?style=flat-square)
 
 A Helm chart for installing Zaakafhandelcomponent
 
@@ -14,7 +14,7 @@ A Helm chart for installing Zaakafhandelcomponent
 
 | Repository | Name | Version |
 |------------|------|---------|
-| @opentelemetry | opentelemetry-collector | 0.173.1 |
+| @opentelemetry | opentelemetry-collector | 0.175.1 |
 | @solr | solr-operator | 0.9.1 |
 
 ## Usage
@@ -37,6 +37,32 @@ And install zac:
 ```
 helm install my-release zac/zaakafhandelcomponent
 ```
+
+## Credentials
+
+Every credential ZAC needs is a chart value, except the Solr credentials that the Solr operator
+generates when the chart deploys Solr itself. The chart renders the values into one Kubernetes
+`Secret` named after the release, which the ZAC deployment reads through `envFrom`. There is no
+external secret store involved, so whoever installs the chart is responsible for supplying the values
+from their own secret management (for example a CI secret store) and for keeping them out of any
+values file that is committed.
+
+Two services ZAC talks to need credentials on both sides, and the chart keeps the two sides in step:
+
+| Service | User name and password | Where they come from |
+|---|---|---|
+| Office converter (Gotenberg) | `office_converter.username`, `office_converter.password` | Required. The chart stores them in the ZAC secret and injects them into both the Gotenberg container (`GOTENBERG_API_BASIC_AUTH_*`) and ZAC (`OFFICE_CONVERTER_*`), so the two can never drift apart. |
+| External Solr (`solr.url` set) | `solr.username`, `solr.password` | Required for an external Solr. The chart stores them in the ZAC secret and ZAC authenticates every Solr request with them. Configure the matching user in the `security.json` of that instance yourself. |
+| Solr deployed by the chart | none | The chart enables basic authentication on the `SolrCloud` resource and the Solr operator generates the credentials into the `<solrcloud>-solrcloud-security-bootstrap` secret. ZAC reads the `admin` account from that secret, so no Solr credential is a chart value. |
+
+Both services reject unauthenticated requests, and ZAC fails to start when its credentials are missing
+rather than falling back to unauthenticated requests.
+
+The Solr operator bootstraps the `security.json` once, when Solr has none yet, and does not update it
+afterwards. To change a Solr password, set it through the Solr security API as `admin` first and then
+update the bootstrap secret by hand. See
+[Managing the Solr search engine](https://github.com/infonl/dimpact-zaakafhandelcomponent/blob/main/docs/development/managingSolr.md)
+for the Solr details, including how to read the admin password for the Solr admin UI.
 
 ## Changes to the helm chart
 
@@ -95,7 +121,7 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | gemeente.mail | string | `""` |  |
 | gemeente.naam | string | `""` |  |
 | global.curlImage.pullPolicy | string | `"IfNotPresent"` |  |
-| global.curlImage.repository | string | `"curlimages/curl"` | curl docker repository used throughout the chart |
+| global.curlImage.repository | string | `"docker.io/curlimages/curl"` | curl docker repository used throughout the chart |
 | global.curlImage.tag | string | `"8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777"` | curl docker tag to pull |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
 | image.repository | string | `"ghcr.io/infonl/zaakafhandelcomponent"` |  |
@@ -186,8 +212,8 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | nginx.enabled | bool | `false` |  |
 | nginx.existingConfigmap | string | `nil` |  |
 | nginx.image.pullPolicy | string | `"IfNotPresent"` |  |
-| nginx.image.repository | string | `"nginxinc/nginx-unprivileged"` |  |
-| nginx.image.tag | string | `"1.31.6@sha256:e44b470e571b20d935336bfb9f8277c1468d15e1e4d105a12ab5609d0b4682cb"` |  |
+| nginx.image.repository | string | `"docker.io/nginxinc/nginx-unprivileged"` |  |
+| nginx.image.tag | string | `"1.31.6@sha256:929e1d5e610e8aa89a1715ba44dce5edb4d42c172a208c171233292f472560c5"` |  |
 | nginx.livenessProbe.failureThreshold | int | `3` |  |
 | nginx.livenessProbe.initialDelaySeconds | int | `60` |  |
 | nginx.livenessProbe.periodSeconds | int | `10` |  |
@@ -218,13 +244,15 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | office_converter.affinity | object | `{}` |  |
 | office_converter.containerPort | int | `3000` |  |
 | office_converter.enabled | bool | `true` |  |
+| office_converter.env.API_ENABLE_BASIC_AUTH | string | `"true"` |  |
 | office_converter.env.CHROMIUM_DISABLE_ROUTES | string | `"true"` |  |
 | office_converter.image.pullPolicy | string | `"IfNotPresent"` |  |
-| office_converter.image.repository | string | `"gotenberg/gotenberg"` |  |
+| office_converter.image.repository | string | `"docker.io/gotenberg/gotenberg"` |  |
 | office_converter.image.tag | string | `"8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769"` |  |
 | office_converter.imagePullSecrets | list | `[]` |  |
 | office_converter.name | string | `"office-converter"` |  |
 | office_converter.nodeSelector | object | `{}` |  |
+| office_converter.password | string | `""` | Office converter basic authentication password. Required; the office converter rejects unauthenticated requests. |
 | office_converter.podAnnotations | object | `{}` |  |
 | office_converter.podSecurityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
 | office_converter.replicas | int | `1` |  |
@@ -238,12 +266,13 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | office_converter.service.type | string | `"ClusterIP"` |  |
 | office_converter.tolerations | list | `[]` |  |
 | office_converter.topologySpreadConstraints | list | `[]` |  |
+| office_converter.username | string | `""` | Office converter basic authentication user name. Required; the office converter rejects unauthenticated requests. |
 | opa.affinity | object | `{}` |  |
 | opa.autoscaling.enabled | bool | `false` |  |
 | opa.enabled | bool | `true` |  |
 | opa.image.pullPolicy | string | `"IfNotPresent"` |  |
-| opa.image.repository | string | `"openpolicyagent/opa"` |  |
-| opa.image.tag | string | `"1.20.2-static@sha256:bb245e9e36be0d0ed486c240b606c56be7aba96014a4a87895fed4ba7a6dfa8d"` |  |
+| opa.image.repository | string | `"docker.io/openpolicyagent/opa"` |  |
+| opa.image.tag | string | `"1.21.1-static@sha256:4675ab04ad1627f74741d2d9c5142698c79e18b7b09f192587d31d6dba20838e"` |  |
 | opa.imagePullSecrets | list | `[]` |  |
 | opa.name | string | `"opa"` |  |
 | opa.nodeSelector | object | `{}` |  |
@@ -271,7 +300,7 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | opentelemetry-collector.enabled | bool | `false` |  |
 | opentelemetry-collector.image.pullPolicy | string | `"IfNotPresent"` |  |
 | opentelemetry-collector.image.repository | string | `"otel/opentelemetry-collector-contrib"` |  |
-| opentelemetry-collector.image.tag | string | `"0.161.0@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1"` |  |
+| opentelemetry-collector.image.tag | string | `"0.162.0@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6"` |  |
 | opentelemetry-collector.mode | string | `"deployment"` |  |
 | opentelemetry-collector.ports.jaeger-compact.enabled | bool | `false` |  |
 | opentelemetry-collector.ports.jaeger-grpc.enabled | bool | `false` |  |
@@ -334,11 +363,11 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | solr-operator.solr.annotations | object | `{}` | annotations for solr in solrcloud |
 | solr-operator.solr.busyBoxImage.pullPolicy | string | `"IfNotPresent"` | solr busybox image imagePullPolicy |
 | solr-operator.solr.busyBoxImage.repository | string | `"library/busybox"` | solr busybox image reposity |
-| solr-operator.solr.busyBoxImage.tag | string | `"1.38.0-glibc@sha256:3ba030337caebbfc2232b22b1e435eb213b28e5844a34942c74555bf904a265a"` | solr busybox image tag |
+| solr-operator.solr.busyBoxImage.tag | string | `"1.38.0-glibc@sha256:99813cb178ace2cd9c6c53ee3bddef5d2f5708aa438335111d7a9e3c5e1aaebe"` | solr busybox image tag |
 | solr-operator.solr.enabled | bool | `true` |  |
 | solr-operator.solr.image.pullPolicy | string | `"IfNotPresent"` | solr imagePullPolicy |
 | solr-operator.solr.image.repository | string | `"library/solr"` | solr image repository |
-| solr-operator.solr.image.tag | string | `"9.10.1-slim@sha256:0a931f52cfd9a9afd6d958d246e64115648099c788e41a01adad9f09e6f73594"` | solr image tag |
+| solr-operator.solr.image.tag | string | `"9.11.0-slim@sha256:c8a5ad7d951c00f15d5847ba0a94c1ab212de42de10668b80848831b72d75b9f"` | solr image tag |
 | solr-operator.solr.javaMem | string | `"-Xms512m -Xmx768m"` |  |
 | solr-operator.solr.jobs.affinity | object | `{}` | affinity for jobs |
 | solr-operator.solr.jobs.annotations | object | `{}` | annotations for jobs |
@@ -384,7 +413,9 @@ The Github workflow will perform helm-linting and will bump the version if neede
 | solr-operator.zookeeper-operator.zookeeper.tolerations | list | `[]` | tolerations for zookeeper |
 | solr-operator.zookeeper-operator.zookeeper.topologySpreadConstraints | list | `[{"labelSelector":{"matchLabels":{"technology":"zookeeper"}},"matchLabelKeys":["controller-revision-hash"],"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule"}]` | topologySpreadConstraints for zookeeper |
 | solr.createZacCore | bool | `true` | enable createZacCore to add an initContainer to the ZAC deployment that checks for and creates the zac Solr core during startup (works for both external and operator-managed Solr) |
+| solr.password | string | `""` | Solr basic authentication password. Required when `solr.url` points at an external Solr; ignored for the solr-operator managed Solr. |
 | solr.url | string | `""` | The location of an existing solr instance (unmanaged by this chart) to be used by zac |
+| solr.username | string | `""` | Solr basic authentication user name. Required when `solr.url` points at an external Solr; configure the matching user in the `security.json` of that instance. Ignored for the solr-operator managed Solr, where the operator generates the credentials and ZAC uses the `admin` account from the operator's security bootstrap secret. |
 | tmpVolumeSize | string | `"4Gi"` | Size of the emptyDir mounted at /tmp. WildFly buffers every request body to a temporary file there and ZAC streams the uploaded document from it, so this has to hold `maxFileSizeMB` for every concurrent upload. Keep `resources.requests.ephemeral-storage` and `resources.limits.ephemeral-storage` in step with it. Note that the matching 4Gi ephemeral-storage request is a scheduling requirement: a node without that much free ephemeral storage, or a namespace whose quota does not allow it, will not schedule the pod. Lower all three together when the environment cannot spare it; the cost is fewer concurrent transfers of `maxFileSizeMB`, not a lower maximum document size. |
 | tolerations | list | `[]` | set toleration parameters |
 | topologySpreadConstraints | list | `[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"ScheduleAnyway"}]` | set topologySpreadConstraints parameters. Note: labelSelector is automatically set by the template to match the deployment's labels |

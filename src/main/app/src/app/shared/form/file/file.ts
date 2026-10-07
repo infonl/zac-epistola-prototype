@@ -4,7 +4,7 @@
  *
  */
 
-import { AsyncPipe, NgIf } from "@angular/common";
+import { AsyncPipe } from "@angular/common";
 import {
   ChangeDetectorRef,
   Component,
@@ -15,7 +15,6 @@ import {
   numberAttribute,
   OnDestroy,
   OnInit,
-  signal,
   viewChild,
 } from "@angular/core";
 import {
@@ -28,6 +27,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { TranslatePipe } from "@ngx-translate/core";
+import { injectQuery } from "@tanstack/angular-query-experimental";
 import { lastValueFrom, takeUntil } from "rxjs";
 import { ConfiguratieService } from "../../../configuratie/configuratie.service";
 import { FileDragAndDropDirective } from "../../directives/file-drag-and-drop.directive";
@@ -37,6 +37,7 @@ import { SingleInputFormField } from "../BaseFormField";
 @Component({
   selector: "zac-file",
   templateUrl: "./file.html",
+  styleUrls: ["./file.less"],
   standalone: true,
   imports: [
     AsyncPipe,
@@ -46,7 +47,6 @@ import { SingleInputFormField } from "../BaseFormField";
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    NgIf,
     ReactiveFormsModule,
     TranslatePipe,
   ],
@@ -58,7 +58,6 @@ export class ZacFile<
   extends SingleInputFormField<Form, Key, File>
   implements OnInit, OnDestroy
 {
-  protected allowedFileTypes = input<string[]>([]);
   protected maxFileSizeMB = input(0, { transform: numberAttribute });
   protected fileInput = viewChild<ElementRef>("fileInput");
 
@@ -71,7 +70,20 @@ export class ZacFile<
 
   protected displayControl = this.formBuilder.control<string | null>(null);
 
-  protected allowedFormats = signal<string[]>([]);
+  protected readonly allowedFileTypesQuery = injectQuery(() =>
+    this.configuratieService.readAllowedFileTypesQuery(),
+  );
+
+  protected allowedFormats = computed(
+    () =>
+      this.allowedFileTypesQuery
+        .data()
+        ?.map((allowedFileType) => allowedFileType.extension) ?? [],
+  );
+
+  protected isAllowedFormatsUnavailable = computed(
+    () => !this.allowedFormats().length,
+  );
 
   constructor(
     private readonly changeDetector: ChangeDetectorRef,
@@ -80,17 +92,12 @@ export class ZacFile<
   ) {
     super();
 
-    effect(async () => {
-      if (this.allowedFileTypes().length) {
-        this.allowedFormats.set(this.allowedFileTypes());
+    effect(() => {
+      if (this.isAllowedFormatsUnavailable()) {
+        this.displayControl.disable({ emitEvent: false });
         return;
       }
-      const allowedFileTypes = await lastValueFrom(
-        this.configuratieService.readAllowedFileTypes(),
-      );
-      this.allowedFormats.set(
-        allowedFileTypes.map((allowedFileType) => allowedFileType.extension),
-      );
+      this.displayControl.enable({ emitEvent: false });
     });
   }
 
@@ -123,8 +130,14 @@ export class ZacFile<
     this.updateInputControls(null);
   }
 
+  protected openFilePicker() {
+    if (this.isAllowedFormatsUnavailable()) return;
+    this.fileInput()?.nativeElement.click();
+  }
+
   protected async droppedFile(files: FileList) {
     if (!files.length) return;
+    if (this.isAllowedFormatsUnavailable()) return;
     await this.setFile(files[0]);
   }
 
@@ -138,6 +151,7 @@ export class ZacFile<
   private async setFile(file: File) {
     this.control()?.setErrors(null);
     this.updateInputControls(file);
+    this.displayControl.markAsTouched();
 
     if (!this.isFileTypeAllowed(file)) {
       this.control()?.setErrors({
@@ -174,7 +188,6 @@ export class ZacFile<
   }
 
   private isFileTypeAllowed(file: File) {
-    if (!this.allowedFormats().length) return false;
     const extension = this.getFileExtension(file);
     return this.allowedFormats().includes(`.${extension}`);
   }

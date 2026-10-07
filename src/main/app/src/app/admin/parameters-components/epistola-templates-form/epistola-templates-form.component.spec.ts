@@ -195,7 +195,9 @@ describe(EpistolaTemplatesFormComponent.name, () => {
   const languagePicker = () =>
     screen.getByRole("combobox", { name: /epistola.taal$/ });
   const informatieobjecttypePicker = () =>
-    screen.getByRole("combobox", { name: /informatieobjectTypeOmschrijving/ });
+    screen.getByRole("combobox", {
+      name: /informatieobject-type-omschrijving/,
+    });
   const templateHeader = (name: string) =>
     screen.getByRole("button", { name: new RegExp(name) });
   const templatePanel = (name: string) =>
@@ -306,7 +308,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       expect(informatieobjecttypePicker()).toHaveTextContent("Besluit");
       expect(
         screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
-      ).toHaveValue("vertrouwelijkheidaanduiding.VERTROUWELIJK");
+      ).toHaveValue("vertrouwelijkheidaanduiding.vertrouwelijk");
       await waitFor(() => expect(component.isValid()).toBe(true));
     });
 
@@ -552,7 +554,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       expect(
         templatePanel("Brief").getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         }),
       ).toBeVisible();
       expect(
@@ -585,7 +587,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       const picker = templatePanel("Besluit evenementenvergunning").getByRole(
         "combobox",
         {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         },
       );
       await waitFor(() =>
@@ -613,7 +615,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         }),
         "Bijlage",
       );
@@ -661,7 +663,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await waitFor(() =>
         expect(
           templatePanel("Ontvangstbevestiging aanvraag").getByRole("combobox", {
-            name: /informatieobjectTypeOmschrijving/,
+            name: /informatieobject-type-omschrijving/,
           }),
         ).toHaveTextContent("Bijlage"),
       );
@@ -700,7 +702,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         }),
         "epistola.template.documenttype.zaaktype",
       );
@@ -757,7 +759,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         }),
         "Bijlage",
       );
@@ -872,7 +874,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       await chooseOption(
         user,
         templatePanel("Besluit evenementenvergunning").getByRole("combobox", {
-          name: /informatieobjectTypeOmschrijving/,
+          name: /informatieobject-type-omschrijving/,
         }),
         "Bijlage",
       );
@@ -1272,7 +1274,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
 
       expect(
         screen.getByRole("textbox", { name: "vertrouwelijkheidaanduiding" }),
-      ).toHaveValue("vertrouwelijkheidaanduiding.OPENBAAR");
+      ).toHaveValue("vertrouwelijkheidaanduiding.openbaar");
       await waitFor(() => expect(component.isValid()).toBe(true));
     });
   });

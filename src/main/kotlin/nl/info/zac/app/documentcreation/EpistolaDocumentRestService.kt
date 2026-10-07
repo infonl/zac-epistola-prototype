@@ -50,7 +50,7 @@ class EpistolaDocumentRestService @Inject constructor(
                 policyService.readDocumentRechten(
                     enkelvoudigInformatieObject,
                     zaakInformatieobjecten.firstOrNull()?.let { zrcClientService.readZaak(it.zaakUUID) }
-                ).lezen
+                ).canLezen
             )
             RestEpistolaDocument(
                 isNewVersionAvailable = zaakInformatieobjecten.size == 1 &&
@@ -69,8 +69,8 @@ class EpistolaDocumentRestService @Inject constructor(
     fun createVersion(@PathParam("uuid") uuid: UUID): RestEpistolaDocumentCreationResponse {
         val enkelvoudigInformatieObject = drcClientService.readEnkelvoudigInformatieobject(uuid)
         val zaak = readOnlyZaakOfDocument(enkelvoudigInformatieObject)
-        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).creerenDocument)
-        assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieObject, zaak).toevoegenNieuweVersie)
+        assertPolicy(policyService.readZaakRechten(zaak, loggedInUserInstance.get()).canCreerenDocument)
+        assertPolicy(policyService.readDocumentRechten(enkelvoudigInformatieObject, zaak).canToevoegenNieuweVersie)
         return epistolaDocumentVersionService.createNewVersion(zaak, enkelvoudigInformatieObject)
             .let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.url.extractUuid()) }
     }

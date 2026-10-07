@@ -48,7 +48,7 @@ class ZaaktypeCmmnHumantaskParameters :
     var zaaktypeCmmnConfiguration: ZaaktypeCmmnConfiguration? = null
 
     @Column(name = "actief")
-    var actief: Boolean = false
+    var isActief: Boolean = false
 
     @Column(name = "id_formulier_definition")
     private var formulierDefinitieID: String? = null
@@ -82,9 +82,12 @@ class ZaaktypeCmmnHumantaskParameters :
     fun getReferentieTabellen(): List<HumanTaskReferentieTabel> =
         Collections.unmodifiableList(referentieTabellen)
 
+    // humantask_referentie_tabel has one non-nullable FK to its human task, so adopting a coupling that
+    // still belongs to another human task moves it there instead of duplicating it
     fun setReferentieTabellen(value: List<HumanTaskReferentieTabel>) {
-        this.referentieTabellen.clear()
-        value.forEach { addReferentieTabel(it) }
+        val copies = value.map { it.copyForNewHumantask() }
+        referentieTabellen.clear()
+        copies.forEach { addReferentieTabel(it) }
     }
 
     private fun addReferentieTabel(referentieTabel: HumanTaskReferentieTabel): Boolean {
@@ -94,7 +97,7 @@ class ZaaktypeCmmnHumantaskParameters :
 
     override fun equals(other: Any?): Boolean {
         if (other !is ZaaktypeCmmnHumantaskParameters) return false
-        return actief == other.actief &&
+        return isActief == other.isActief &&
             Objects.equals(formulierDefinitieID, other.formulierDefinitieID) &&
             Objects.equals(planItemDefinitionID, other.planItemDefinitionID) &&
             Objects.equals(groepID, other.groepID) &&
@@ -103,12 +106,12 @@ class ZaaktypeCmmnHumantaskParameters :
     }
 
     override fun hashCode(): Int =
-        Objects.hash(actief, formulierDefinitieID, planItemDefinitionID, groepID, doorlooptijd, referentieTabellen)
+        Objects.hash(isActief, formulierDefinitieID, planItemDefinitionID, groepID, doorlooptijd, referentieTabellen)
 
     override fun isModifiedFrom(original: ZaaktypeCmmnHumantaskParameters): Boolean {
         return Objects.equals(original.planItemDefinitionID, planItemDefinitionID) &&
             (
-                actief != original.actief ||
+                isActief != original.isActief ||
                     !Objects.equals(original.formulierDefinitieID, formulierDefinitieID) ||
                     !Objects.equals(original.groepID, groepID) ||
                     !Objects.equals(original.doorlooptijd, doorlooptijd) ||
@@ -117,11 +120,14 @@ class ZaaktypeCmmnHumantaskParameters :
     }
 
     override fun applyChanges(changes: ZaaktypeCmmnHumantaskParameters) {
-        actief = changes.actief
+        isActief = changes.isActief
         formulierDefinitieID = changes.formulierDefinitieID
         groepID = changes.groepID
         doorlooptijd = changes.doorlooptijd
-        referentieTabellen = changes.referentieTabellen
+        // assigning the collection itself would detach the one Hibernate manages for this entity
+        if (referentieTabellen != changes.referentieTabellen) {
+            setReferentieTabellen(changes.getReferentieTabellen())
+        }
     }
 
     override fun resetId(): ZaaktypeCmmnHumantaskParameters {

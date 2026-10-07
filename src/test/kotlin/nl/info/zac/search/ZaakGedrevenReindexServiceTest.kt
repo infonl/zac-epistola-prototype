@@ -12,6 +12,8 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import java.net.URI
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import net.atos.zac.flowable.task.FlowableTaskService
 import nl.info.client.zgw.drc.DrcClientService
@@ -28,11 +30,10 @@ import nl.info.zac.search.converter.TaakZoekObjectConverter
 import nl.info.zac.search.converter.ZaakZoekObjectConverter
 import nl.info.zac.search.model.createDocumentZoekObject
 import nl.info.zac.search.model.createTaakZoekObject
+import nl.info.zac.search.model.createZaakAutorisatieGegevens
 import nl.info.zac.search.model.createZaakZoekObject
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import org.flowable.task.api.Task
-import java.net.URI
-import java.util.UUID
 
 private data class ZaakGedrevenReindexServiceTestContext(
     val reindexSupportService: ReindexSupportService,
@@ -109,7 +110,7 @@ private fun ZaakGedrevenReindexServiceTestContext.stubRunConcurrentPageConversio
  * page of zaken, so that tests covering that path do not have to repeat this bundle individually.
  */
 private fun ZaakGedrevenReindexServiceTestContext.stubZaakPageProcessing() {
-    every { reindexSupportService.memoizedIsZaakspecifiekGeautoriseerd() } returns { false }
+    every { reindexSupportService.memoizedZaakAutorisatieGegevens() } returns { createZaakAutorisatieGegevens() }
     stubRunConcurrentPageConversionsForwarding()
     every { reindexSupportService.deleteExistingEntities(any()) } just Runs
     every { reindexSupportService.addToSolrIndex(any(), any()) } just Runs
@@ -168,7 +169,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         every { ctx.reindexSupportService.reindexAllInformatieobjecten() } returns ReindexSummary(2, 0, 2)
 
         `when`("reindex is called for ZAAK, TAAK and DOCUMENT") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = true))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = true))
 
             then("ZAAK is reported as aborted, and TAAK/DOCUMENT fall back to their independent passes") {
                 verify(exactly = 1) {
@@ -191,7 +192,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         every { ctx.reindexSupportService.reindexAllTaken() } returns null
 
         `when`("reindex is called for ZAAK and TAAK only") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = false))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = false))
 
             then("only TAAK falls back to its independent pass; DOCUMENT is never touched") {
                 verify(exactly = 1) {
@@ -217,7 +218,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         every { ctx.reindexSupportService.deleteExistingEntities(any()) } just Runs
 
         `when`("reindex is called for ZAAK and TAAK") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = false))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = false))
 
             then("ZAAK finishes normally while TAAK is left untouched and reported as aborted") {
                 verify(exactly = 1) {
@@ -244,7 +245,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         every { ctx.reindexSupportService.deleteExistingEntities(any()) } just Runs
 
         `when`("reindex is called for ZAAK and DOCUMENT") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = false, includeDocumenten = true))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = false, shouldIncludeDocumenten = true))
 
             then("ZAAK finishes normally while DOCUMENT is left untouched, and the orphan sweep never runs") {
                 verify(exactly = 1) {
@@ -294,7 +295,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         } returns ReindexCounts()
 
         `when`("reindex is called for ZAAK, TAAK and DOCUMENT") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = true))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = true))
 
             then("the zaak is retrieved from the ZRC API exactly once, shared by its taak and its document") {
                 verify(exactly = 1) {
@@ -335,7 +336,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         every { ctx.zrcClientService.readZaak(zaakUUID) } throws RuntimeException("fake zaak retrieval failure")
 
         `when`("reindex is called for ZAAK and TAAK") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = false))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = false))
 
             then("the zaak's taak is never attempted") {
                 verify(exactly = 0) {
@@ -371,7 +372,7 @@ class ZaakGedrevenReindexServiceTest : BehaviorSpec({
         } throws RuntimeException("fake open taken listing failure")
 
         `when`("reindex is called for ZAAK and TAAK") {
-            ctx.zaakGedrevenReindexService.reindex(ReindexScope(includeTaken = true, includeDocumenten = false))
+            ctx.zaakGedrevenReindexService.reindex(ReindexScope(shouldIncludeTaken = true, shouldIncludeDocumenten = false))
 
             then("the zaak is still reindexed successfully despite the taak listing failure") {
                 verify(exactly = 1) {

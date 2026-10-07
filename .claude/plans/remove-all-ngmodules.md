@@ -7,18 +7,61 @@
 
 Goal: fully standalone Angular frontend — zero `@NgModule` in `src/main/app/src/app`.
 
-## Progress — 4 of 18 modules removed
+## Progress — all 18 modules removed once step 9 merges; step 8 merged, step 9 ready for PR
 
 - [x] **Step 1** — zaken routes + lazy mount + `loadComponent` (commit `713c964`)
 - [x] **Step 1b** — klanten mount points; delete `ZakenModule` + `KlantenModule` (commit `a5a4c31`)
-- [ ] **Step 2** — `informatie-objecten` slice (+ `fout-afhandeling`) — NEXT
-- [ ] **Step 3** — already-lazy routing modules (`taken`, `documenten`, `productaanvragen`)
-- [ ] **Step 4** — delete `TakenModule` + `InformatieObjectenModule`
-- [ ] **Step 5** — `app-routing.module.ts` -> `app.routes.ts`
-- [ ] **Step 6** — `bootstrapApplication` + delete `CoreModule`
-- [ ] **Step 7** — dissolve the four shared barrels
+- [x] **Step 2** — `fout-afhandeling` + `informatie-objecten` routes; `InformatieObjectenModule` deleted
+- [x] **Step 3** — ngx-editor out of the eager graph (PZ-12707) — **−77 kB** (merged, #7088)
+- [x] **Step 4** — dissolve `PipesModule` — pure deletion, −0.6 kB
+- [x] **Step 5** — dissolve `MaterialModule`, split in two PRs:
+  - [x] **5a** — all 20 specs that import one of our NgModules (PZ-12820, merged, #7205)
+  - [x] **5b** — 14 non-spec files + 2 pre-existing `MatButtonModule` gaps with their specs (PZ-12856, merged, #7233) — **+13.5 kB** transfer, −120 kB raw, re-measured on top of step 6
+- [x] **Step 6** — `MaterialFormBuilderModule` removed — **−9.8 kB** (PZ-12845, merged, #7227)
+- [x] **Step 7** — dissolve `SharedModule` — **−30.8 kB** (PZ-12864, merged, #7266)
+- [x] **Step 8** — `loadChildren` targets: NgModule -> `Routes` (`taken` incl. `TakenModule`,
+      `documenten`, `productaanvragen`) (merged, #7271)
+- [ ] **Step 9** — `app.routes.ts` + `bootstrapApplication`; delete `AppRoutingModule`, `AppModule` and `CoreModule` (old step 10 merged in on 2026-10-05) — implemented 2026-10-05, uncommitted; tsc 0, lint 0, prod build ok (433.88 -> 433.49 kB transfer on main 921612bd7), 3388 green, provider diff explained, manual smoke test ok; ready for PR (PZ-12875)
+- [ ] **Step 10 (optional)** — lazy-load the search sidenav, `/gebruiker` and Form.io in taak-view — est. **≈ −94 kB** initial transfer, plus **≈ −300 kB or more** per CMMN taak opened; independent of step 9, own PR
 
-Bundle so far: **672.06 kB -> 538.14 kB** initial transfer (−20%).
+Bundle so far: **672.06 -> 443.64 kB** initial transfer (**−34%**), the 77 kB of that in
+the PZ-12707 PR (step 3) and the last 0.6 kB in step 4. Step 6 adds −9.8 kB on its own base (459.67 -> 449.84 kB). Step 5b gives back +13.5 kB on its own base (450.26 -> 463.74 kB, main `c2523a8ab`). Step 7 takes −30.8 kB on its own base (464.59 -> 433.79 kB, main `5ec92208c`), so 5b + 7 together net −17.3 kB.
+
+**These figures are only comparable within the step that measured them.** Main moves underneath
+the branch, so an absolute `Initial total` goes stale as soon as it is merged — the same branch
+measured 459.77 kB after a later merge of main, with the step-4 delta unchanged. Always measure
+before and after *on the same commit base* and record the delta; treat the absolutes as dated.
+
+**Ordering criterion: measured bundle payoff.** An NgModule's `exports` are a live edge that
+never tree-shakes; its `imports` are shaken away when nothing uses them. So the barrels only
+cost what they *export*, and step 3 — the single export line that anchored ngx-editor — was the
+biggest measured win. Step 4 confirmed the rest of the pattern: a barrel whose exports every
+consumer already imports directly is worth ~0. Step 5 was expected to pay but measured a regression: +27 kB transfer at first, still +13.5 kB re-measured on top of step 6 (see step 5). Step 6 is merged, so any remaining Material win now depends on step 7. Everything else is bookkeeping toward zero `@NgModule`, ordered by risk, not payoff.
+
+### Where the initial bundle stood before step 3 (measured 2026-09-15, production build)
+
+Initial total: 2.48 MB raw / 520.97 kB transfer. Full build across all 112 chunks:
+7.22 MB raw / ~1.72 MB transfer. Source-map attribution of the largest initial
+chunk (1.54 MB raw / 297 kB transfer), by original source size:
+
+| Source | Size |
+|---|---|
+| `@angular/material` | 1727 kB |
+| `@angular/core` | 1720 kB |
+| `@angular/cdk` | 657 kB |
+| `@angular/common` + `router` + `forms` | 989 kB |
+| TanStack + rxjs + ngx-translate | 212 kB |
+| **own app code** | **~45 kB** |
+
+What this attribution got wrong, corrected on 2026-09-16: it was read as "only ~45 kB of own
+code is left, so nothing is left to win". That conclusion does not follow. The win was never in
+own code — it is in *vendor* code that own code keeps eagerly reachable. Cutting one export edge
+moved 77 kB of ngx-editor out of the initial bundle without touching a single line of own app
+code. Read the attribution as a map of what the barrels are anchoring, not as a floor.
+
+Note that the estimated transfer sizes only materialise behind nginx
+(`charts/zac/templates/configmap-nginx.yaml`), which gzips. WildFly itself is not
+configured to compress, so a local run on :8080 ships the full raw size.
 
 ## Starting position (verified 2026-09-10, `main`)
 
@@ -32,51 +75,57 @@ Bundle so far: **672.06 kB -> 538.14 kB** initial transfer (−20%).
 
 ### The 18 modules
 
-| Module | Kind | Step |
-|---|---|---|
-| [x] `zaken/zaken-routing.module.ts` | routing (eager `forChild`) | done |
-| [x] `klanten/klanten-routing.module.ts` | routing (eager `forChild`) | done |
-| [ ] `informatie-objecten/informatie-objecten-routing.module.ts` | routing (eager `forChild`) | 2 |
-| [ ] `fout-afhandeling/fout-afhandeling-routing.module.ts` | routing (eager `forChild`) | 2 |
-| [ ] `taken/taken-routing.module.ts` | routing (lazy) | 3 |
-| [ ] `documenten/documenten-routing.module.ts` | routing (lazy) | 3 |
-| [ ] `productaanvragen/productaanvragen-routing.module.ts` | routing (lazy) | 3 |
-| [x] `zaken/zaken.module.ts` | container | done |
-| [x] `klanten/klanten.module.ts` | container | done |
-| [ ] `taken/taken.module.ts` | container | 4 |
-| [ ] `informatie-objecten/informatie-objecten.module.ts` | container + provider | 4 |
-| [ ] `app-routing.module.ts` | root routing | 5 |
-| [ ] `app.module.ts` | root | 6 |
-| [ ] `core/core.module.ts` | providers | 6 |
-| [ ] `shared/shared.module.ts` | barrel | 7 |
-| [ ] `shared/material/material.module.ts` | barrel | 7 |
-| [ ] `shared/pipes/pipes.module.ts` | barrel | 7 |
-| [ ] `shared/material-form-builder/material-form-builder.module.ts` | barrel | 7 |
+| ✓ | Module | Kind | Step | Bundle gain |
+|---|---|---|---|---|
+| [x] | `zaken/zaken-routing.module.ts` | routing (eager `forChild`) | 1 | −134 kB with 1b |
+| [x] | `zaken/zaken.module.ts` | container | 1b | (same) |
+| [x] | `klanten/klanten-routing.module.ts` | routing (eager `forChild`) | 1b | (same) |
+| [x] | `klanten/klanten.module.ts` | container | 1b | (same) |
+| [x] | `fout-afhandeling/fout-afhandeling-routing.module.ts` | routing (eager `forChild`) | 2 | none (0.4 kB) |
+| [x] | `informatie-objecten/informatie-objecten-routing.module.ts` | routing (eager `forChild`) | 2 | −18 kB with the container |
+| [x] | `informatie-objecten/informatie-objecten.module.ts` | container + provider | 2 | (same) |
+| [ ] | `shared/material/material.module.ts` | barrel | 5 | **+13.5 kB** transfer, −120 kB raw (re-measured on top of step 6; +27 kB / −60 kB before it) |
+| [x] | `shared/material-form-builder/material-form-builder.module.ts` | barrel | 6 | **−9.8 kB** (measured), on top of the −77 kB banked in step 3 |
+| [ ] | `shared/shared.module.ts` | barrel | 7 | not yet measured |
+| [x] | `shared/pipes/pipes.module.ts` | barrel | 4 | −0.6 kB (measured) |
+| [ ] | `taken/taken-routing.module.ts` | routing (lazy) | 8 | none |
+| [ ] | `taken/taken.module.ts` | container | 8 | none |
+| [ ] | `documenten/documenten-routing.module.ts` | routing (lazy) | 8 | none |
+| [ ] | `productaanvragen/productaanvragen-routing.module.ts` | routing (lazy) | 8 | none |
+| [ ] | `app-routing.module.ts` | root routing | 9 | none |
+| [ ] | `app.module.ts` | root | 10 | none |
+| [ ] | `core/core.module.ts` | providers | 10 | none |
 
-### Key finding: four modules only *look* lazy
+### Key finding (steps 1–2, now resolved): four modules only *looked* lazy
 
-`zaken`, `klanten`, `informatie-objecten` and `fout-afhandeling` use
+`zaken`, `klanten`, `informatie-objecten` and `fout-afhandeling` used
 `RouterModule.forChild(...)` but are reached eagerly through
 `XxxModule -> AppModule`. There is **no `loadChildren` mount point** for any of
-them — the only six in the app are `taken`, `admin`, `bag-objecten`,
+them — at the time the only six in the app were `taken`, `admin`, `bag-objecten`,
 `signaleringen`, `documenten`, `productaanvragen`.
 
 Consequence: their routes self-register into the root config at startup, which is
 why each carries its own `path: "zaken"` / `"persoon"` / `"informatie-objecten"`
-prefix *inside* the array. Giving them real mount points is the single biggest
-lazy-loading win in this migration, and it is what steps 1–2 are actually for.
+prefix *inside* the array. Giving them real mount points is what steps 1–2 did, for −152 kB.
+All four now have a real `loadChildren` mount point; the check itself stays relevant for any
+module still to be deleted.
 
 ## Guiding rules
 
 - One step per PR. Steps are ordered; do not skip ahead.
-- No behaviour change in steps 1–5. Any route that resolves today resolves after.
+- No behaviour change in any step but 10. Any route that resolves today resolves after.
 - Absolute URLs must be identical before and after. Moving a path segment from a
   child array to a mount point is a refactor of *where* the prefix is declared,
   never of the resulting URL.
 - Gate every step on: `ng test`, `tsc --project .`, `ng lint`, and a production build with a
   before/after `Initial total`. (`tsconfig.app.json` is `strict: false` — the real type gate is
   `tsc --project .`. `lint-changed-files.sh` diffs against `main`'s tip, so it reports nothing
-  while edits are uncommitted; lint the touched files directly instead.)
+  while edits are uncommitted; lint the touched files directly instead. `tsc --project .` is at 0
+  errors on main (2026-09-29); the 4 former `date-range-filter.component.spec.ts` errors are gone.)
+- **`exports` cost bundle, `imports` do not.** An NgModule's `exports` are a live edge that never
+  tree-shakes; its `imports` are shaken away once nothing uses them. Measured: pruning 26 dead
+  `imports` across four modules moved 0.04 kB, while cutting two export edges moved 77 kB. When
+  hunting for a win, read the `exports` list.
 - **Route configs have no test coverage and cannot get any.** `jest.config.js`
   `testPathIgnorePatterns` deliberately excludes `*-routing.module.spec.ts` and `*.routes.spec.ts`
   (PR #6469, 2026-07-07: "Route specs assert exact paths/link arrays — brittle"). Do not add
@@ -127,135 +176,307 @@ pre-existing chunk byte-identical.
 
 Verified manually in a local DEV environment: `/zaken/*`, `/persoon/<id>`, and `/bedrijf/<id>`.
 
-## Step 1 (original text, for reference)
+## Step 2 — The remaining two eager `forChild` modules — DONE
 
-Self-contained, delivers a measurable bundle win, and proves the pattern the next
-two steps copy.
+Split into two PRs. `fout-afhandeling` is done: `fout-afhandeling.routes.ts`
+(`FOUT_AFHANDELING_ROUTES`, `loadComponent`), `loadChildren` mount at `path: "fout"`, module
+import dropped from `AppModule`. No provider, no exported component, no reachability trap.
+Bundle 538.75 kB -> 538.39 kB — structural only; `FoutAfhandelingService` and the error dialogs
+stay eager because most of the app imports them directly.
 
-**Changes**
-1. `zaken/zaken-routing.module.ts` -> `zaken/zaken.routes.ts`, exporting
-   `ZAKEN_ROUTES: Routes`. Drop `@NgModule` / `RouterModule.forChild`.
-2. Strip the wrapping `path: "zaken"` node; the four children (`mijn`,
-   `werkvoorraad`, `create`, `afgehandeld`), the `""` -> `werkvoorraad` redirect
-   and the `:zaakIdentificatie` route become the top level of the array.
-3. Add the mount point to `app-routing.module.ts`:
-   `{ path: "zaken", loadChildren: () => import("./zaken/zaken.routes").then(m => m.ZAKEN_ROUTES) }`
-4. Flip `ZaakViewComponent` from a static `component:` to `loadComponent:`.
-   It is the only route in that array not code-split, and it is the largest
-   component in the app.
-5. Remove `ZakenRoutingModule` from `zaken.module.ts`'s imports (the module itself
-   survives until step 4).
+`informatie-objecten` followed, and took its container module with it (step 4's half, done early
+because the module turned out to be empty once the routing import was gone):
 
-**Why the eager `component:` matters**: `ZaakViewComponent` is statically imported
-at the top of the route file today, so it lands in whatever bundle holds the route
-config. Code-splitting it is also a prerequisite for the deferred lazy-historie
-chunk work — there is no point `@defer`-ing a child of an eagerly loaded parent.
+- `informatie-objecten.routes.ts` (`INFORMATIE_OBJECTEN_ROUTES`), both `:uuid` and `:uuid/:versie`
+  on `loadComponent`, resolver unchanged; mounted at `path: "informatie-objecten"`.
+- `InformatieObjectenModule` declared nothing, so every entry in its `imports` was dead weight
+  (`SharedModule`, `DocumentIconComponent`, `InformatieObjectIndicatiesComponent`,
+  `MimetypeToExtensionPipe`, `InformatieObjectEditComponent`). Deleted.
+- Its two consumers, `inbox-documenten-list` and `ontkoppelde-documenten-list`, only ever used
+  `<zac-informatie-object-link>`; they import that component directly now.
+- `RouteReuseStrategy` moved to `AppModule.providers` — not lost.
 
-**Verify**
-- `/zaken`, `/zaken/mijn`, `/zaken/werkvoorraad`, `/zaken/create`,
-  `/zaken/afgehandeld` and `/zaken/<identificatie>` all resolve.
-- The `""` -> `werkvoorraad` redirect still fires with `pathMatch: "full"`.
-- `TabelGegevensResolver` and `ZaakIdentificatieResolver` still run.
-- A zaak-view chunk appears separately in the build output.
-- Zaak-view specs: expect harness timeouts, not assertion failures, if async work
-  is pending on mount.
+**Trap that cost a test run:** `inbox-documenten-list.component.spec.ts` was inheriting
+`SharedModule`'s `MatPaginatorIntl` provider transitively through `InformatieObjectenModule`, so
+the paginator buttons lost their translated accessible names and two Testing Library queries
+failed. Runtime was never affected (`AppModule` imports `SharedModule`). The spec provides the
+same factory itself now. Expect the same when dissolving the barrels in steps 5–7; 5a bore this out (`DateAdapter` and `HttpClient` inherited from `MaterialFormBuilderModule`).
 
-## Step 2 — The remaining two eager `forChild` modules — NEXT
+Result: 538.75 kB -> 520.80 kB initial transfer.
 
-`klanten` is done (step 1b). Remaining: `informatie-objecten` and `fout-afhandeling` — same
-treatment, `.routes.ts` + real `loadChildren` mount point.
+## Step 3 — ngx-editor out of the eager graph — DONE (PZ-12707)
 
-Watch out:
-- Both are still eager-with-no-mount-point, so apply the reachability check first: what else
-  reaches the app *only* through them?
-- `InformatieObjectenModule` is imported directly by `AppModule` **and** was imported by the
-  now-deleted `ZakenModule`, so it survived step 1b. It still carries the app-wide
-  `RouteReuseStrategy` provider — that must move to bootstrap, not vanish.
-- `informatie-objecten` has two routes on `:uuid` vs `:uuid/:versie` — different shapes, so
-  order is not load-bearing there, unlike klanten's.
+**The rule this step is built on:** an NgModule's `exports` are a live edge that never
+tree-shakes; its `imports` are shaken away once nothing uses them. So a barrel costs only what
+it *exports* — and `AppModule -> SharedModule -> MaterialModule / MaterialFormBuilderModule`
+is what keeps Material eager. That remaining edge is cut in steps 5–7, where those barrels
+are dissolved. Step 5 alone measured +27 kB, and still +13.5 kB on top of step 6 (see step 5), so any win left needs step 7.
 
-## Step 3 — The three already-lazy routing modules
+`MaterialFormBuilderModule` imported `NgxEditorModule` *and* exported `ZacHtmlEditor`, so every
+first paint carried the whole WYSIWYG editor. It is used on four lazy screens only: mail-create,
+ontvangstbevestiging, admin/mailtemplate, and the `htmlEditor` field type in taakformulieren.
 
-`taken`, `documenten`, `productaanvragen` -> `.routes.ts`. Purely mechanical: the
-`loadChildren` entries already exist in app routing, only the import target and
-the exported symbol change. `documenten` and `productaanvragen` also hold eager
-`component:` refs worth flipping to `loadComponent` while in there.
+Dropped `NgxEditorModule`, `ZacHtmlEditor` and `ZacComposedForm` from the barrel; the three
+components import `ZacHtmlEditor` directly. Measured on `main` after #7075: **520.97 -> 444.27 kB**,
+2940 tests green, `tsc` at its 4 pre-existing errors.
 
-## Step 4 — Delete the remaining two feature container modules
+Both edges matter, and not equally:
 
-`ZakenModule` and `KlantenModule` are gone (step 1b). Remaining: `TakenModule` and
-`InformatieObjectenModule`. After step 3 these hold nothing but re-exports of standalone
-components.
+| Change | Initial transfer | ngx-editor |
+|---|---|---|
+| baseline | 520.97 kB | eager |
+| `NgxEditorModule` out of `imports` only | 521.02 kB | still eager |
+| `ZacHtmlEditor` + `ZacComposedForm` out of `exports` only | −19.9 kB * | still eager |
+| both | **444.27 kB** | lazy |
 
-- `InformatieObjectenModule` has two real consumers —
-  `documenten/inbox-documenten-list` and `documenten/ontkoppelde-documenten-list` —
-  which must import the three exported components directly.
-- `InformatieObjectenModule` also carries
-  `{ provide: RouteReuseStrategy, useClass: RouteReuseStrategyService }`, an
-  app-wide provider hiding in a feature module. It moves to bootstrap providers in
-  step 6 — it must not silently disappear here.
-- These four are imported eagerly by `AppModule`, so deleting them is what finally
-  gets zaken/klanten/informatie-objecten out of the initial bundle.
+\* measured on the pre-#7075 tree (538.67 -> 518.80 kB); the delta carries over, the absolute
+number does not.
 
-## Step 5 — `app-routing.module.ts` -> `app.routes.ts`
+The `imports` line alone buys nothing — esbuild shakes it. The `exports` alone buy ~20 kB but
+leave the library eager, because the barrel still imports it. Only cutting both moves ngx-editor
+into a lazy chunk. The same PR also drops 26 dead `imports` entries from the two barrels — no
+bundle effect, measured. Verify the four screens in a browser: a missing import fails on screen,
+not in the build.
 
-`RouterModule.forRoot(routes)` becomes `provideRouter(APP_ROUTES)`, staged into
-`AppModule`'s providers so this step stands alone. Last routing module gone.
+## Steps 4–7 — Dissolve the barrels, one per PR
 
-## Step 6 — `bootstrapApplication` + delete `CoreModule`
+Every file that imports a barrel has to be given its own imports before the file can go — that is
+the work, not the deletion. Order is forced by the dependencies: smallest first, `SharedModule`
+last because it re-exports the other three. Step 5 measured +27 kB on its own and +13.5 kB on top of step 6; any Material win now needs step 7. Step 4 was cleanup, and mostly touched spec files, which ship to nobody.
 
-The one step with genuine behavioural risk. Own PR, own smoke test.
+**A barrel's `providers` are app-wide only because `AppModule -> SharedModule` imports it.** Each dissolving step must move those providers somewhere explicit (`CoreModule` until step 9) in the same PR, or they silently vanish at runtime while specs still pass. Step 5 did this for `MAT_SNACK_BAR_DEFAULT_OPTIONS`; steps 6 and 7 carry more (see there).
+
+Shared cautions for all four: expect a tail of missing-import template errors, and expect specs to
+lose providers they were inheriting through a barrel — step 2 hit exactly that with
+`MatPaginatorIntl`. Importer specs still using `By.css` / `querySelector` must be migrated in the
+PR that touches them, because `no-restricted-syntax` is an **error** on any spec a PR touches.
+Step 4 cleared `shared/form/input`, `shared/form/radio` and `klanten/bedrijfsgegevens`;
+`admin/bpmn-process-definitions` + its `-item` were cleared in 5a.
+
+**Done in 5a (PZ-12820): no spec imports any of our NgModules any more.** On main 20 specs imported one (`MaterialModule` 14, `MaterialFormBuilderModule` 12, `SharedModule` 3, overlapping); 5a clears all 20, so steps 5b, 6 and 7 need to touch no spec for the barrels. (5b still touches 2 specs, but only to add tests for a pre-existing gap it fixes; see step 5.) Specs lost two providers they had inherited from `MaterialFormBuilderModule`: the moment `DateAdapter` (now `provideMomentDateAdapter()` in `date`, `abstract-task-form`, `abstract-taak-formulier`) and `HttpClient` (now `provideHttpClient()` + `provideHttpClientTesting()` in the two abstract form specs). Four more specs kept the app's date formats through their component's own barrel import; step 6 moved that to `setupJest.ts`. The 10 `querySelector` strict-lint errors in `abstract-taak-formulier`, `abstract-task-form` and `zaak-create` were migrated to Testing Library. In `zaak-create`, the sidenav content is inside a closed `mat-sidenav`, so `getByRole` sees an empty name even with `hidden: true`; `getByText` is used there.
+
+## Step 4 — `PipesModule` — DONE
+
+Removed from `shared/shared.module.ts` (imports + exports), from
+`shared/indicaties/informatie-object-indicaties` and from 11 specs; file deleted. 11 -> 10 modules.
+`Initial total` 444.27 -> 443.64 kB on a single commit base (**−0.6 kB**).
+
+Note for `informatie-object-indicaties`: it keeps its `import { DatumPipe }` after the barrel is
+gone, because it uses the pipe as `new DatumPipe("nl")` in the class body, not in its template.
+A pipe import is not always a template import.
+
+**No fan-out was needed, and that is the reusable finding.** All 40 components whose templates use
+`datum` / `dagen` / `location` / `bestandsomvang` already listed the pipe in their own `imports`
+array, so the barrel's `exports` edge fed nobody. Likewise the 12 specs: a standalone component
+carries its own `imports`, so a spec that imports the component under test gets the pipes
+transitively — a spec needs a pipe directly only when the *spec's own* inline template uses it,
+and none did. Check both before assuming a barrel removal requires touching consumers.
+
+Verification that makes this safe to repeat for steps 5-7: an AOT production build hard-errors on
+an unresolvable pipe or directive, so a completing `ng build --configuration production` is the
+real proof that no consumer was silently left behind. `ng test` alone is weaker.
+
+**The real cost of this step was not the deletion — it was the touched-spec lint gate.** Removing
+one import line from a spec makes that spec "changed", and `no-restricted-syntax` plus
+`testing-library/no-node-access` turn from warnings into errors on it. Three of the 12 specs had
+to be migrated to Testing Library queries before the branch could go for review (13 errors in
+`shared/form/input`, `shared/form/radio`, `klanten/bedrijfsgegevens`). Two things learned while
+doing it:
+
+- `testing-library/no-node-access` is an error too, so `.closest()` / `.parentElement` are not an
+  escape from `querySelector`. Where a component renders an unassociated `<label>` (as
+  `zac-static-text` does) there is no role or label association to query at all; assert on the
+  presence and absence of the distinct *values* instead of reaching for the field element.
+- A vacuous assertion tends to hide inside a banned query. `input.spec.ts` asserted that
+  `span[matSuffix]` existed — an element the template always renders, with nothing projected into
+  it, so the test could not fail. Migrating it meant writing the test it was supposed to be: a
+  `render()` host that projects a button and queries it by role. 5a did this for the remaining
+  specs; it is per-spec work, not a mechanical find-and-replace.
+
+### Step 5 — `MaterialModule` — 14 (+2) non-spec, 20 (+2) specs — 5a MERGED, 5b READY FOR PR
+
+**Measured: a bundle regression, not a win — twice.** First on main `d4e8a2c3a`, before step 6: `Initial total` 2.19 MB / 459.59 kB -> 2.13 MB / 486.59 kB (**+27 kB transfer**, −60 kB raw), initial chunks 61 -> 90. Re-measured on main `c2523a8ab`, with step 6 merged, both builds `--configuration production` from the same commit base (base in a detached worktree): **2.16 MB / 450.26 kB -> 2.04 MB / 463.74 kB (+13.5 kB transfer, −120 kB raw)**, initial JS chunks 55 -> 82. Step 6 halved the regression and doubled the raw gain, but transfer still goes up: Material is split into more, smaller initial chunks, which gzip worse.
+
+Which Material components 5b moves out of the initial chunks, on top of step 6, checked by the quoted selector string (`"mat-…"`) across every initial JS chunk of both builds: `mat-stepper`, `mat-tree`, `mat-bottom-sheet-container` (as in the first measurement) and now also `mat-autocomplete`, `mat-slide-toggle`, `mat-radio-button`. The first measurement listed autocomplete as still eager; slide-toggle and radio were not checked then.
+
+Still eager after 5b (not yet attributed per component; the likely anchors are `SharedModule`'s standalone exports, which `AppModule` and `CoreModule` import, and the eager toolbar/zoek/app shell): `mat-table`, `mat-paginator`, `mat-sort-header`, `mat-calendar`, `mat-datepicker-content`, `mat-tab-group`, `mat-expansion-panel`, `mat-select`, `mat-menu`, `mat-checkbox`, `mat-chip-listbox`, `mat-card`, `mat-list`, `mat-toolbar`, `mat-sidenav-container`, `mat-dialog-container`, `mat-form-field`, `mat-icon`, `mat-divider`, `mat-progress-bar`, `mat-progress-spinner`. The win expected here needs step 7, or cutting `SharedModule` out of `AppModule`/`CoreModule`.
+
+- **5a — 20 specs (PZ-12820, merged, #7205):** drop every NgModule of ours from every spec (see above); among them `MaterialModule` from 14 specs; `klant-koppel.component.spec.ts` drops `SharedModule` and turns its override from `set` into `remove`/`add` of the two child components. Green on its own: 3326/3326 tests, `tsc --project .` at 0, strict touched-spec lint clean.
+- **5b — 14 non-spec + 2 gap fixes (PZ-12856):** direct Material imports in `admin/bpmn-process-definitions` + `-item`, `fout-afhandeling/dialog/fout-detailed-dialog`, `klanten/koppel/klanten/{klant-koppel,klant-koppel-betrokkene,klant-koppel-initiator}`, `shared/indicaties/{besluit,informatie-object,persoon,zaak}-indicaties`; `MaterialModule` out of `shared.module.ts`; `material.module.ts` deleted; `app.module.ts` and `core.module.ts` adjusted. Plus `MatButtonModule` in `taken/taken-vrijgeven-dialog` and `zaken/zaken-vrijgeven-dialog`, each with a spec asserting the close button carries `mat-mdc-icon-button` (both fail without the import). 18 files, +146 / −104 against main `c2523a8ab`. Verified on the committed branch: production build green, `tsc --project .` at 0, `ng lint` on the touched files 0 errors (8 `prefer-inject` warnings, all on constructors 5b does not touch), strict touched-spec lint (`.eslintrc.strict-specs.js`) clean on both specs, `ng test` 3352/3352.
+
+**Pre-existing gap found, not caused by 5b.** The two vrijgeven dialogs used `mat-icon-button` without `MatButtonModule` already on main; neither ever imported `SharedModule`, so the barrel never covered them. Their close button rendered as an unstyled native button. Fixed in 5b because the audit below found it; `zaken-vrijgeven-dialog`'s close button still has no `aria-label` (its spec finds it by the icon text `close`), left as is.
+
+**How 5b was proven complete — the build alone is not enough.** AOT hard-errors on an unknown *element* (NG8001), an unknown *bound* property (NG8002) and an unknown `exportAs` (NG8003), but a *static attribute* directive with no matching import is silently ignored: `mat-icon-button`, `matTooltip="…"`, `matInput`, `matSuffix`, a static `formControlName`. So on top of the build, every component's template (`templateUrl` and inline `template:`) was scanned for Material and reactive-forms selectors and checked against the Material packages in that component's own `imports` (for `AppComponent`: `AppModule`'s). Results: the two vrijgeven dialogs above, plus false positives only — `matSuffix` used purely as a content-projection slot into `zac-input` needs no directive, and `<mat-selection-list` matching a `<mat-select` regex. `parameters-edit-cmmn` (imports `SharedModule`, not in the diff) was checked by hand: covered.
+
+**No provider was lost.** Besides `MAT_SNACK_BAR_DEFAULT_OPTIONS`, the Material NgModules that `MaterialModule` re-exported carry their own module-level providers (menu/select/autocomplete/datepicker/tooltip scroll strategies, `MAT_CHIPS_DEFAULT_OPTIONS`, `MatSortHeaderIntl`, `MatPaginatorIntl`, `MatDatepickerIntl`, `MatStepperIntl`, `ErrorStateMatcher`, `MatDialog`, `MatSnackBar`, `MatBottomSheet`). Checked in `node_modules/@angular/material/fesm2022`: every one is `providedIn: 'root'` too, so none goes missing when the barrel stops being app-wide. Our own `MatPaginatorIntl` override stays in `SharedModule.providers` until step 7.
+
+Gotchas hit:
+- `MaterialModule` also exported `ReactiveFormsModule`; `klant-koppel-betrokkene` needed it directly.
+- `MAT_SNACK_BAR_DEFAULT_OPTIONS` was its only provider; moved to `CoreModule`.
+- `AppComponent` needs `MatSidenavModule` in `AppModule`.
+- The production `ng build` must run outside the sandbox (exit 134, no output, otherwise).
+- Measure with `--configuration production` explicitly: without it, the build log shows only a `Raw size` column and no transfer estimate.
+- When scripting the selector check over the build log: the chunk names in it carry ANSI colour codes, and in zsh an unquoted `$var` is not word-split, so a `for c in $chunks` loop runs once over the whole list. Both give a silent all-zero result; sanity-check with `mat-icon`, which must be eager.
+
+### Step 6 — `MaterialFormBuilderModule` — DONE (PZ-12845, merged, #7227)
+
+**Result.** On main `231146b26`: `Initial total` 2.19 MB / 459.67 kB -> 2.16 MB / 449.84 kB (**−9.8 kB transfer**). 3326/3326 tests, lint 0 errors, no spec file touched. 21 files, +96 / −148. Does not depend on 5b; 5b goes after it as its own PR.
+
+**What was done.** 16 components import their `Zac*` fields and `EmptyPipe` directly (4 of them only lose the module line); `shared.module.ts` drops `forRoot()` and the export; the module file is deleted. The date providers became `provideZacDateAdapter()` in `shared/form/date/provide-zac-date-adapter.ts` (`provideMomentDateAdapter(ZAC_DATE_FORMATS, { strict: false })`), used by `CoreModule` and by `setupJest.ts`. The `parse`/`display` keys that sat in the old `MAT_MOMENT_DATE_ADAPTER_OPTIONS` were dropped: `MomentDateAdapter` reads only `strict` and `useUtc`. `withJsonpSupport()` and the barrel's `provideHttpClient` went without replacement; the app has no JSONP calls and no HTTP interceptors.
+
+**Gotchas hit:**
+- A template scan over `.html` files misses inline templates: `klant-koppel-betrokkene` uses `zac-select`/`zac-input` in `template:` and needed both. The production build caught it (NG8001); scan `.ts` files with `template:` too.
+- 4 specs (`zaak-brondatum-zetten-dialog`, `zaak-afhandelen-dialog`, `informatie-object-add`, `informatie-object-edit`, 12 tests) got the app's `YYYY-MM-DD` format through the component's own barrel import. Without it they fell back to `setupJest`'s default `provideMomentDateAdapter()`, whose format does not parse it, so the date stayed invalid and the submit button disabled. Fixed without touching a spec: `setupJest.ts` now uses `provideZacDateAdapter()`, so specs run on the app's real date config. `setupJest.ts` is not a `*.spec.ts`, so the touched-spec lint gate does not apply.
+- `ng test` must run outside the sandbox too (watchman cannot write its LaunchAgent).
+
+Original scope:
+
+- `admin/`: `mailtemplate`, `parameters-edit-bpmn`, `parameters-edit-cmmn`,
+  `parameters-select-process-model-method`
+- `informatie-objecten/`: `informatie-object-add`, `informatie-object-edit`
+- `klanten/`: `klant-koppel-betrokkene`, `klant-koppel-initiator`, `bedrijf-zoek`, `persoon-zoek`
+- `mail/`: `mail-create`, `ontvangstbevestiging`
+- `taken/taken-verdelen-dialog`
+- `zaken/`: `besluit-create`, `zaak-afhandelen-dialog`, `zaak-brondatum-zetten-dialog`
+- `shared/shared.module.ts`
+
+The biggest, and the one whose name has to go: it has nothing to do with the ATOS form builder
+any more — what it exports is the modern `Zac*` form-field set. Carries the moment date adapter
+with `MAT_DATE_FORMATS` / `MAT_MOMENT_DATE_ADAPTER_OPTIONS`. Its `forRoot()` returns
+`providers: []` — a dead API, delete rather than port (its only caller is `shared.module.ts`). `withJsonpSupport()` in its `provideHttpClient(...)` is dead: no `.jsonp(` call exists in the app (verified 2026-09-29).
+
+**Providers must move in this step, not step 9.** `DateAdapter` (`MomentDateAdapter`), `MAT_MOMENT_DATE_ADAPTER_OPTIONS` and `MAT_DATE_FORMATS` reach the app only through the barrel: via `SharedModule` (imported by `AppModule` and `CoreModule`) and via the components that import `MaterialFormBuilderModule` directly. Extract them into one `provideZacDateAdapter()` and add it to `CoreModule.providers`; without it every `mat-datepicker` throws "No provider found for DateAdapter" at runtime. Specs get it from `setupJest.ts`, which uses `provideZacDateAdapter()` too. Drop the barrel's `provideHttpClient(...)` rather than moving it; `app` and `core` already provide one.
+
+Three components import both barrels (MFB + `SharedModule`): `klant-koppel-betrokkene`, `klant-koppel-initiator` and `parameters-edit-cmmn`. Step 6 removes only MFB from them; `SharedModule` stays until step 7.
+
+### Step 7 — `SharedModule` — 8 non-spec, 0 specs (cleared by 5a)
+
+- `admin/`: `bpmn-process-definitions` + its `-item`, `parameters-edit-cmmn`
+- `klanten/koppel/klanten/`: `klant-koppel`, `klant-koppel-betrokkene`, `klant-koppel-initiator`
+- `app.module.ts`, `core/core.module.ts`
+
+Last, because until the other three are gone it is still the thing re-exporting them. Its own
+exports are 21 standalone components, directives and pipes plus `CommonModule`, `FormsModule`, `TranslateModule` and `DragDropModule`, which consumers list directly instead.
+
+**Its providers move in this step** (to `CoreModule.providers`), because step 9 comes after it: the `MatPaginatorIntl` factory and the paginator-language `provideAppInitializer`. Watch the `MatPaginatorIntl` trap from step 2: specs inherit that provider transitively and lose their translated paginator accessible names when it moves; expect a few specs to need the factory provided locally. The other two need no app-wide home (verified 2026-10-01):
+- `Title` is `providedIn: 'root'` in `@angular/platform-browser` (`app.component` and `util.service` inject it); drop the provider, do not move it.
+- `VertrouwelijkaanduidingToTranslationKeyPipe` is injected as a service only by `informatie-objecten/informatie-object-create-attended` (constructor parameter); give that component its own `providers: [VertrouwelijkaanduidingToTranslationKeyPipe]` instead of moving it to `CoreModule`. Its template users import the pipe directly and are unaffected. Why not root (decided 2026-10-05): before, the provider was root only because `SharedModule` sat in `AppModule`/`CoreModule`. Template use needs no provider (Angular instantiates pipes itself), and `.selectList` (`mail-create`, `formio-setup-service`) is static. A root provider would serve one consumer and need moving again in step 9. `@Injectable({ providedIn: "root" })` on the pipe class was the considered alternative; the local provider wins because it keeps the dependency visible on its only consumer, and that component's spec now checks it.
+
+`core.module.ts` imports `SharedModule` too, not only `app.module.ts`; both lines go in this step. The two `admin/bpmn-process-definitions` specs carry a comment that the component "imports SharedModule, so it injects MatDialog from its own standalone injector", which is why they spy on `MatDialog.prototype.open`. Re-check that reasoning and the comment when the import goes; the spies themselves still work either way.
+
+**Done (2026-10-05, measured on main `5ec92208c`, both builds `--configuration production`, base exported with `git archive`): 2.04 MB / 464.59 kB -> 1.93 MB / 433.79 kB (−30.8 kB transfer, −110 kB raw), initial JS chunks 82 -> 68.** 6 components list what their templates use (`NgIf`/`NgFor`/`NgClass`/`DatePipe`, `StaticTextComponent`, `SideNavComponent`, `EmptyPipe`, `TranslateModule`; `klant-koppel-initiator` needed nothing). Paginator providers moved to `CoreModule.providers`; `Title` dropped; pipe provided locally in `informatie-object-create-attended`. The two bpmn spec comments were deleted: nothing the components import provides `MatDialog` any more, and the prototype spy works either way. No spec needed the paginator factory locally. 3369/3370 green (the 1 = `mail-create` 30s timeout under load, 14/14 in isolation), `tsc --project .` 0, `ng lint` 0 errors.
+
+Falsified per import (remove it, run its specs): 9 of 13 caught by specs, `NgClass`/`SideNavComponent` by AOT (NG8002/NG8001). Two gaps closed in specs: `klant-koppel-betrokkene` used `overrideComponent({ set })` (now `remove`/`add` of the two zoek stubs — a missing `NgIf` is only an AOT warning, so nothing else catches it), and `informatie-object-create-attended` provided the pipe in TestBed, masking the component's own `providers` (removed). Both now go red when the import is removed.
+
+## Step 8 — `loadChildren` targets: NgModule -> `Routes` (`taken`, `documenten`, `productaanvragen`)
+
+All three already hang off a `loadChildren` in `app-routing.module.ts`, so they are lazy today.
+Only the *shape* of the import target changes: it resolves to an NgModule instead of a plain
+`Routes` array. No loading behaviour changes; this is what finally removes the modules.
+
+- **`taken`** — the mount point imports `TakenModule`, not `TakenRoutingModule`. Pointing it at
+  `taken.routes.ts` drops both modules in one move.
+- **`documenten`** and **`productaanvragen`** — the mount point already imports the routing
+  module itself, so only the import target and exported symbol change. Both hold eager
+  `component:` refs; leave them. Route-level `loadComponent` inside an already lazy chunk was
+  measured and rejected on 2026-09-10 (splitting klanten's chunk cost 4.33 kB through fragmentation).
+
+## Step 9 — `app.routes.ts` + `bootstrapApplication`, delete `AppModule` and `CoreModule`
+
+Old steps 9 and 10 in one PR (decided 2026-10-05). Routing part first:
+
+
+`RouterModule.forRoot(routes)` becomes `provideRouter(APP_ROUTES)`, now a bootstrap provider. Last routing module gone. `forRoot` is called without a
+config object (verified 2026-10-01), so no `withRouterConfig`/`withInMemoryScrolling`-style
+feature is needed to keep behaviour identical.
+
+### Bootstrap part (was step 10)
+
+The one part with genuine behavioural risk. Own smoke test.
+
+**Done as:** providers in new `app/app.config.ts` (`appConfig`); `AppModule`'s constructor side effects in a `provideEnvironmentInitializer` (same timing as a module constructor: injector creation); `provideHttpClient()` without `withInterceptorsFromDi`. Provider diff (old `importProvidersFrom(AppModule)` vs `appConfig.providers` + `AppComponent`'s imports): only duplicates (HttpClient was provided twice), the legacy-interceptor fn, `BrowserModule` internals that `bootstrapApplication` adds itself (`BROWSER_MODULE_PROVIDERS`), and the Protractor `Testability` providers (unused, e2e is Playwright) disappear.
+
+**Smoke test (8080, after `./gradlew war -x test -x npmRunLint`):** dates in nl-NL format (no NG0701), paginator labels in Dutch, dialog width 650px, snackbar at the top, reload keeps the TanStack cache (sessionStorage `zac:tanstack:query`), icons use Material Symbols, search sidenav opens, deep link reload on `/zaken/...` works, no NG05100 in the console.
 
 - `main.ts`: `platformBrowserDynamic().bootstrapModule(AppModule)` ->
   `bootstrapApplication(AppComponent, { providers: [...] })`. Keep `alterMoment()`.
 - Delete `app.module.ts`; `AppComponent` becomes standalone with its own `imports`.
 - Delete `core/core.module.ts` and `core/ensure-module-loaded-once.guard.ts`
-  (`EnsureModuleLoadedOnceGuard` has no other user).
+  (`EnsureModuleLoadedOnceGuard` has no other user, verified 2026-10-01).
+- **Move `registerLocaleData(localeNl, "nl-NL")` before deleting `core.module.ts`.** It is a
+  top-level side effect of that file (line 28), outside the class, so it is in no provider list.
+  Drop the file without it and every `DatePipe`/`DecimalPipe`/`CurrencyPipe` under
+  `LOCALE_ID "nl-NL"` throws NG0701 "Missing locale data" at runtime; build and specs will not
+  catch it. Put it in `main.ts` next to `alterMoment()`, before `bootstrapApplication`.
 - Provider consolidation:
   - `TranslateModule.forRoot({...})` -> `provideTranslateService({...})`, keeping
     the cache-busting loader and `fallbackLang: "nl"`.
-  - `LOCALE_ID`, `MAT_DATE_LOCALE`, `MAT_DIALOG_DEFAULT_OPTIONS`, `UtilService`,
-    `APP_BASE_HREF`, `LocationStrategy`, `Title`, `MatPaginatorIntl`,
-    `RouteReuseStrategy` -> bootstrap providers.
+  - Everything in `CoreModule.providers` and `AppModule.providers` -> bootstrap providers. By then
+    that is: `LOCALE_ID`, `MAT_DATE_LOCALE`, `MAT_DIALOG_DEFAULT_OPTIONS`, `UtilService`,
+    `MAT_SNACK_BAR_DEFAULT_OPTIONS` (step 5), `provideZacDateAdapter()` (step 6),
+    `MatPaginatorIntl` and the paginator initializer (step 7), `provideRouter(APP_ROUTES)` (step 9), `APP_BASE_HREF`, `LocationStrategy`,
+    `RouteReuseStrategy`, `provideTanStackQuery(...)` with devtools and `provideStartupPrefetch()`.
+  - `AppComponent`'s own `imports`: `ToolbarComponent`, `ZoekComponent`, `MatSidenavModule` (step 5)
+    and whatever else its template uses that `AppModule` supplies today.
   - `BrowserAnimationsModule` -> `provideAnimations()`. Handle with care: this repo
     has a history of NG05100 from animation providers being imported more than once.
-  - `provideHttpClient(withInterceptorsFromDi())` currently appears in **three**
-    modules (`app`, `core`, `material-form-builder`). Collapse to one and confirm
-    whether MFB's `withJsonpSupport()` is still needed.
+    `provideAnimationsAsync()` is worth 11.7 kB but breaks 9 tab specs — see the parked
+    findings before reaching for it here.
+  - `provideHttpClient(withInterceptorsFromDi())` appears in `app` and `core` (MFB's copy went in
+    step 6). Collapse to one. No `HTTP_INTERCEPTORS` is registered anywhere (verified
+    2026-10-01), so the remaining one can be a plain `provideHttpClient()`.
 - Rehome `AppModule`'s constructor side effects — icon registry default font set,
   `window.__TANSTACK_QUERY_CLIENT__`, `persistQueryClient` with its
   session-storage persister — into `provideAppInitializer(...)` or
   `AppComponent`'s constructor. This is the most substantive piece of the step.
-- `AppModule.injector` is assigned but **read nowhere**. Confirmed dead; delete it
-  rather than porting it.
+- `AppModule.injector` is assigned but **read nowhere**. Confirmed dead (re-verified
+  2026-10-01); delete it rather than porting it.
 
-## Step 7 — Dissolve the four shared barrels
+## Step 10 (optional) — More lazy loading: search sidenav, `/gebruiker`, Form.io in taak-view
 
-Independent of steps 1–6; can run in parallel or after. One barrel per PR.
+Not about NgModules; it can be its own PR at any time. Found 2026-10-05 by cutting nodes out of the import graph in the production build's `stats.json` (`ng build --configuration production --stats-json`, run outside the sandbox). Initial bundle then: 1.94 MB raw / 436 kB transfer. The figures are upper bounds; measure a real before/after build.
 
-| Barrel | Non-module importers |
-|---|---|
-| `MaterialFormBuilderModule` | 28 |
-| `MaterialModule` | 19 |
-| `PipesModule` | 12 |
-| `SharedModule` | 9 |
-
-Importing `SharedModule` today transitively pulls `MaterialModule` +
-`MaterialFormBuilderModule` + `PipesModule` + ~20 components, so every consumer
-gets the whole graph and nothing tree-shakes. Dissolving them means each consumer
-lists what it actually uses. Roughly half the affected files are specs.
-
-Do not batch this as one mechanical sweep. Expect a long tail of missing-import
-template errors, and note that specs touched here must also be migrated to
-Testing Library queries — `no-restricted-syntax` is an error on any spec a PR
-touches.
-
-Providers riding along inside these barrels must land somewhere explicit:
-`MAT_SNACK_BAR_DEFAULT_OPTIONS` (Material), and the moment date adapter with
-`MAT_DATE_FORMATS` / `MAT_MOMENT_DATE_ADAPTER_OPTIONS` (MFB).
+- **Search sidenav** — wrap `<zac-zoeken>` in `app.component.html` in `@defer (on idle)`. The sidenav is closed by default, yet `ZoekComponent` pulls in datepicker (106 kB), tabs, cdk/table, checkbox, expansion, sort and the BAG/persoon/bedrijf search components: **−353 kB raw (≈ −80 kB transfer)**. Catch: `ZoekComponent.ngAfterViewInit` subscribes to `zoekenSideNav().openedStart`; if the user opens the sidenav before the deferred block has loaded, the first open does not search. Fix: in `ngAfterViewInit`, also search when `zoekenSideNav()?.opened` is already true, and cover that with a spec. `trefwoorden` is a signal (safe); a missed `reset$` before load is harmless.
+- **`/gebruiker`** — `IdentityComponent` is the last eager `component:` in `app.routes.ts`; switching to `loadComponent` drops all of `mat-list` from the initial bundle: **−61 kB raw (≈ −14 kB transfer)**. Trivial.
+- **Form.io in taak-view** — not in the initial bundle, but the taak page's own lazy chunk (`taak-view-component`) is **1.76 MB raw / 394 kB transfer** (measured 2026-10-05, prod build on `921612bd7` + step 9), almost the size of the whole initial bundle. It loads on every taak, including CMMN taken, which never use Form.io (Form.io is only for BPMN taak forms). Cause: `TaakViewComponent` imports `FormioWrapperComponent` statically, and that is the only runtime importer of `@formio/angular` (`formio-setup-service.ts` imports only types, which are erased). Fix: wrap `<zac-formio-wrapper>` in `taak-view.component.html` in `@defer (when formioFormulier)`, which replaces its `*ngIf`. Expected: most of the 394 kB moves to a separate chunk that only BPMN taken load; measure a real before/after build. Watch-outs:
+  - A BPMN taak now loads Form.io a moment later: give the block an `@placeholder` (or reuse the loading bar) so the form area does not jump or look empty.
+  - Specs that render the Form.io form need `DeferBlockBehavior.Manual` + `deferBlock.render()` (or `Playthrough`), otherwise the form never appears in the spec.
+  - `FormioCustomEvent` and `FormioChangeEvent` come from `formio-wrapper.component.ts`; `taak-view.component.ts` and `formio-setup-service.ts` must use them as types only (`import type`), otherwise the wrapper file, and with it Form.io, is pulled back into the taak chunk. `FormioWrapperComponent` may not be referenced anywhere in `taak-view.component.ts` except its `imports` array, or Angular cannot defer it.
+- **Rejected:** toolbar (always visible, −58 kB raw) and `moment` (63 kB, reaches the app through the app-wide `DateAdapter`).
 
 ## Order summary
 
-Steps 1–5: low risk, sequential, no behaviour change.
-Step 6: the gate.
-Step 7: independent, longest tail, biggest bundle payoff.
+Step 3: done, −77 kB, merged (#7088).
+Step 4: done, −0.6 kB — no consumer needed touching; the work was migrating 3 touched specs to
+Testing Library.
+Steps 5–7: order forced by the barrels' own dependencies. 5a merged; step 6 merged (#7227), −9.8 kB; 5b merged (#7233), +13.5 kB; step 7 −30.8 kB, confirming the Material win sat behind `SharedModule`.
+Step 8: low risk, no behaviour change, no win.
+Step 9: routing (low risk) + the bootstrap gate (all of the risk, none of the payoff), merged into one PR.
+
+Remaining after step 8 (code checked 2026-10-05): 3 — `app-routing.module.ts`, `app.module.ts` + `core/core.module.ts`, all in step 9. Before step 8: 7 `@NgModule` files on disk — `taken.module.ts` + `taken-routing.module.ts`, `documenten-routing.module.ts`, `productaanvragen-routing.module.ts` (step 8), `app-routing.module.ts`, `app.module.ts` + `core/core.module.ts` (step 9).
+
+## Findings parked outside this plan
+
+Measured while hunting for bundle wins on 2026-09-16. None of these are migration steps; each
+is its own ticket or a dead end worth recording so nobody re-measures it.
+
+- **`provideAnimationsAsync()` (−11.7 kB, blocked).** Replacing `BrowserAnimationsModule` gives
+  444.27 -> 432.56 kB, but breaks 9 `klant-koppel` tab specs: the animations engine arrives a
+  microtask late and `MatTabGroup` no longer renders its tabs synchronously in a spec. Worth
+  doing only together with fixing those specs. Mind this repo's NG05100 history. The
+  `klant-koppel` spec has been rewritten since (#7154), so the 9 failures need re-measuring.
+- **Dead `imports` entries cost nothing.** Four modules carried `imports` that nothing used
+  (`core`: 3, MFB: 24, `shared`: 2, `taken`: 1). Pruning the 26 safe ones changed the bundle by
+  0.04 kB — esbuild already shakes them. Already pruned in step 3 (#7088); nothing left to plan. Two of the four are
+  load-bearing anyway: `core`'s `TranslateModule.forRoot(...)` carries providers and `taken`'s
+  `TakenRoutingModule` carries the routes.
+- **`@angular/elements` is an unused dependency.** In `package.json`, imported nowhere. No
+  bundle effect; removing it is pure upgrade-churn relief.
+- **moment is eager (18.84 kB) and stays that way.** Pulled in by `toolbar.component`,
+  `datum.pipe` and `dagen.pipe`, all in eager reach. Not a leak — replacing moment is a
+  refactor across 30+ files, not a barrel problem.
+- **Form.io, OpenLayers and proj4 are already lazy.** A grep suggesting otherwise was matching
+  the i18n key `msg.error.formio.init`.
+- **Bootstrap grid stays.** `styles.less` pulls `bootstrap-grid.min.css` and templates use
+  `row`/`col-*` 450+ times. The separate `assets/vendor/bootstrap` copy is live too:
+  `formio-bootstrap-loader.service.ts` fetches it for the Form.io shadow DOM.

@@ -21,7 +21,7 @@ import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.Response
 import net.atos.zac.event.EventingService
 import net.atos.zac.flowable.ZaakVariabelenService
-import net.atos.zac.flowable.cmmn.CMMNService
+import net.atos.zac.flowable.cmmn.CmmnService
 import net.atos.zac.signalering.model.SignaleringSubject
 import net.atos.zac.signalering.model.SignaleringVerzondenZoekParameters
 import net.atos.zac.signalering.model.SignaleringZoekParameters
@@ -43,6 +43,7 @@ import java.util.UUID
 
 const val SECRET = "fakeSecret"
 
+@Suppress("LargeClass")
 class NotificationReceiverTest : BehaviorSpec({
     val eventingService = mockk<EventingService>()
     val productaanvraagService = mockk<ProductaanvraagService>()
@@ -51,7 +52,7 @@ class NotificationReceiverTest : BehaviorSpec({
     val detachedDocumentService = mockk<DetachedDocumentService>()
     val signaleringService = mockk<SignaleringService>()
     val zaaktypeConfigurationService = mockk<ZaaktypeConfigurationService>()
-    val cmmnService = mockk<CMMNService>()
+    val cmmnService = mockk<CmmnService>()
     val zaakVariabelenService = mockk<ZaakVariabelenService>()
     val taskService = mockk<TaskService>()
     val zrcClientService = mockk<ZrcClientService>()
@@ -255,6 +256,68 @@ class NotificationReceiverTest : BehaviorSpec({
                 signaleringVerzondenZoekParameters[1].run {
                     subjecttype shouldBe SignaleringSubject.TAAK
                     subject shouldBe tasks[0].id
+                }
+            }
+        }
+    }
+    given("a request containing an authorization header and a rol notificatie for a zaakspecifiek geautoriseerde zaak") {
+        val zaakUUID = UUID.randomUUID()
+        val zaakUri = URI("https://example.com/fakezaak/$zaakUUID")
+        val notificatie = createNotificatie(
+            channel = Channel.ZAKEN,
+            resource = Resource.ROL,
+            resourceUrl = URI("https://example.com/fakezaak/$zaakUUID/rollen/${UUID.randomUUID()}"),
+            mainResourceUrl = zaakUri,
+            action = Action.CREATE
+        )
+        every { httpHeaders.getHeaderString(eq(HttpHeaders.AUTHORIZATION)) } returns SECRET
+        every { httpSessionInstance.get() } returns httpSession
+        every { zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
+            createZaakEigenschap(naam = ZAAKEIGENSCHAP_NAAM_GEAUTORISEERD, waarde = "true")
+        )
+        every { indexingService.addOrUpdateZaak(zaakUUID, false) } returns true
+        every { indexingService.addOrUpdateTakenForZaak(zaakUUID) } just Runs
+        every { indexingService.addOrUpdateInformatieobjectenForZaakAsync(zaakUUID) } just Runs
+        every { eventingService.send(any<ScreenEvent>()) } just Runs
+
+        `when`("notificatieReceive is called with the rol notificatie") {
+            val response = notificationReceiver.notificatieReceive(httpHeaders, notificatie)
+
+            then("the taken and documenten are reindexed too, so their authorisation data is not stale") {
+                response.status shouldBe Response.Status.NO_CONTENT.statusCode
+                verify(exactly = 1) {
+                    indexingService.addOrUpdateZaak(zaakUUID, false)
+                    indexingService.addOrUpdateTakenForZaak(zaakUUID)
+                    indexingService.addOrUpdateInformatieobjectenForZaakAsync(zaakUUID)
+                }
+            }
+        }
+    }
+    given("a request containing an authorization header and a rol notificatie for an ordinary zaak") {
+        val zaakUUID = UUID.randomUUID()
+        val zaakUri = URI("https://example.com/fakezaak/$zaakUUID")
+        val notificatie = createNotificatie(
+            channel = Channel.ZAKEN,
+            resource = Resource.ROL,
+            resourceUrl = URI("https://example.com/fakezaak/$zaakUUID/rollen/${UUID.randomUUID()}"),
+            mainResourceUrl = zaakUri,
+            action = Action.CREATE
+        )
+        every { httpHeaders.getHeaderString(eq(HttpHeaders.AUTHORIZATION)) } returns SECRET
+        every { httpSessionInstance.get() } returns httpSession
+        every { zrcClientService.listZaakeigenschappen(zaakUUID) } returns emptyList()
+        every { indexingService.addOrUpdateZaak(zaakUUID, false) } returns true
+        every { eventingService.send(any<ScreenEvent>()) } just Runs
+
+        `when`("notificatieReceive is called with the rol notificatie") {
+            val response = notificationReceiver.notificatieReceive(httpHeaders, notificatie)
+
+            then("only the zaak is reindexed") {
+                response.status shouldBe Response.Status.NO_CONTENT.statusCode
+                verify(exactly = 1) { indexingService.addOrUpdateZaak(zaakUUID, false) }
+                verify(exactly = 0) {
+                    indexingService.addOrUpdateTakenForZaak(zaakUUID)
+                    indexingService.addOrUpdateInformatieobjectenForZaakAsync(zaakUUID)
                 }
             }
         }

@@ -17,20 +17,15 @@ import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatExpansionModule } from "@angular/material/expansion";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatDrawer, MatSidenavModule } from "@angular/material/sidenav";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { TranslatePipe, TranslateService } from "@ngx-translate/core";
 import moment, { Moment } from "moment";
-import {
-  defaultIfEmpty,
-  EMPTY,
-  firstValueFrom,
-  map,
-  Observable,
-  of,
-} from "rxjs";
+import { map, Observable, of } from "rxjs";
 import { ReferentieTabelService } from "src/app/admin/referentie-tabel.service";
+import { ZacCheckbox } from "src/app/shared/form/checkbox/checkbox";
 import { ZacDate } from "src/app/shared/form/date/date";
 import { ZacInput } from "src/app/shared/form/input/input";
 import { ZacSelect } from "src/app/shared/form/select/select";
@@ -50,11 +45,13 @@ import { ZakenService } from "../zaken.service";
     MatButtonModule,
     MatDividerModule,
     MatExpansionModule,
+    MatFormFieldModule,
     MatIconModule,
     MatSidenavModule,
     MatToolbarModule,
     ReactiveFormsModule,
     TranslatePipe,
+    ZacCheckbox,
     ZacDate,
     ZacInput,
     ZacSelect,
@@ -77,7 +74,7 @@ export class CaseDetailsEditComponent implements OnInit {
   protected readonly groupDisplayValue = (
     group: GeneratedType<"RestGroup">,
   ): string =>
-    group.active === false
+    group.isActive === false
       ? `${group.naam ?? ""} (${this.translateService.instant("inactief").toLowerCase()})`
       : (group.naam ?? "");
   protected readonly users = signal<GeneratedType<"RestUser">[]>([]);
@@ -115,7 +112,15 @@ export class CaseDetailsEditComponent implements OnInit {
       Validators.required,
       Validators.maxLength(80),
     ]),
+    isZaakspecifiekGeautoriseerd: this.formBuilder.control(false),
   });
+
+  protected readonly showZaakspecifiekGeautoriseerd = computed(() =>
+    Boolean(
+      this.zaak().zaaktype.zaakafhandelparameters
+        ?.isZaakspecifiekAutoriseerbaar,
+    ),
+  );
 
   protected readonly updateZaakMutation = injectMutation(
     () => this.zakenService.updateMutation(),
@@ -134,47 +139,21 @@ export class CaseDetailsEditComponent implements OnInit {
     },
   );
 
-  protected readonly patchBehandelaarMutation = injectMutation(() => ({
-    mutationFn: () => {
-      const value = this.form.getRawValue();
-      return firstValueFrom(
-        this.patchBehandelaar(value, value.reden ?? "").pipe(
-          defaultIfEmpty(null),
-        ),
-      );
-    },
-    onError: (error) => {
-      console.error(
-        this.translateService.instant(
-          "console.error.case-details-change.assignment",
-        ),
-        error,
-      );
-    },
-  }));
-
   /**
    * Locks the submit button for the whole save and keeps it locked after
    * success (so no second submit slips in before the sidenav closes), but
-   * unlocks again on failure so the user can retry — derived from the mutations
-   * themselves, no separate "submitting" flag to keep in sync.
-   *
-   * The two mutations run in sequence, so `updateZaak` can only error *after*
-   * the patch succeeded; thus `isError()` implies patch `isSuccess()`. The XOR
-   * (`!==`) is true across "patched → saving → saved" (locked) and false only
-   * when the save failed (both true) or nothing ran yet (both false) (unlocked).
+   * unlocks again on failure so the user can retry.
    */
   protected readonly isSaveLocked = computed(
     () =>
-      this.patchBehandelaarMutation.isPending() ||
-      this.patchBehandelaarMutation.isSuccess() !==
-        this.updateZaakMutation.isError(),
+      this.updateZaakMutation.isPending() ||
+      this.updateZaakMutation.isSuccess(),
   );
 
   ngOnInit() {
     const zaak = this.zaak();
     const dateChangesAllowed = Boolean(
-      zaak.rechten.wijzigen && zaak.rechten.wijzigenDoorlooptijd,
+      zaak.rechten.canWijzigen && zaak.rechten.canWijzigenDoorlooptijd,
     );
 
     this.groups = this.identityService
@@ -189,20 +168,24 @@ export class CaseDetailsEditComponent implements OnInit {
         }),
       );
 
-    if (!zaak.rechten.wijzigen) {
+    if (!zaak.rechten.canWijzigen) {
       this.form.controls.communicatiekanaal.disable();
       this.form.controls.vertrouwelijkheidaanduiding.disable();
       this.form.controls.omschrijving.disable();
       this.form.controls.toelichting.disable();
     }
 
-    if (!zaak.zaaktype.servicenorm) {
+    if (!zaak.zaaktype.hasServicenorm) {
       this.form.controls.einddatumGepland.disable();
     }
 
     this.form.controls.behandelaar.disable();
-    if (!zaak.rechten.toekennen) {
+    if (!zaak.rechten.canToekennen) {
       this.form.controls.groep.disable();
+    }
+
+    if (zaak.isZaakspecifiekGeautoriseerd || !zaak.rechten.canWijzigen) {
+      this.form.controls.isZaakspecifiekGeautoriseerd.disable();
     }
 
     if (!dateChangesAllowed) {
@@ -253,7 +236,7 @@ export class CaseDetailsEditComponent implements OnInit {
           return;
         }
 
-        if (zaak.rechten.toekennen) {
+        if (zaak.rechten.canToekennen) {
           this.form.controls.behandelaar.enable();
         }
 
@@ -363,15 +346,9 @@ export class CaseDetailsEditComponent implements OnInit {
     changedControl.markAsDirty({ onlySelf: true });
   }
 
-  protected async onSubmit() {
+  protected onSubmit() {
     if (this.isSaveLocked()) {
       return;
-    }
-
-    try {
-      await this.patchBehandelaarMutation.mutateAsync();
-    } catch {
-      return; // failure already logged by the mutation's onError
     }
 
     const value = this.form.getRawValue();
@@ -389,34 +366,9 @@ export class CaseDetailsEditComponent implements OnInit {
           value.uiterlijkeEinddatumAfdoening?.toISOString(),
         omschrijving: value.omschrijving ?? "",
         toelichting: value.toelichting ?? undefined,
+        isZaakspecifiekGeautoriseerd:
+          value.isZaakspecifiekGeautoriseerd || undefined,
       },
-    });
-  }
-
-  private patchBehandelaar(
-    zaak: Pick<GeneratedType<"RestZaak">, "behandelaar" | "groep">,
-    reason?: string,
-  ) {
-    const currentZaak = this.zaak();
-    const isSameBehandelaar =
-      zaak.behandelaar?.id === currentZaak.behandelaar?.id;
-
-    const isSameGroup = zaak.groep?.id === currentZaak.groep?.id;
-    if (isSameBehandelaar && isSameGroup) return EMPTY;
-
-    if (zaak.behandelaar?.id === this.loggedInUser().id) {
-      return this.zakenService.toekennenAanIngelogdeMedewerker({
-        zaakUUID: currentZaak.uuid,
-        groepId: zaak.groep?.id as string,
-        reden: reason,
-      });
-    }
-
-    return this.zakenService.toekennen({
-      zaakUUID: currentZaak.uuid,
-      groepId: zaak.groep?.id as string,
-      behandelaarGebruikersnaam: zaak.behandelaar?.id,
-      reden: reason,
     });
   }
 }

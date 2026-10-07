@@ -21,6 +21,7 @@ import {
 } from "@angular/forms";
 import { TranslateService } from "@ngx-translate/core";
 import { lastValueFrom, Observable, Subject, takeUntil } from "rxjs";
+import { toI18nKey } from "../utils/i18n-key";
 import { FormHelper } from "./helpers";
 
 /**
@@ -57,6 +58,10 @@ export class SingleInputFormField<
   public readonly key = input.required<Key & string>();
   public readonly label = input<string>();
   public readonly readonly = input(false, { transform: booleanAttribute });
+
+  protected readonly labelKey = computed(
+    () => this.label() ?? toI18nKey(this.key()),
+  );
 
   constructor() {
     effect(() => {
@@ -120,13 +125,13 @@ export class MultiInputFormField<
   Key extends keyof Form,
   Option extends Form[Key]["value"],
   OptionDisplayValue extends keyof Option | ((option: Option) => string),
-  Compare extends (a: Option, b: Option) => boolean = (
+  Compare extends (a: Option, b?: Option | null) => boolean = (
     a: Option,
-    b: Option,
+    b?: Option | null,
   ) => boolean,
 > extends SingleInputFormField<Form, Key, Option> {
   public readonly options = input.required<
-    Array<Option> | Observable<Array<Option>>
+    ReadonlyArray<Option> | Observable<ReadonlyArray<Option>>
   >();
   public readonly optionDisplayValue = input<OptionDisplayValue>();
   protected readonly compare = input<Compare>();
@@ -146,7 +151,7 @@ export class MultiInputFormField<
           options instanceof Observable
             ? await lastValueFrom(options.pipe(takeUntil(this.destroy$)))
             : options;
-        this.availableOptions.set(result);
+        this.availableOptions.set([...result]);
       } finally {
         this.isLoading.set(false);
       }
@@ -171,7 +176,7 @@ export class MultiInputFormField<
 
   // Needs to be an arrow function to de-link the reference to `this`
   // when used in the template `[compareWith]="compareWith"`
-  protected compareWith = (a: Option, b: Option) => {
+  protected compareWith = (a: Option, b?: Option | null) => {
     const compare = this.compare();
     if (compare) return compare.call(this, a, b);
 

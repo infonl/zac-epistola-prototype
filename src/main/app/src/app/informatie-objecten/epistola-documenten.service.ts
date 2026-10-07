@@ -14,7 +14,6 @@ import {
   PostBody,
 } from "../shared/http/http-client";
 import { parseBlobError } from "../shared/http/parse-blob-error";
-import { SKIP_GLOBAL_ERROR_HANDLING } from "../shared/http/query-client";
 import { ZacHttpClient } from "../shared/http/zac-http-client";
 import { StaleTimes, ZacQueryClient } from "../shared/http/zac-query-client";
 import { InformatieObjectenService } from "./informatie-objecten.service";
@@ -87,7 +86,7 @@ export class EpistolaDocumentenService {
       ),
       refetchInterval: (query: { state: { status: string } }) =>
         query.state.status === "error" ? false : EPISTOLA_STATUS_POLL_INTERVAL,
-      meta: SKIP_GLOBAL_ERROR_HANDLING,
+      meta: { reportErrors: false },
       staleTime: StaleTimes.Instant,
       gcTime: StaleTimes.Instant,
       retry: false,
@@ -107,7 +106,7 @@ export class EpistolaDocumentenService {
         "/rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/varianten",
         { path: { zaakUuid, templateId } },
       ),
-      meta: SKIP_GLOBAL_ERROR_HANDLING,
+      meta: { reportErrors: false },
       staleTime: StaleTimes.Instant,
       gcTime: StaleTimes.Instant,
       retry: false,
@@ -132,10 +131,10 @@ export class EpistolaDocumentenService {
       .pipe(map(() => void 0));
   }
 
-  /** Covers both lists of the zaak: with and without the documents of its linked zaken. */
+  /** A partial key, so it covers both lists of the zaak: with and without the documents of its linked zaken. */
   listEnkelvoudigInformatieobjectenQueryKeyOfZaak(zaakUUID: string) {
-    return this.informatieObjectenService
-      .listEnkelvoudigInformatieobjectenQuery({ zaakUUID })
-      .queryKey.slice(0, 2);
+    return this.informatieObjectenService.listEnkelvoudigInformatieobjecten({
+      zaakUUID,
+    }).queryKey;
   }
 }

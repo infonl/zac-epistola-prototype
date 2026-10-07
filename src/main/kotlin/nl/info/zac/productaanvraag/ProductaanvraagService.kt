@@ -8,22 +8,26 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.json.bind.JsonbBuilder
 import jakarta.json.bind.JsonbConfig
-import nl.info.client.zgw.zrc.model.RolMedewerker
-import nl.info.client.zgw.zrc.model.RolOrganisatorischeEenheid
+import jakarta.ws.rs.ProcessingException
+import jakarta.ws.rs.WebApplicationException
+import net.atos.zac.flowable.ZaakVariabelenService.Companion.VAR_ZAAK_COMMUNICATIEKANAAL
 import net.atos.zac.flowable.ZaakVariabelenService.Companion.VAR_ZAAK_GROUP
-import net.atos.zac.flowable.cmmn.CMMNService
+import net.atos.zac.flowable.ZaakVariabelenService.Companion.VAR_ZAAK_USER
+import net.atos.zac.flowable.cmmn.CmmnService
 import net.atos.zac.util.JsonbUtil
 import nl.info.client.klant.KlantClientService
 import nl.info.client.or.`object`.ObjectsClientService
 import nl.info.client.or.objects.model.generated.ModelObject
+import nl.info.client.or.shared.exception.ORErrorException
+import nl.info.client.or.shared.exception.ORRuntimeException
+import nl.info.client.or.shared.exception.ORValidationErrorException
 import nl.info.client.zgw.shared.ZgwApiService
+import nl.info.client.zgw.shared.exception.ZgwErrorException
+import nl.info.client.zgw.shared.exception.ZgwRuntimeException
+import nl.info.client.zgw.shared.exception.ZgwValidationErrorException
 import nl.info.client.zgw.util.extractUuid
-import nl.info.client.zgw.zrc.ZrcClientService
-import nl.info.client.zgw.zrc.model.generated.MedewerkerIdentificatie
-import nl.info.client.zgw.zrc.model.generated.OrganisatorischeEenheidIdentificatie
 import nl.info.client.zgw.zrc.model.generated.Zaak
 import nl.info.client.zgw.ztc.ZtcClientService
-import nl.info.client.zgw.ztc.model.generated.OmschrijvingGeneriekEnum
 import nl.info.client.zgw.ztc.model.generated.ZaakType
 import nl.info.zac.admin.ZaaktypeBpmnConfigurationBeheerService
 import nl.info.zac.admin.ZaaktypeCmmnConfigurationBeheerService
@@ -49,6 +53,7 @@ import nl.info.zac.productaanvraag.util.RolOmschrijvingGeneriekEnumJsonAdapter
 import nl.info.zac.productaanvraag.util.toGeoJSONGeometry
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
+import nl.info.zac.zaak.ZaakService
 import java.util.UUID
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -63,15 +68,15 @@ const val TOELICHTING_MAX_LENGTH = 1000
 class ProductaanvraagService @Inject constructor(
     private val objectsClientService: ObjectsClientService,
     private val zgwApiService: ZgwApiService,
-    private val zrcClientService: ZrcClientService,
     private val ztcClientService: ZtcClientService,
+    private val zaakService: ZaakService,
     private val identityService: IdentityService,
     private val zaaktypeCmmnConfigurationService: ZaaktypeCmmnConfigurationService,
     private val zaaktypeCmmnConfigurationBeheerService: ZaaktypeCmmnConfigurationBeheerService,
     private val inboxDocumentService: InboxDocumentService,
     private val inboxProductaanvraagService: InboxProductaanvraagService,
     private val productaanvraagEmailService: ProductaanvraagEmailService,
-    private val cmmnService: CMMNService,
+    private val cmmnService: CmmnService,
     private val bpmnService: BpmnService,
     private val zaaktypeBpmnConfigurationBeheerService: ZaaktypeBpmnConfigurationBeheerService,
     private val configurationService: ConfigurationService,
@@ -99,23 +104,42 @@ class ProductaanvraagService @Inject constructor(
             return
         }
         runAsLoggedInUser(PRODUCTAANVRAAG_GEBRUIKER) {
-            productaanvraagObjectUUID
-                .runCatching(objectsClientService::readObject)
-                .onFailure { LOG.warning("Unable to read object with UUID: $productaanvraagObjectUUID") }
-                .onSuccess { modelObject ->
-                    modelObject
-                        .takeIf(::isProductaanvraagDimpact)
-                        ?.runCatching {
-                            LOG.info("Handle productaanvraag-Dimpact object UUID: $productaanvraagObjectUUID")
-                            handleProductaanvraagDimpact(this)
-                        }?.onFailure {
-                            LOG.log(
-                                Level.WARNING,
-                                "Failed to handle productaanvraag-Dimpact object UUID: $productaanvraagObjectUUID",
-                                it
-                            )
-                        }
-                }
+            readProductaanvraagObject(productaanvraagObjectUUID)
+                ?.takeIf(::isProductaanvraagDimpact)
+                ?.let { handleProductaanvraagDimpactWithoutFailing(productaanvraagObjectUUID, it) }
+        }
+    }
+
+    private fun readProductaanvraagObject(productaanvraagObjectUUID: UUID): ModelObject? =
+        try {
+            objectsClientService.readObject(productaanvraagObjectUUID)
+        } catch (orErrorException: ORErrorException) {
+            logUnreadableProductaanvraagObject(productaanvraagObjectUUID, orErrorException)
+        } catch (orValidationErrorException: ORValidationErrorException) {
+            logUnreadableProductaanvraagObject(productaanvraagObjectUUID, orValidationErrorException)
+        } catch (orRuntimeException: ORRuntimeException) {
+            logUnreadableProductaanvraagObject(productaanvraagObjectUUID, orRuntimeException)
+        } catch (webApplicationException: WebApplicationException) {
+            logUnreadableProductaanvraagObject(productaanvraagObjectUUID, webApplicationException)
+        } catch (processingException: ProcessingException) {
+            logUnreadableProductaanvraagObject(productaanvraagObjectUUID, processingException)
+        }
+
+    private fun logUnreadableProductaanvraagObject(productaanvraagObjectUUID: UUID, exception: RuntimeException): Nothing? {
+        LOG.log(Level.WARNING, "Unable to read object with UUID: $productaanvraagObjectUUID", exception)
+        return null
+    }
+
+    private fun handleProductaanvraagDimpactWithoutFailing(productaanvraagObjectUUID: UUID, productaanvraagObject: ModelObject) {
+        LOG.info("Handle productaanvraag-Dimpact object UUID: $productaanvraagObjectUUID")
+        try {
+            handleProductaanvraagDimpact(productaanvraagObject)
+        } catch (@Suppress("TooGenericExceptionCaught") runtimeException: RuntimeException) {
+            LOG.log(
+                Level.WARNING,
+                "Failed to handle productaanvraag-Dimpact object UUID: $productaanvraagObjectUUID",
+                runtimeException
+            )
         }
     }
 
@@ -144,54 +168,31 @@ class ProductaanvraagService @Inject constructor(
             ProductaanvraagDimpact::class.java
         )
 
-    private fun assignZaakToGroup(zaak: Zaak, groupName: String) {
-        LOG.info("Assigning zaak with UUID '${zaak.uuid}' to group: '$groupName'")
-        zrcClientService.createRol(createRolGroep(groupName, zaak))
+    /**
+     * A default behandelaar that is no longer a member of the default group is a stale configuration. It must not
+     * stop the intake, so the zaak is then assigned to the group only.
+     */
+    private fun findValidDefaultBehandelaarId(groupId: String?, defaultBehandelaarId: String?, zaak: Zaak): String? {
+        if (defaultBehandelaarId == null || groupId == null || identityService.isUserInGroup(defaultBehandelaarId, groupId)) {
+            return defaultBehandelaarId
+        }
+        LOG.warning {
+            "Default behandelaar '$defaultBehandelaarId' is not a member of default group '$groupId'. " +
+                "Therefore zaak with UUID '${zaak.uuid}' is assigned to the group only."
+        }
+        return null
     }
 
-    private fun assignZaakToEmployee(zaak: Zaak, employeeName: String) {
-        LOG.info("Assigning zaak '${zaak.uuid}' to employee: '$employeeName'")
-        zrcClientService.createRol(createRolMedewerker(employeeName, zaak))
+    private fun assignZaak(zaak: Zaak, groupId: String?, behandelaarId: String?) {
+        if (groupId == null && behandelaarId == null) return
+        LOG.info { "Assigning zaak with UUID '${zaak.uuid}' to group: '$groupId' and behandelaar: '$behandelaarId'" }
+        zaakService.assignZaak(
+            zaak = zaak,
+            groupId = groupId,
+            userName = behandelaarId,
+            reason = null
+        )
     }
-
-    private fun createRolGroep(groepID: String, zaak: Zaak): RolOrganisatorischeEenheid =
-        identityService.readGroup(groepID).let {
-            OrganisatorischeEenheidIdentificatie().apply {
-                identificatie = it.name
-                naam = it.description
-            }
-        }.let { organisatieEenheid ->
-            RolOrganisatorischeEenheid(
-                zaak.url,
-                ztcClientService.readRoltype(
-                    zaak.zaaktype,
-                    OmschrijvingGeneriekEnum.BEHANDELAAR,
-                    ZgwApiService.ROLTYPE_OMSCHRIJVING_BEHANDELAAR
-                ),
-                "Behandelend groep van de zaak",
-                organisatieEenheid
-            )
-        }
-
-    private fun createRolMedewerker(employeeName: String, zaak: Zaak): RolMedewerker =
-        identityService.readUser(employeeName).let {
-            MedewerkerIdentificatie().apply {
-                identificatie = it.id
-                voorletters = it.firstName
-                achternaam = it.lastName
-            }
-        }.let { medewerker ->
-            RolMedewerker(
-                zaak.url,
-                ztcClientService.readRoltype(
-                    zaak.zaaktype,
-                    OmschrijvingGeneriekEnum.BEHANDELAAR,
-                    ZgwApiService.ROLTYPE_OMSCHRIJVING_BEHANDELAAR
-                ),
-                "Behandelaar van de zaak",
-                medewerker
-            )
-        }
 
     private fun deleteInboxDocument(documentUUID: UUID) {
         val inboxDocument = inboxDocumentService.find(documentUUID) ?: run {
@@ -301,19 +302,31 @@ class ProductaanvraagService @Inject constructor(
         productaanvraagDimpact: ProductaanvraagDimpact,
         zaak: Zaak
     ) {
-        productaanvraagDimpact.runCatching {
-            productaanvraagDocumentService.pairAanvraagPDFWithZaak(this, zaak.url)
-        }.onFailure {
-            LOG.log(
-                Level.WARNING,
-                "Failed to pair aanvraag PDF `${productaanvraagDimpact.pdf}` with zaak '${zaak.identificatie}'",
-                it
-            )
+        try {
+            productaanvraagDocumentService.pairAanvraagPDFWithZaak(productaanvraagDimpact, zaak.url)
+        } catch (zgwRuntimeException: ZgwRuntimeException) {
+            logAanvraagPdfPairingFailure(productaanvraagDimpact, zaak, zgwRuntimeException)
+        } catch (zgwErrorException: ZgwErrorException) {
+            logAanvraagPdfPairingFailure(productaanvraagDimpact, zaak, zgwErrorException)
+        } catch (zgwValidationErrorException: ZgwValidationErrorException) {
+            logAanvraagPdfPairingFailure(productaanvraagDimpact, zaak, zgwValidationErrorException)
+        } catch (processingException: ProcessingException) {
+            logAanvraagPdfPairingFailure(productaanvraagDimpact, zaak, processingException)
         }
         productaanvraagDimpact.bijlagen?.let {
             productaanvraagDocumentService.pairBijlagenWithZaakIgnoringExceptions(bijlageURIs = it, zaakUrl = zaak.url)
         }
     }
+
+    private fun logAanvraagPdfPairingFailure(
+        productaanvraagDimpact: ProductaanvraagDimpact,
+        zaak: Zaak,
+        exception: RuntimeException
+    ) = LOG.log(
+        Level.WARNING,
+        "Failed to pair aanvraag PDF `${productaanvraagDimpact.pdf}` with zaak '${zaak.identificatie}'",
+        exception
+    )
 
     private fun registreerInbox(productaanvraag: ProductaanvraagDimpact, productaanvraagObject: ModelObject) {
         val inboxProductaanvraag = InboxProductaanvraag().apply {
@@ -345,18 +358,28 @@ class ProductaanvraagService @Inject constructor(
     ) {
         val zaaktype = ztcClientService.readZaaktype(zaaktypeBpmnConfiguration.zaaktypeUuid)
         val zaak = createZaak(zaaktype, productaanvraagDimpact, productaanvraagObject)
+        val behandelaarId = findValidDefaultBehandelaarId(
+            groupId = zaaktypeBpmnConfiguration.groepID,
+            defaultBehandelaarId = zaaktypeBpmnConfiguration.defaultBehandelaarId,
+            zaak = zaak
+        )
         val baseBpmnVariablesMap = getAanvraaggegevens(productaanvraagObject)
-        val zaakDataVariablesMap = zaaktypeBpmnConfiguration.groepID?.let { baseBpmnVariablesMap + mapOf(VAR_ZAAK_GROUP to it) }
-            ?: baseBpmnVariablesMap
+        val zaakDataVariablesMap = baseBpmnVariablesMap + buildMap {
+            zaaktypeBpmnConfiguration.groepID?.let { put(VAR_ZAAK_GROUP, it) }
+            behandelaarId?.let { put(VAR_ZAAK_USER, it) }
+            zaak.communicatiekanaalNaam?.let { put(VAR_ZAAK_COMMUNICATIEKANAAL, it) }
+        }
         // First, pair the productaanvraag and assign the zaak to the group and/or user,
         // so that should things fail afterward, at least the productaanvraag has been paired and the zaak has been assigned.
         productaanvraagDocumentService.pairProductaanvraagWithZaak(
             productaanvraag = productaanvraagObject,
             zaakUrl = zaak.url
         )
-        zaaktypeBpmnConfiguration.groepID?.let {
-            assignZaakToGroup(zaak = zaak, groupName = it)
-        }
+        assignZaak(
+            zaak = zaak,
+            groupId = zaaktypeBpmnConfiguration.groepID,
+            behandelaarId = behandelaarId
+        )
         pairDocumentsWithZaak(productaanvraagDimpact = productaanvraagDimpact, zaak = zaak)
         productaanvraagBetrokkeneService.addInitiatorAndBetrokkenenToZaak(
             productaanvraag = productaanvraagDimpact,
@@ -402,21 +425,21 @@ class ProductaanvraagService @Inject constructor(
             productaanvraag = productaanvraagObject,
             zaakUrl = zaak.url
         )
-        zaaktypeCmmnConfiguration.groepID?.run {
-            assignZaakToGroup(
-                zaak = zaak,
-                groupName = this,
-            )
-        } ?: LOG.warning(
-            "No group ID found in zaaktypeCmmnConfiguration for zaak ${zaak.identificatie} with UUID '${zaak.uuid}'. " +
-                "No group role was assigned for this zaak created for ${generateProductaanvraagDescription(productaanvraagDimpact)}."
-        )
-        zaaktypeCmmnConfiguration.defaultBehandelaarId?.run {
-            assignZaakToEmployee(
-                zaak = zaak,
-                employeeName = this,
-            )
+        if (zaaktypeCmmnConfiguration.groepID == null) {
+            LOG.warning {
+                "No group ID found in zaaktypeCmmnConfiguration for zaak ${zaak.identificatie} with UUID '${zaak.uuid}'. " +
+                    "No group role was assigned for this zaak created for ${generateProductaanvraagDescription(productaanvraagDimpact)}."
+            }
         }
+        assignZaak(
+            zaak = zaak,
+            groupId = zaaktypeCmmnConfiguration.groepID,
+            behandelaarId = findValidDefaultBehandelaarId(
+                groupId = zaaktypeCmmnConfiguration.groepID,
+                defaultBehandelaarId = zaaktypeCmmnConfiguration.defaultBehandelaarId,
+                zaak = zaak
+            )
+        )
         pairDocumentsWithZaak(productaanvraagDimpact = productaanvraagDimpact, zaak = zaak)
         productaanvraagBetrokkeneService.addInitiatorAndBetrokkenenToZaak(
             productaanvraag = productaanvraagDimpact,
@@ -464,7 +487,7 @@ class ProductaanvraagService @Inject constructor(
     private fun generateZaakExplanationFromProductaanvraag(productaanvraag: ProductaanvraagDimpact): String =
         (
             "Aangemaakt vanuit ${productaanvraag.bron.naam} met kenmerk '${productaanvraag.bron.kenmerk}'." +
-                (productaanvraag.zaakgegevens?.toelichting?.let { " $it" } ?: "")
+                productaanvraag.zaakgegevens?.toelichting?.let { " $it" }.orEmpty()
             )
             // truncate to the maximum length allowed by the ZGW APIs
             .take(TOELICHTING_MAX_LENGTH)
@@ -482,10 +505,10 @@ class ProductaanvraagService @Inject constructor(
     }
 
     private fun isBrpEnabled(zaaktypeConfiguration: ZaaktypeConfiguration) =
-        zaaktypeConfiguration.zaaktypeBetrokkeneParameters?.brpKoppelen ?: false
+        zaaktypeConfiguration.zaaktypeBetrokkeneParameters?.isBrpKoppelenEnabled ?: false
 
     private fun isKvkEnabled(zaaktypeConfiguration: ZaaktypeConfiguration) =
-        zaaktypeConfiguration.zaaktypeBetrokkeneParameters?.kvkKoppelen ?: false
+        zaaktypeConfiguration.zaaktypeBetrokkeneParameters?.isKvkKoppelenEnabled ?: false
 
     private fun generateProductaanvraagDescription(productaanvraag: ProductaanvraagDimpact) =
         "Productaanvraag '${productaanvraag.bron.naam}' with characteristics '${productaanvraag.bron.kenmerk}' and " +

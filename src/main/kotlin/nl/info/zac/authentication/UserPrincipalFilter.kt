@@ -19,6 +19,8 @@ import nl.info.client.pabc.ENTITY_TYPE_GEMEENTE
 import nl.info.client.pabc.ENTITY_TYPE_ZAAKTYPE
 import nl.info.client.pabc.PabcClientService
 import nl.info.client.pabc.ROLE_NAME_BRP_ZOEKEN
+import nl.info.client.pabc.ROLE_NAME_SYSTEEMROL_BEHANDELAAR_ALLE_ZAAKTYPEN
+import nl.info.zac.policy.PolicyService
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
 import org.wildfly.security.http.oidc.OidcPrincipal
@@ -38,7 +40,8 @@ private data class ApplicationRoleMappings(
 class UserPrincipalFilter
 @Inject
 constructor(
-    private val pabcClientService: PabcClientService
+    private val pabcClientService: PabcClientService,
+    private val policyService: PolicyService
 ) : Filter {
     companion object {
         private val LOG = Logger.getLogger(UserPrincipalFilter::class.java.name)
@@ -87,14 +90,15 @@ constructor(
             "User logged in: '${loggedInUser.id}' with groups: ${loggedInUser.groupIds}, " +
                 "functional roles: '${loggedInUser.roles}' " +
                 "and application roles per zaaktype: ${loggedInUser.applicationRolesPerZaaktype}, " +
-                "overall roles: ${loggedInUser.overallRoles}"
+                "overall roles: ${loggedInUser.overallRoles}, " +
+                "has read application role: ${loggedInUser.hasReadApplicationRole}"
         }
     }
 
     private fun createLoggedInUser(oidcSecurityContext: OidcSecurityContext): LoggedInUser =
         oidcSecurityContext.token.let { accessToken ->
             // functional roles are Keycloak realm roles
-            val functionalRoles = accessToken.realmAccessClaim?.roles?.toSet() ?: emptySet()
+            val functionalRoles = accessToken.realmAccessClaim?.roles?.toSet().orEmpty()
             val applicationRoleMappings = if (functionalRoles.isNotEmpty()) {
                 buildApplicationRoleMappingsFromPabc(functionalRoles)
             } else {
@@ -119,8 +123,14 @@ constructor(
                 applicationRolesPerZaaktype = applicationRolesPerZaaktype,
                 overallRoles = applicationRoleMappings.overallRoles,
                 brpGemeenten = applicationRoleMappings.brpGemeenten,
+                hasReadApplicationRole = hasReadApplicationRole(
+                    applicationRolesPerZaaktype.values.flatten().toSet() + applicationRoleMappings.overallRoles
+                ),
             )
         }
+
+    private fun hasReadApplicationRole(applicationRoles: Set<String>) =
+        applicationRoles.isNotEmpty() && policyService.readLeesrollen().any(applicationRoles::contains)
 
     /**
      * Builds [ApplicationRoleMappings] from the PABC response for the given functional roles.
@@ -151,15 +161,18 @@ constructor(
                 .filter { it.entityType == null }
                 .flatMap { it.applicationRoles.mapNotNull { applicationRoleModel -> applicationRoleModel.name?.trim() } }
                 .filter { it.isNotEmpty() }
+                // reserved for the hardcoded FUNCTIONEEL_GEBRUIKER/PRODUCTAANVRAAG_GEBRUIKER system users;
+                // never grant it to a real user, even if PABC is misconfigured to hand it out
+                .filterNot { it == ROLE_NAME_SYSTEEMROL_BEHANDELAAR_ALLE_ZAAKTYPEN }
                 .toSet()
 
         val brpGemeenten = applicationRolesResponse.results
             .filter {
                 it.entityType?.type.equals(ENTITY_TYPE_GEMEENTE) &&
                     !it.entityType.id.isNullOrBlank() &&
-                    it.applicationRoles.any {
-                        it.application.equals(APPLICATION_NAME_ZAC) &&
-                            it.name.equals(ROLE_NAME_BRP_ZOEKEN)
+                    it.applicationRoles.any { applicationRole ->
+                        applicationRole.application.equals(APPLICATION_NAME_ZAC) &&
+                            applicationRole.name.equals(ROLE_NAME_BRP_ZOEKEN)
                     }
             }
             .associate { it.entityType.id to it.entityType.name }

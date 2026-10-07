@@ -13,11 +13,10 @@ import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
 import io.mockk.verify
+import java.util.UUID
 import net.atos.zac.flowable.task.FlowableTaskService
 import net.atos.zac.flowable.task.TaakVariabelenService
-import net.atos.zac.flowable.util.TaskUtil
 import nl.info.client.zgw.model.createZaak
-import nl.info.client.zgw.model.createZaakEigenschap
 import nl.info.client.zgw.zrc.ZrcClientService
 import nl.info.client.zgw.ztc.ZtcClientService
 import nl.info.client.zgw.ztc.model.createZaakType
@@ -25,31 +24,34 @@ import nl.info.zac.app.task.model.TaakStatus
 import nl.info.zac.identity.IdentityService
 import nl.info.zac.identity.model.createGroup
 import nl.info.zac.identity.model.createUser
+import nl.info.zac.search.ReindexSupportService
+import nl.info.zac.search.model.ZaakAutorisatieGegevens
+import nl.info.zac.search.model.createZaakAutorisatieGegevens
 import nl.info.zac.search.model.zoekobject.ZoekObjectType
 import org.flowable.identitylink.api.IdentityLinkInfo
 import org.flowable.identitylink.api.IdentityLinkType
+import org.flowable.task.api.Task
 import org.flowable.task.api.TaskInfo
-import java.util.UUID
 
 class TaakZoekObjectConverterTest : BehaviorSpec({
     val identityService = mockk<IdentityService>()
     val flowableTaskService = mockk<FlowableTaskService>()
     val ztcClientService = mockk<ZtcClientService>()
     val zrcClientService = mockk<ZrcClientService>()
+    val reindexSupportService = mockk<ReindexSupportService>()
 
     val taakZoekObjectConverter = TaakZoekObjectConverter(
         identityService = identityService,
         flowableTaskService = flowableTaskService,
         ztcClientService = ztcClientService,
-        zrcClientService = zrcClientService
+        zrcClientService = zrcClientService,
+        reindexSupportService = reindexSupportService
     )
 
     mockkStatic(TaakVariabelenService::class)
-    mockkStatic(TaskUtil::class)
 
     afterSpec {
         unmockkStatic(TaakVariabelenService::class)
-        unmockkStatic(TaskUtil::class)
     }
 
     afterEach { checkUnnecessaryStub() }
@@ -82,7 +84,7 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
         val zaaktypeUUID = UUID.randomUUID()
 
         given("a task with an assignee and a group") {
-            val taskInfo = mockk<TaskInfo>()
+            val taskInfo = mockk<Task>()
             val zaak = createZaak()
             val zaakType = createZaakType(
                 uri = zaak.zaaktype,
@@ -96,11 +98,14 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
             every { TaakVariabelenService.readZaaktypeUUID(taskInfo) } returns zaaktypeUUID
             every { TaakVariabelenService.readTaskData(taskInfo) } returns mapOf()
             every { TaakVariabelenService.readTaskInformation(taskInfo) } returns mapOf()
-            every { TaskUtil.getTaakStatus(taskInfo) } returns TaakStatus.TOEGEKEND
             every { zrcClientService.readZaak(zaakUUID) } returns zaak
             every { ztcClientService.readZaaktype(zaaktypeUUID) } returns zaakType
-            every { zrcClientService.listZaakeigenschappen(zaakUUID) } returns listOf(
-                createZaakEigenschap(naam = "ZAAK_GEAUTORISEERD", waarde = "true")
+            every { reindexSupportService.zaakAutorisatieGegevens(zaakUUID) } returns createZaakAutorisatieGegevens(
+                isZaakspecifiekGeautoriseerd = true,
+                geautoriseerdeMedewerkers = listOf(
+                    "fakeZaakBehandelaarId",
+                    "fakeZaakspecifiekGeautoriseerdeMedewerkerId"
+                )
             )
 
             every { taskInfo.name } returns "fakeTaskName"
@@ -140,12 +145,24 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
                     taakZoekObject.behandelaarGebruikersnaam shouldBe "fakeAssigneeId"
                     taakZoekObject.groepID shouldBe "fakeGroupId"
                     taakZoekObject.isZaakspecifiekGeautoriseerd shouldBe true
+                    taakZoekObject.getStatus() shouldBe TaakStatus.TOEGEKEND
+                }
+
+                and(
+                    "every geautoriseerde medewerker of the zaak the taak belongs to is recorded separately " +
+                        "from the taak's own behandelaar, so that a medewerker holding only the " +
+                        "'Zaakspecifiek geautoriseerde medewerker' rol can find the taak"
+                ) {
+                    taakZoekObject.zaakGeautoriseerdeMedewerkers shouldBe listOf(
+                        "fakeZaakBehandelaarId",
+                        "fakeZaakspecifiekGeautoriseerdeMedewerkerId"
+                    )
                 }
             }
         }
 
         given("a task without an assignee or group") {
-            val taskInfo = mockk<TaskInfo>()
+            val taskInfo = mockk<Task>()
             val zaak = createZaak()
             val zaakType = createZaakType(uri = zaak.zaaktype)
 
@@ -155,10 +172,13 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
             every { TaakVariabelenService.readZaaktypeUUID(taskInfo) } returns zaaktypeUUID
             every { TaakVariabelenService.readTaskData(taskInfo) } returns mapOf()
             every { TaakVariabelenService.readTaskInformation(taskInfo) } returns mapOf()
-            every { TaskUtil.getTaakStatus(taskInfo) } returns TaakStatus.NIET_TOEGEKEND
             every { zrcClientService.readZaak(zaakUUID) } returns zaak
             every { ztcClientService.readZaaktype(zaaktypeUUID) } returns zaakType
-            every { zrcClientService.listZaakeigenschappen(zaakUUID) } returns emptyList()
+            every { reindexSupportService.zaakAutorisatieGegevens(zaakUUID) } returns ZaakAutorisatieGegevens(
+                isZaakspecifiekGeautoriseerd = false
+            ) {
+                error("the geautoriseerde medewerkers of a zaak that is not zaakspecifiek geautoriseerd are never resolved")
+            }
 
             every { taskInfo.name } returns "fakeTaskName"
             every { taskInfo.description } returns null
@@ -178,11 +198,19 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
                     taakZoekObject.groepNaam.shouldBeNull()
                     taakZoekObject.isToegekend shouldBe false
                     taakZoekObject.isZaakspecifiekGeautoriseerd shouldBe false
+                    taakZoekObject.getStatus() shouldBe TaakStatus.NIET_TOEGEKEND
+                }
+
+                and("no geautoriseerde medewerkers are recorded, because the zaak is not zaakspecifiek geautoriseerd") {
+                    taakZoekObject.zaakGeautoriseerdeMedewerkers shouldBe emptyList()
                 }
             }
         }
 
-        given("an already-retrieved zaak, converted via the zaak-driven combined reindex entry point") {
+        given(
+            "an already-retrieved zaak with a completed (non-Task) task, converted via the " +
+                "zaak-driven combined reindex entry point"
+        ) {
             val taskInfo = mockk<TaskInfo>()
             val zaak = createZaak()
             val zaakType = createZaakType(uri = zaak.zaaktype)
@@ -193,7 +221,6 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
             every { TaakVariabelenService.readZaaktypeUUID(taskInfo) } returns zaaktypeUUID
             every { TaakVariabelenService.readTaskData(taskInfo) } returns mapOf()
             every { TaakVariabelenService.readTaskInformation(taskInfo) } returns mapOf()
-            every { TaskUtil.getTaakStatus(taskInfo) } returns TaakStatus.NIET_TOEGEKEND
             every { ztcClientService.readZaaktype(zaaktypeUUID) } returns zaakType
             every { taskInfo.name } returns "fakeTaskName"
             every { taskInfo.description } returns null
@@ -204,12 +231,15 @@ class TaakZoekObjectConverterTest : BehaviorSpec({
             every { taskInfo.identityLinks } returns emptyList()
 
             `when`("convert is called with the zaak supplied directly") {
-                val taakZoekObject = taakZoekObjectConverter.convert(fakeTaskId, zaak) { true }
+                val taakZoekObject = taakZoekObjectConverter.convert(fakeTaskId, zaak) {
+                    createZaakAutorisatieGegevens(isZaakspecifiekGeautoriseerd = true)
+                }
 
                 then("the taak zoek object still resolves its zaak fields from the supplied zaak") {
                     taakZoekObject.zaakUUID shouldBe zaak.uuid.toString()
                     taakZoekObject.zaakOmschrijving shouldBe zaak.omschrijving
                     taakZoekObject.isZaakspecifiekGeautoriseerd shouldBe true
+                    taakZoekObject.getStatus() shouldBe TaakStatus.AFGEROND
                 }
 
                 then("the zaak is never read again from the ZRC API, since it was already supplied") {

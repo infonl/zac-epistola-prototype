@@ -15,9 +15,9 @@ permissions:
 
 jobs:
   cleanup-branch-cache:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - uses: Friedinger/DeleteBranchCaches@b4482bee8da523e175964cc328da4862593bec8e # v2.4.4
+      - uses: Friedinger/DeleteBranchCaches@5a7cc6a4d76f1200cb44dcfdffbd28e82ab2a51f # v3.0.0
         with:
           github-token: ${{ github.token }}
           # Specify explicitly because the ref at the time of merging will be a branch name such as 'main', 'develop'
