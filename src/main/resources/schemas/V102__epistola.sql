@@ -43,14 +43,13 @@ COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.is_enabled IS 'O
 COMMENT ON COLUMN ${schema}.zaaktype_epistola_template_settings.aanmaakdatum IS 'Datum waarop de instelling van het template in deze tabel is opgeslagen';
 
 -- The PDF of an Epistola document lives in Open Zaak, and ZAC keeps no copy of it. This only remembers which Epistola
--- template produced the document there, in which catalog, language and variant, so that a behandelaar can generate a
+-- template produced the document there, in which catalog and language, so that a behandelaar can generate a
 -- new version of it.
 CREATE TABLE ${schema}.epistola_document
 (
     informatieobject_uuid UUID                     NOT NULL,
     template_id           VARCHAR                  NOT NULL,
     aanmaakdatum          TIMESTAMP WITH TIME ZONE NOT NULL,
-    kanaal                VARCHAR,
     locale                VARCHAR,
     catalog_id            VARCHAR,
     CONSTRAINT pk_epistola_document
@@ -60,6 +59,5 @@ CREATE TABLE ${schema}.epistola_document
 COMMENT ON COLUMN ${schema}.epistola_document.informatieobject_uuid IS 'UUID van het informatieobject in Open Zaak dat met Epistola is gegenereerd';
 COMMENT ON COLUMN ${schema}.epistola_document.template_id IS 'ID van het Epistola-template waarmee het document is gegenereerd';
 COMMENT ON COLUMN ${schema}.epistola_document.aanmaakdatum IS 'Moment waarop het document is gegenereerd';
-COMMENT ON COLUMN ${schema}.epistola_document.kanaal IS 'Kanaal van de Epistola-variant waar ZAC om vroeg, zoals post of digitaal; leeg als ZAC om geen kanaal vroeg, bijvoorbeeld bij een template zonder varianten per kanaal of na een standaardrender';
 COMMENT ON COLUMN ${schema}.epistola_document.locale IS 'Taal waarin het document is gegenereerd, als BCP-47-tag van het Epistola-attribuut system.locale, zoals nl-NL; leeg als de varianten van het template geen taal hebben';
 COMMENT ON COLUMN ${schema}.epistola_document.catalog_id IS 'Catalog in Epistola waaruit het template komt waarmee het document is gegenereerd; leeg betekent de catalog van EPISTOLA_CATALOG_ID';

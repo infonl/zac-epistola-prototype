@@ -77,7 +77,6 @@ describe(EpistolaTemplatesService.name, () => {
           id: "fake-template",
           name: "Standaardbrief",
           locales: ["nl-NL"],
-          kanalen: ["post"],
         },
       ]);
 
@@ -86,7 +85,6 @@ describe(EpistolaTemplatesService.name, () => {
         id: "fake-template",
         name: "Standaardbrief",
         locales: ["nl-NL"],
-        kanalen: ["post"],
       },
     ]);
   });

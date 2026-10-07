@@ -19,10 +19,9 @@
         <code>smart-documents-form.component</code>. De beheerder kiest één catalog, één documenttype en één taal voor het
         zaaktype (#51), en ziet welke templates de catalog heeft. De taal is die van alle templates van het zaaktype, uit
         de talen die elk template van de catalog heeft; de behandelaar kiest geen taal. De templates van de catalog staan
-        als accordeon: per template het id, de talen en alle varianten met titel, een markering voor de standaardvariant en
-        hun attributen, een eigen documenttype dat dat van het zaaktype overschrijft, en een schuifknop die het template
-        verbergt in Document maken. Verschillen varianten in meer dan taal en kanaal, dan kan ZAC daar niet tussen kiezen
-        (#50).
+        als accordeon: per template het id en de talen, een eigen documenttype dat dat van het zaaktype overschrijft, en
+        een schuifknop die het template verbergt in Document maken. Heeft een template meer dan één variant in dezelfde
+        taal, dan kan ZAC daar niet tussen kiezen (#50); zo'n template kan de beheerder uitzetten.
       </p>
 
       <div class="frame">
@@ -81,24 +80,6 @@
                     <dd>besluit-evenementenvergunning</dd>
                     <dt>Talen</dt>
                     <dd>Engels (Verenigd Koninkrijk), Nederlands (Nederland)</dd>
-                    <dt>Varianten</dt>
-                    <dd>
-                      <ul class="acc-variants">
-                        <li>
-                          <strong>Initial</strong><span class="tag tag-default">Standaard</span>
-                          <span class="tag">Nederlands (Nederland)</span><span class="tag">Per post</span>
-                        </li>
-                        <li>
-                          <strong>Groot lettertype</strong>
-                          <span class="tag">Nederlands (Nederland)</span><span class="tag">Per post</span>
-                          <span class="tag">weergave: groot</span>
-                        </li>
-                        <li>
-                          <strong>English</strong>
-                          <span class="tag">Engels (Verenigd Koninkrijk)</span><span class="tag">Digitaal</span>
-                        </li>
-                      </ul>
-                    </dd>
                   </dl>
                   <div class="acc-settings">
                     <div class="field">

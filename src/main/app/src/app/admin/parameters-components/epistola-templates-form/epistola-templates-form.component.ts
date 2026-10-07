@@ -30,7 +30,6 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { TranslateModule, TranslateService } from "@ngx-translate/core";
 import { injectQuery } from "@tanstack/angular-query-experimental";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "src/app/shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
-import { epistolaVariantLabel } from "src/app/shared/utils/epistola-variant-label";
 import { GeneratedType } from "src/app/shared/utils/generated-types";
 import { EpistolaTemplatesService } from "../../epistola-templates.service";
 
@@ -178,26 +177,14 @@ export class EpistolaTemplatesFormComponent {
         isEnabled,
         ownTypeName: this.informatieObjecttypeName(informatieObjectTypeUUID),
         defaultTypeName,
-        hasDetails: Boolean(template.locales && template.kanalen),
+        hasDetails: Boolean(template.locales),
         languages: (template.locales ?? [])
           .map((locale) => this.languageName(locale))
           .sort((a, b) => a.localeCompare(b))
           .join(", "),
-        variants: (template.variants ?? []).map((variant) => ({
-          id: variant.id,
-          title: variant.title,
-          isDefault: variant.isDefault ?? false,
-          attributes: variant.attributes.map(({ key, value }) => ({
-            key,
-            value,
-            languageName: key === "locale" ? this.languageName(value) : "",
-          })),
-        })),
       };
     });
   });
-
-  protected readonly variantLabel = epistolaVariantLabel;
 
   private isCatalogMappingLoaded = false;
 

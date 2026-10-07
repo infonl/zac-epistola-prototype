@@ -4,17 +4,13 @@
  */
 
 import { HttpErrorResponse, provideHttpClient } from "@angular/common/http";
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from "@angular/common/http/testing";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { TestBed } from "@angular/core/testing";
 import { of } from "rxjs";
 import { fromPartial } from "src/test-helpers";
 import { UtilService } from "../core/service/util.service";
 import { FoutAfhandelingService } from "../fout-afhandeling/fout-afhandeling.service";
 import { QUERY_CLIENT } from "../shared/http/query-client";
-import { GeneratedType } from "../shared/utils/generated-types";
 import { EpistolaDocumentenService } from "./epistola-documenten.service";
 
 describe(EpistolaDocumentenService.name, () => {
@@ -34,41 +30,6 @@ describe(EpistolaDocumentenService.name, () => {
       ],
     });
     epistolaDocumentenService = TestBed.inject(EpistolaDocumentenService);
-  });
-
-  describe("readEpistolaVariantenQuery", () => {
-    const VARIANTEN_URL =
-      "/rest/document-creation/epistola/create-document/fakeZaakUuid/template/fake-template/varianten";
-    const emailVarianten: GeneratedType<"RestEpistolaVarianten"> = {
-      varianten: ["post", "digitaal"],
-      voorgesteldeVariant: "digitaal",
-      communicatiekanaal: "E-mail",
-    };
-    const balieVarianten: GeneratedType<"RestEpistolaVarianten"> = {
-      varianten: ["post", "digitaal"],
-      voorgesteldeVariant: "post",
-      communicatiekanaal: "Balie",
-    };
-
-    it("asks again every time, because the suggestion follows the zaak's communicatiekanaal, which can be edited in between", async () => {
-      const queryClient = TestBed.inject(QUERY_CLIENT);
-      const httpTestingController = TestBed.inject(HttpTestingController);
-      const read = () =>
-        queryClient.query(
-          epistolaDocumentenService.readEpistolaVariantenQuery(
-            "fakeZaakUuid",
-            "fake-template",
-          ),
-        );
-
-      const first = read();
-      httpTestingController.expectOne(VARIANTEN_URL).flush(emailVarianten);
-      expect(await first).toEqual(emailVarianten);
-
-      const second = read();
-      httpTestingController.expectOne(VARIANTEN_URL).flush(balieVarianten);
-      expect(await second).toEqual(balieVarianten);
-    });
   });
 
   describe("readEpistolaDocumentCreationStatusQuery", () => {

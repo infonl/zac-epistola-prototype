@@ -28,9 +28,6 @@ import nl.info.zac.configuration.ConfigurationService
 import nl.info.zac.documentcreation.exception.EpistolaDocumentCreationException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
-import nl.info.zac.documentcreation.model.choose
-import nl.info.zac.documentcreation.model.chooseKanaal
-import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
 import nl.info.zac.documentcreation.model.resolveLocale
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.toEpistolaTemplateData
@@ -80,8 +77,7 @@ class EpistolaDocumentCreationService @Inject constructor(
         templateId: String,
         title: String,
         description: String?,
-        taskId: String? = null,
-        variant: String? = null
+        taskId: String? = null
     ): ZaakInformatieObject {
         val loggedInUser = loggedInUserInstance.get()
         try {
@@ -98,7 +94,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 fileName = "$title$PDF_EXTENSION",
                 taskId = taskId,
-                variant = variant,
                 zaaktypeLocale = offeredCatalog.locale
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
@@ -118,7 +113,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                     informatieObjectUUID = it.informatieobject.extractUuid(),
                     catalogId = offeredCatalog.catalogId,
                     templateId = templateId,
-                    kanaal = generatedDocument.kanaal,
                     locale = generatedDocument.locale
                 )
             }
@@ -128,10 +122,8 @@ class EpistolaDocumentCreationService @Inject constructor(
     }
 
     /**
-     * A [variant] is named by its kanaal. Without one, or with one the template does not have in the language ZAC asks
-     * for, the zaak's communicatiekanaal decides. The document names the kanaal and the language ZAC asked Epistola
-     * for, and none when it asked for none and Epistola rendered the default variant, so that a new version asks for
-     * the same.
+     * The document names the language ZAC asked Epistola for, and none when it asked for none and Epistola rendered the
+     * default variant, so that a new version asks for the same.
      *
      * A [taal] is the BCP-47 tag of a language of the template, such as the one a document was generated in. Without
      * one, or with one the template no longer has, ZAC asks for the [zaaktypeLocale] when the template has it, and
@@ -144,7 +136,6 @@ class EpistolaDocumentCreationService @Inject constructor(
         templateId: String,
         fileName: String,
         taskId: String? = null,
-        variant: String? = null,
         taal: String? = null,
         zaaktypeLocale: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
@@ -155,7 +146,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                 catalogId = catalogId,
                 templateId = templateId,
                 taskId = taskId,
-                variant = variant,
                 taal = taal,
                 zaaktypeLocale = zaaktypeLocale
             ).let { generationInput ->
@@ -169,7 +159,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                     data = generationInput.templateData,
                     fileName = fileName,
                     correlationId = zaak.uuid.toString(),
-                    kanaal = generationInput.kanaal,
                     locale = generationInput.locale,
                     onJobStatus = onJobStatus
                 )
@@ -183,14 +172,13 @@ class EpistolaDocumentCreationService @Inject constructor(
         }
 
     /**
-     * Renders the document as [createDocument] would, from the same data and in the same variant, so that a behandelaar
+     * Renders the document as [createDocument] would, from the same data and in the same language, so that a behandelaar
      * sees what they would get, but keeps nothing: not in Epistola, and not in the zaak.
      */
     fun previewDocument(
         zaak: Zaak,
         templateId: String,
-        taskId: String? = null,
-        variant: String? = null
+        taskId: String? = null
     ): ByteArray {
         val offeredCatalog = epistolaTemplatesService.readCatalogOfferingTemplate(
             zaaktypeUuid = zaak.zaaktype.extractUuid(),
@@ -203,7 +191,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                 catalogId = catalogId,
                 templateId = templateId,
                 taskId = taskId,
-                variant = variant,
                 taal = null,
                 zaaktypeLocale = offeredCatalog.locale
             ).let { generationInput ->
@@ -215,7 +202,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                     catalogId = catalogId,
                     templateId = templateId,
                     data = generationInput.templateData,
-                    kanaal = generationInput.kanaal,
                     locale = generationInput.locale
                 )
             }
@@ -234,7 +220,6 @@ class EpistolaDocumentCreationService @Inject constructor(
         catalogId: String,
         templateId: String,
         taskId: String?,
-        variant: String?,
         taal: String?,
         zaaktypeLocale: String?
     ): GenerationInput {
@@ -249,32 +234,9 @@ class EpistolaDocumentCreationService @Inject constructor(
                 templateId = templateId,
                 templateSchema = generationTemplate.dataContract
             ),
-            kanaal = generationTemplate.chooseKanaal(
-                locale = locale,
-                requestedKanaal = variant,
-                communicatiekanaal = zaak.communicatiekanaalNaam
-            ),
             locale = locale
         )
     }
-
-    /**
-     * The template's variants, by kanaal and by language, read from the catalog the zaaktype offers, with the language
-     * that creating a document from it asks Epistola for.
-     */
-    fun readVarianten(zaak: Zaak, templateId: String): EpistolaTemplateInLocale =
-        epistolaTemplatesService.readCatalogOfferingTemplate(
-            zaaktypeUuid = zaak.zaaktype.extractUuid(),
-            templateId = templateId
-        ).let { offeredCatalog ->
-            epistolaClientService.readGenerationTemplate(catalogId = offeredCatalog.catalogId, templateId = templateId)
-                .let {
-                    EpistolaTemplateInLocale(
-                        template = it,
-                        locale = it.resolveLocale(configuredLocale = offeredCatalog.locale)
-                    )
-                }
-        }
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
@@ -313,7 +275,6 @@ class EpistolaDocumentCreationService @Inject constructor(
         informatieObjectUUID: UUID,
         catalogId: String,
         templateId: String,
-        kanaal: String?,
         locale: String?
     ) {
         try {
@@ -321,7 +282,6 @@ class EpistolaDocumentCreationService @Inject constructor(
                 informatieObjectUUID = informatieObjectUUID,
                 catalogId = catalogId,
                 templateId = templateId,
-                kanaal = kanaal,
                 locale = locale
             )
         } catch (persistenceException: PersistenceException) {
@@ -363,7 +323,6 @@ class EpistolaDocumentCreationService @Inject constructor(
 
     private class GenerationInput(
         val templateData: Map<String, Any>,
-        val kanaal: String?,
         val locale: String?
     )
 }

@@ -15,7 +15,6 @@ import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.mockk.checkUnnecessaryStub
 import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.zac.configuration.createEpistolaSettings
 import org.json.JSONObject
@@ -77,18 +76,8 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     generationTemplate.dataContract shouldBe mapOf("properties" to mapOf("zaak" to emptyMap<String, Any>()))
                 }
 
-                and("the kanalen are read from the variants' attributes in that catalog, with that of the default variant") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post")
-                }
-
-                and("the languages are read from the variants' system locale, each with its kanalen, with that of the default variant") {
-                    generationTemplate.locales shouldBe EpistolaLocales(
-                        kanalenByLocale = mapOf(
-                            "nl-NL" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post"),
-                            "en-GB" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
-                        ),
-                        defaultLocale = "nl-NL"
-                    )
+                and("the languages are read from the variants' system locale, with that of the default variant") {
+                    generationTemplate.locales shouldBe EpistolaLocales(locales = listOf("nl-NL", "en-GB"), defaultLocale = "nl-NL")
                 }
 
                 and("the request names ZAC and its version as the client that sent it") {
@@ -135,8 +124,8 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     JSONObject(epistolaServer.requestBodies.single()).getString("catalogId") shouldBe FAKE_CATALOG_ID
                 }
 
-                and("it asks for no variant, so Epistola renders the default one, and names no kanaal") {
-                    generatedDocument.kanaal shouldBe null
+                and("it asks for no variant, so Epistola renders the default one, and names no language") {
+                    generatedDocument.locale shouldBe null
                     JSONObject(epistolaServer.requestBodies.single()).has("attributes") shouldBe false
                 }
 
@@ -145,7 +134,7 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                 }
             }
 
-            `when`("a document is generated for a kanaal") {
+            `when`("a document is generated in a language") {
                 epistolaServer.clearRecordedRequests()
                 val generatedDocument = createService().generateDocument(
                     catalogId = FAKE_CATALOG_ID,
@@ -153,72 +142,14 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
                     fileName = FAKE_FILE_NAME,
                     correlationId = FAKE_CORRELATION_ID,
-                    kanaal = "digitaal"
-                )
-
-                then("the document names the kanaal it was asked for") {
-                    generatedDocument.kanaal shouldBe "digitaal"
-                }
-
-                and("the variant for that kanaal is required, and no language is asked for") {
-                    val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
-                    attributes.length() shouldBe 1
-                    with(attributes.getJSONObject(0)) {
-                        getString("catalog") shouldBe FAKE_CATALOG_ID
-                        getString("key") shouldBe "kanaal"
-                        getString("value") shouldBe "digitaal"
-                        getBoolean("required") shouldBe true
-                    }
-                }
-            }
-
-            `when`("a document is generated for a kanaal in a language") {
-                epistolaServer.clearRecordedRequests()
-                val generatedDocument = createService().generateDocument(
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
-                    fileName = FAKE_FILE_NAME,
-                    correlationId = FAKE_CORRELATION_ID,
-                    kanaal = "post",
                     locale = "en-GB"
                 )
 
-                then("the document names the kanaal and the language it was asked for") {
-                    generatedDocument.kanaal shouldBe "post"
+                then("the document names the language it was asked for") {
                     generatedDocument.locale shouldBe "en-GB"
                 }
 
-                and("both the kanaal and the language are required, the language in Epistola's own catalog") {
-                    val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
-                    attributes.length() shouldBe 2
-                    with(attributes.getJSONObject(0)) {
-                        getString("catalog") shouldBe FAKE_CATALOG_ID
-                        getString("key") shouldBe "kanaal"
-                        getString("value") shouldBe "post"
-                        getBoolean("required") shouldBe true
-                    }
-                    with(attributes.getJSONObject(1)) {
-                        getString("catalog") shouldBe "system"
-                        getString("key") shouldBe "locale"
-                        getString("value") shouldBe "en-GB"
-                        getBoolean("required") shouldBe true
-                    }
-                }
-            }
-
-            `when`("a document is generated in a language, for a template whose variants are made for no kanaal") {
-                epistolaServer.clearRecordedRequests()
-                createService().generateDocument(
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
-                    fileName = FAKE_FILE_NAME,
-                    correlationId = FAKE_CORRELATION_ID,
-                    locale = "en-GB"
-                )
-
-                then("only the language is required") {
+                and("only the language is required, in Epistola's own catalog") {
                     val attributes = JSONObject(epistolaServer.requestBodies.single()).getJSONArray("attributes")
                     attributes.length() shouldBe 1
                     with(attributes.getJSONObject(0)) {
@@ -234,13 +165,12 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
 
     context("previewing a document") {
         given("a configured tenant and a catalog") {
-            `when`("a preview is made for a kanaal in a language") {
+            `when`("a preview is made in a language") {
                 epistolaServer.clearRecordedRequests()
                 val preview = createService().previewDocument(
                     catalogId = FAKE_CATALOG_ID,
                     templateId = FAKE_TEMPLATE_ID,
                     data = mapOf("zaak" to mapOf("identificatie" to "fakeZaakIdentificatie")),
-                    kanaal = "digitaal",
                     locale = "nl-NL"
                 )
 
@@ -248,14 +178,14 @@ class EpistolaClientServiceRequestTest : BehaviorSpec({
                     epistolaServer.requestPaths.single() shouldBe "/tenants/$FAKE_TENANT_ID/documents/preview"
                 }
 
-                and("the request names the catalog and the template, and requires the variant of the kanaal and the language") {
+                and("the request names the catalog and the template, and requires the language") {
                     val request = JSONObject(epistolaServer.requestBodies.single())
                     request.getString("catalogId") shouldBe FAKE_CATALOG_ID
                     request.getString("templateId") shouldBe FAKE_TEMPLATE_ID
                     val attributes = request.getJSONArray("attributes")
-                    attributes.getJSONObject(0).getString("value") shouldBe "digitaal"
-                    attributes.getJSONObject(1).getString("value") shouldBe "nl-NL"
-                    attributes.getJSONObject(1).getBoolean("required") shouldBe true
+                    attributes.length() shouldBe 1
+                    attributes.getJSONObject(0).getString("value") shouldBe "nl-NL"
+                    attributes.getJSONObject(0).getBoolean("required") shouldBe true
                 }
 
                 and("the PDF Epistola answers with is returned") {
@@ -376,14 +306,12 @@ private class FakeEpistolaServer {
               "name": "fakeTemplateName",
               "dataModel": { "properties": { "zaak": {} } },
               "variants": [
-                { "id": "initial", "title": "Per post", "isDefault": true,
-                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "post", "system.locale": "nl-NL" } },
+                { "id": "initial", "title": "Nederlands", "isDefault": true,
+                  "attributes": { "system.locale": "nl-NL" } },
                 { "id": "english", "title": "English", "isDefault": false,
-                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "post", "system.locale": "en-GB" } },
-                { "id": "digitaal", "title": "Digitaal", "isDefault": false,
-                  "attributes": { "$FAKE_CATALOG_ID.kanaal": "digitaal" } },
-                { "id": "other-catalog", "title": "Other catalog", "isDefault": false,
-                  "attributes": { "other-catalog.kanaal": "sms" } }
+                  "attributes": { "system.locale": "en-GB" } },
+                { "id": "large-print", "title": "Groot lettertype", "isDefault": false,
+                  "attributes": { "$FAKE_CATALOG_ID.weergave": "groot" } }
               ]
             }
         """.trimIndent()

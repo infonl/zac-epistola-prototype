@@ -22,7 +22,7 @@ export class EpistolaTemplatesService {
     );
   }
 
-  /** Each template with the languages and variants Epistola gives it, which are absent while Epistola cannot be asked. */
+  /** Each template with the languages Epistola gives it, which are absent while Epistola cannot be asked. */
   listCatalogTemplatesQuery(catalogId: string) {
     return this.zacQueryClient.GET(
       "/rest/zaakafhandelparameters/epistola-catalogs/{catalogId}/templates",

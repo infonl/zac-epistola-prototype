@@ -17,10 +17,10 @@
       <p class="subtitle">
         Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 3. Dezelfde velden als de
         bestaande SmartDocuments-dialoog, met één veld eruit en één veld niet-onderhandelbaar: zonder het veld
-        Templategroep biedt Template meteen de templates van de catalog van het zaaktype (#51). Het veld Variant (#47,
-        #53) staat er alleen bij een template met varianten voor twee of meer kanalen; hier een zaak met
-        communicatiekanaal E-mail. Er is geen veld Taal: de behandelaar kiest geen taal. ZAC kiest zelf de taal, en
-        Variant biedt de varianten in die taal.
+        Templategroep biedt Template meteen de templates van de catalog van het zaaktype (#51). Er is geen veld Taal en
+        geen veld Variant: de behandelaar kiest geen taal en geen variant. ZAC kiest zelf de taal, en Epistola de
+        variant in die taal. De keuzelijst Variant (#47, #53) staat sinds 7 oktober op de branch
+        explore/epistola-variant-picker (B32).
       </p>
 
       <div class="pair">
@@ -33,12 +33,6 @@
                 <div class="fieldlabel">Template <span class="req">*</span></div>
                 <div class="box">Besluit evenementenvergunning <i class="caret">▾</i></div>
                 <div class="fieldnote">Keuzes: de templates van de catalog van het zaaktype. Bij één al gekozen</div>
-              </div>
-              <div class="field">
-                <div class="fieldlabel">Variant <span class="req">*</span></div>
-                <div class="box">Digitaal <i class="caret">▾</i></div>
-                <div class="fieldhint">Voorgesteld door het communicatiekanaal van de zaak: E-mail</div>
-                <div class="fieldnote">Keuzes: Per post · Digitaal. Ontbreekt bij minder dan twee kanalen</div>
               </div>
               <div class="field">
                 <div class="fieldlabel">Titel <span class="req">*</span></div>

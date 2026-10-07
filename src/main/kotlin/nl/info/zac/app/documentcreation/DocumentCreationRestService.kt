@@ -38,8 +38,6 @@ import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationResponse
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationStatus
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentPreviewData
-import nl.info.zac.app.documentcreation.model.RestEpistolaVarianten
-import nl.info.zac.app.documentcreation.model.toRestEpistolaVarianten
 import nl.info.zac.authentication.LoggedInUser
 import nl.info.zac.authentication.runAsLoggedInUser
 import nl.info.zac.authentication.runAsSystemUser
@@ -123,8 +121,7 @@ class DocumentCreationRestService @Inject constructor(
                 templateId = restEpistolaDocumentCreationData.templateId,
                 title = restEpistolaDocumentCreationData.title,
                 description = restEpistolaDocumentCreationData.description,
-                taskId = restEpistolaDocumentCreationData.taskId,
-                variant = restEpistolaDocumentCreationData.variant
+                taskId = restEpistolaDocumentCreationData.taskId
             )
         }.let { RestEpistolaDocumentCreationResponse(informatieobjectUuid = it.informatieobject.extractUuid()) }
 
@@ -146,26 +143,8 @@ class DocumentCreationRestService @Inject constructor(
             epistolaDocumentCreationService.previewDocument(
                 zaak = zaak,
                 templateId = restEpistolaDocumentPreviewData.templateId,
-                taskId = restEpistolaDocumentPreviewData.taskId,
-                variant = restEpistolaDocumentPreviewData.variant
+                taskId = restEpistolaDocumentPreviewData.taskId
             )
-        }
-
-    /**
-     * The variants a behandelaar can choose between, in the language ZAC asks Epistola for, and the variant the zaak's
-     * communicatiekanaal suggests.
-     */
-    @GET
-    @Path("/epistola/create-document/{zaakUuid}/template/{templateId}/varianten")
-    fun readEpistolaVarianten(
-        @PathParam("zaakUuid") zaakUuid: UUID,
-        @PathParam("templateId") templateId: String
-    ): RestEpistolaVarianten =
-        zrcClientService.readZaak(zaakUuid).also { zaak ->
-            assertDocumentCreationAllowed(zaak = zaak, taskId = null)
-        }.let { zaak ->
-            epistolaDocumentCreationService.readVarianten(zaak = zaak, templateId = templateId)
-                .toRestEpistolaVarianten(zaak.communicatiekanaalNaam)
         }
 
     /**

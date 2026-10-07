@@ -27,9 +27,7 @@ import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
 import nl.info.client.epistola.model.selectVariantFor
-import nl.info.client.epistola.model.toEpistolaKanalen
 import nl.info.client.epistola.model.toEpistolaLocales
-import nl.info.client.epistola.model.toEpistolaVariants
 import nl.info.zac.configuration.EpistolaSettings
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -78,7 +76,7 @@ class EpistolaClientService @Inject constructor(
 
     /**
      * Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak.
-     * Without a [kanaal] and a [locale], Epistola renders the template's default variant.
+     * Without a [locale], Epistola renders the template's default variant.
      * [onJobStatus] hears the job's status at every poll until it finishes.
      */
     @Suppress("LongParameterList")
@@ -88,7 +86,6 @@ class EpistolaClientService @Inject constructor(
         data: Map<String, Any>,
         fileName: String,
         correlationId: String,
-        kanaal: String? = null,
         locale: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument {
@@ -103,14 +100,14 @@ class EpistolaClientService @Inject constructor(
                 GenerateDocumentRequest()
                     .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
+                    .attributes(selectVariantFor(locale))
                     .data(data)
                     .filename(fileName)
                     .correlationId(correlationId)
             )
         }.requestId
         val generationRequest = "generation request '$requestId' for template '$templateId' of catalog '$catalogId' " +
-            "(correlation id '$correlationId'${describeVariant(kanaal, locale)?.let { ", $it" }.orEmpty()})"
+            "(correlation id '$correlationId'${locale?.let { ", locale '$it'" }.orEmpty()})"
         LOG.fine { "Epistola accepted $generationRequest" }
 
         var isJobFinished = false
@@ -125,7 +122,7 @@ class EpistolaClientService @Inject constructor(
             item = finishedItem,
             fileName = fileName,
             generationRequest = generationRequest
-        ).copy(kanaal = kanaal, locale = locale)
+        ).copy(locale = locale)
     }
 
     /**
@@ -139,18 +136,17 @@ class EpistolaClientService @Inject constructor(
         catalogId: String,
         templateId: String,
         data: Map<String, Any>,
-        kanaal: String? = null,
         locale: String? = null
     ): ByteArray {
         val previewRequest = "a preview of template '$templateId' of catalog '$catalogId'" +
-            describeVariant(kanaal, locale)?.let { " ($it)" }.orEmpty()
+            locale?.let { " (locale '$it')" }.orEmpty()
         val previewFile = requestEpistola(request = previewRequest, isTemplateRequest = true) {
             generationApi.previewDocument(
                 epistolaSettings.tenantId,
                 PreviewDocumentRequest()
                     .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
+                    .attributes(selectVariantFor(locale))
                     .data(data)
             )
         }
@@ -204,9 +200,7 @@ class EpistolaClientService @Inject constructor(
         readTemplate(catalogId = catalogId, templateId = templateId).let {
             EpistolaGenerationTemplate(
                 dataContract = it.dataModel ?: it.schema,
-                kanalen = it.toEpistolaKanalen(catalogId),
-                locales = it.toEpistolaLocales(catalogId),
-                variants = it.toEpistolaVariants(catalogId)
+                locales = it.toEpistolaLocales()
             )
         }
 
@@ -302,8 +296,3 @@ class EpistolaClientService @Inject constructor(
         }
     }
 }
-
-private fun describeVariant(kanaal: String?, locale: String?) =
-    listOfNotNull(kanaal?.let { "kanaal '$it'" }, locale?.let { "locale '$it'" })
-        .takeIf { it.isNotEmpty() }
-        ?.joinToString(", ")

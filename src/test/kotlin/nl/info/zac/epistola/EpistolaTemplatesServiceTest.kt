@@ -18,7 +18,6 @@ import io.mockk.verify
 import jakarta.ws.rs.ProcessingException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createCatalog
 import nl.info.client.epistola.model.createGenerationTemplate

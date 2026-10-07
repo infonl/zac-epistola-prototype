@@ -36,35 +36,6 @@
         <mat-label>{{ "template" | translate }}</mat-label>
       </zac-auto-complete>
     </section>
-    @if (variantOptions().length) {
-      <section class="row">
-        <zac-select
-          [form]="form"
-          key="variant"
-          class="col-12"
-          [options]="variantOptions()"
-          [optionDisplayValue]="variantLabel"
-        >
-          <mat-label>{{ "epistola.variant" | translate }}</mat-label>
-          <mat-hint>
-            @if (varianten()?.communicatiekanaal; as communicatiekanaal) {
-              <span
-                [style.visibility]="
-                  isSuggestedVariantChosen() ? null : 'hidden'
-                "
-              >
-                {{
-                  "epistola.variant.hint.communicatiekanaal"
-                    | translate: { communicatiekanaal }
-                }}
-              </span>
-            } @else {
-              {{ "epistola.variant.hint" | translate }}
-            }
-          </mat-hint>
-        </zac-select>
-      </section>
-    }
     <section class="row">
       <zac-input key="title" class="col-12" [form]="form">
         <mat-label>{{ "titel" | translate }}</mat-label>

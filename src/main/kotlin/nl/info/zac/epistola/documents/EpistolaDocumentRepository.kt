@@ -31,14 +31,12 @@ class EpistolaDocumentRepository @Inject constructor(
         informatieObjectUUID: UUID,
         catalogId: String,
         templateId: String,
-        kanaal: String?,
         locale: String?
     ) =
         EpistolaDocument().apply {
             this.informatieObjectUUID = informatieObjectUUID
             this.catalogId = catalogId
             this.templateId = templateId
-            this.kanaal = kanaal
             this.locale = locale
             creationDate = ZonedDateTime.now()
         }.also(entityManager::persist)

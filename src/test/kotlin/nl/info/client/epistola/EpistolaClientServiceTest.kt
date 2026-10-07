@@ -31,7 +31,7 @@ import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.EpistolaKanalen
+import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
@@ -555,28 +555,19 @@ class EpistolaClientServiceTest : BehaviorSpec({
                     generationTemplate.dataContract shouldBe null
                 }
 
-                and("it has no kanalen") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen()
+                and("it has no languages") {
+                    generationTemplate.locales shouldBe EpistolaLocales()
                 }
             }
         }
 
-        given("a template whose variants are made for kanalen, some in another catalog") {
+        given("a template whose variants are written in Dutch and in English, with an English default") {
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate(
                 variants = listOf(
-                    createVariantSummary(id = "fake-dutch-post", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post")),
-                    createVariantSummary(
-                        id = "fake-english-post",
-                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post", "system.locale" to "en-GB")
-                    ),
-                    createVariantSummary(
-                        id = "fake-digitaal",
-                        isDefault = true,
-                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal")
-                    ),
-                    createVariantSummary(id = "fake-other-catalog", attributes = mapOf("fake-other-catalog.kanaal" to "sms")),
+                    createVariantSummary(id = "fake-dutch", attributes = mapOf("system.locale" to "nl-NL")),
+                    createVariantSummary(id = "fake-english", isDefault = true, attributes = mapOf("system.locale" to "en-GB")),
                     createVariantSummary(id = "fake-no-attributes", attributes = null)
                 )
             )
@@ -584,27 +575,8 @@ class EpistolaClientServiceTest : BehaviorSpec({
             `when`("the template is read") {
                 val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
 
-                then("each kanaal of the template's own catalog is listed once, with that of the default variant") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "digitaal")
-                }
-            }
-        }
-
-        given("a template whose default variant is made for no kanaal") {
-            every {
-                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
-            } returns createTemplate(
-                variants = listOf(
-                    createVariantSummary(id = "fake-default", isDefault = true),
-                    createVariantSummary(id = "fake-digitaal", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal"))
-                )
-            )
-
-            `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
-
-                then("it has a kanaal, but no default kanaal") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = null)
+                then("it has both languages, with that of the default variant") {
+                    generationTemplate.locales shouldBe EpistolaLocales(locales = listOf("nl-NL", "en-GB"), defaultLocale = "en-GB")
                 }
             }
         }

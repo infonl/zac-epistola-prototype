@@ -45,8 +45,8 @@ holds zaakdata. The generated PDF is an `EnkelvoudigInformatieObject` in Open Za
 the registry stores the record.
 
 For a new version of a document (#9), ZAC remembers which template made each Epistola document, in the table
-`epistola_document`. It holds the informatieobject, the template and its catalog, the kanaal (#47) and the language
-(#52) ZAC asked Epistola for, and no content, title, status or zaak, so the versions themselves are still Open Zaak's
+`epistola_document`. It holds the informatieobject, the template and its catalog, and the language (#52) ZAC asked
+Epistola for, and no content, title, status or zaak, so the versions themselves are still Open Zaak's
 `versie` field. Whether ZAC may keep that table is for the stakeholders to decide if they take the prototype into ZAC.
 
 ### API-first

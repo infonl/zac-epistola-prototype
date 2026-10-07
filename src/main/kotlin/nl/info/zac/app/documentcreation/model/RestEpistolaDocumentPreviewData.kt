@@ -17,11 +17,5 @@ data class RestEpistolaDocumentPreviewData(
     var taskId: String? = null,
 
     @field:NotBlank
-    var templateId: String,
-
-    /**
-     * The chosen variant, named by its kanaal. Without one, the zaak's communicatiekanaal decides which of the
-     * template's variants is used.
-     */
-    var variant: String? = null
+    var templateId: String
 )

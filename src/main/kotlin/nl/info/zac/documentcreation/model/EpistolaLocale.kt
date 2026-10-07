@@ -5,7 +5,6 @@
 package nl.info.zac.documentcreation.model
 
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.zac.configuration.ConfigurationService
 import java.util.Locale
@@ -58,31 +57,12 @@ private fun EpistolaLocales.offeredSpellingOf(locale: String?) =
     locale?.let { wanted -> locales.firstOrNull { it.equals(wanted, ignoreCase = true) } }
 
 /**
- * The language ZAC asks Epistola for, and offers the variants of: the [requestedLocale], such as the one a document was
+ * The language ZAC asks Epistola for: the [requestedLocale], such as the one a document was
  * generated in, when the template has it, otherwise the [configuredLocale] of the zaaktype when the template has that,
  * otherwise the preselected one. The behandelaar does not choose a language.
  */
 fun EpistolaGenerationTemplate.resolveLocale(requestedLocale: String? = null, configuredLocale: String? = null): String? =
     locales.choose(requestedLocale = requestedLocale, configuredLocale = configuredLocale)
-
-/** A template, and the language [resolveLocale] gave for it, which is the one its variants are offered in and generated in. */
-data class EpistolaTemplateInLocale(val template: EpistolaGenerationTemplate, val locale: String?)
-
-fun EpistolaGenerationTemplate.kanalenIn(locale: String?): EpistolaKanalen =
-    locale?.let(locales.kanalenByLocale::get) ?: kanalen
-
-/**
- * Asked for a language, Epistola weighs only the variants in it, and two of them would tie without a kanaal, so then
- * the language's default kanaal is asked for when neither the behandelaar nor the communicatiekanaal chose one.
- */
-fun EpistolaGenerationTemplate.chooseKanaal(locale: String?, requestedKanaal: String?, communicatiekanaal: String?) =
-    if (locale == null) {
-        kanalen.choose(requestedKanaal = requestedKanaal, communicatiekanaal = communicatiekanaal)
-    } else {
-        kanalenIn(locale).let {
-            it.choose(requestedKanaal = requestedKanaal, communicatiekanaal = communicatiekanaal) ?: it.defaultKanaal
-        }
-    }
 
 /** A document whose language ZAC did not ask for, or cannot name, is registered as Dutch, as every document was before. */
 fun toInformatieobjectTaal(locale: String?): String =

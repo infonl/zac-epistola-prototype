@@ -9,17 +9,8 @@ import java.util.UUID
 fun createRestEpistolaTemplate(
     id: String = "fake-template-id",
     name: String = "fakeTemplateName",
-    locales: List<String>? = null,
-    kanalen: List<String>? = null,
-    variants: List<RestEpistolaVariant>? = null
-) = RestEpistolaTemplate(id = id, name = name, locales = locales, kanalen = kanalen, variants = variants)
-
-fun createRestEpistolaVariant(
-    id: String = "fake-variant-id",
-    title: String = "fakeVariantTitle",
-    isDefault: Boolean = false,
-    attributes: List<RestEpistolaVariantAttribute> = emptyList()
-) = RestEpistolaVariant(id = id, title = title, isDefault = isDefault, attributes = attributes)
+    locales: List<String>? = null
+) = RestEpistolaTemplate(id = id, name = name, locales = locales)
 
 fun createRestEpistolaTemplateSetting(
     templateId: String = "fake-template-id",

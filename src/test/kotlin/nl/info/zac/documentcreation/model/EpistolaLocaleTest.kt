@@ -7,8 +7,6 @@ package nl.info.zac.documentcreation.model
 import io.kotest.core.spec.style.BehaviorSpec
 import io.kotest.matchers.shouldBe
 import io.mockk.checkUnnecessaryStub
-import nl.info.client.epistola.model.EpistolaGenerationTemplate
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createDutchAndEnglishLocales
 import nl.info.client.epistola.model.createGenerationTemplate
@@ -27,7 +25,7 @@ class EpistolaLocaleTest : BehaviorSpec({
 
         given("a template in British English and in Dutch, whose default variant is English") {
             val locales = EpistolaLocales(
-                kanalenByLocale = mapOf("en-GB" to EpistolaKanalen(), "nl-NL" to EpistolaKanalen()),
+                locales = listOf("en-GB", "nl-NL"),
                 defaultLocale = "en-GB"
             )
 
@@ -40,7 +38,7 @@ class EpistolaLocaleTest : BehaviorSpec({
 
         given("a template in British English and in Belgian Dutch, whose default variant is English") {
             val locales = EpistolaLocales(
-                kanalenByLocale = mapOf("en-GB" to EpistolaKanalen(), "nl-BE" to EpistolaKanalen()),
+                locales = listOf("en-GB", "nl-BE"),
                 defaultLocale = "en-GB"
             )
 
@@ -53,7 +51,7 @@ class EpistolaLocaleTest : BehaviorSpec({
 
         given("a template in British English and in German, whose default variant is German") {
             val locales = EpistolaLocales(
-                kanalenByLocale = mapOf("en-GB" to EpistolaKanalen(), "de-DE" to EpistolaKanalen()),
+                locales = listOf("en-GB", "de-DE"),
                 defaultLocale = "de-DE"
             )
 
@@ -158,51 +156,6 @@ class EpistolaLocaleTest : BehaviorSpec({
             `when`("British English is requested") {
                 then("no language is asked for, so Epistola renders the template as before") {
                     EpistolaLocales().choose(requestedLocale = "en-GB") shouldBe null
-                }
-            }
-        }
-    }
-
-    context("choosing the kanaal within a language") {
-        given("a template with Dutch variants by post and digitally, and an English one by post only") {
-            val generationTemplate = EpistolaGenerationTemplate(
-                dataContract = null,
-                kanalen = EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"),
-                locales = createDutchAndEnglishLocales()
-            )
-
-            `when`("Dutch is asked for, for a zaak whose communicatiekanaal is e-mail") {
-                then("the digital variant is asked for") {
-                    generationTemplate.chooseKanaal(locale = "nl-NL", requestedKanaal = null, communicatiekanaal = "E-mail") shouldBe
-                        "digitaal"
-                }
-            }
-
-            `when`("English is asked for, for a zaak whose communicatiekanaal is e-mail") {
-                then("the variant by post is asked for, because English has no digital one") {
-                    generationTemplate.chooseKanaal(locale = "en-GB", requestedKanaal = null, communicatiekanaal = "E-mail") shouldBe
-                        "post"
-                }
-            }
-
-            `when`("English is asked for in the digital variant the behandelaar chose") {
-                then("the variant by post is asked for, so Epistola does not fall back to the Dutch default variant") {
-                    generationTemplate.chooseKanaal(locale = "en-GB", requestedKanaal = "digitaal", communicatiekanaal = null) shouldBe
-                        "post"
-                }
-            }
-
-            `when`("Dutch is asked for, for a zaak whose communicatiekanaal suggests no kanaal") {
-                then("the kanaal of the default variant is asked for, because Dutch has two variants that would tie") {
-                    generationTemplate.chooseKanaal(locale = "nl-NL", requestedKanaal = null, communicatiekanaal = "Intern") shouldBe
-                        "post"
-                }
-            }
-
-            `when`("no language is asked for") {
-                then("the kanaal is chosen as for a template without languages") {
-                    generationTemplate.chooseKanaal(locale = null, requestedKanaal = null, communicatiekanaal = "Intern") shouldBe
-                        null
                 }
             }
         }

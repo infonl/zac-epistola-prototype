@@ -61,8 +61,7 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
         val restEpistolaDocumentPreviewData = RestEpistolaDocumentPreviewData(
             zaakUuid = zaak.uuid,
             taskId = taskId,
-            templateId = "fake-template",
-            variant = "post"
+            templateId = "fake-template"
         )
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
         every { loggedInUserInstance.get() } returns loggedInUser
@@ -77,14 +76,13 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                 epistolaDocumentCreationService.previewDocument(
                     zaak = zaak,
                     templateId = "fake-template",
-                    taskId = taskId,
-                    variant = "post"
+                    taskId = taskId
                 )
             } returns FAKE_PREVIEW
 
             val preview = documentCreationRestService.previewEpistolaDocument(restEpistolaDocumentPreviewData)
 
-            then("the document Epistola rendered is returned, in the variant that was asked for") {
+            then("the document Epistola rendered is returned") {
                 preview shouldBe FAKE_PREVIEW
             }
         }
@@ -102,7 +100,6 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                         zaak = any(),
                         templateId = any(),
                         taskId = any(),
-                        variant = any()
                     )
                 }
             }
@@ -125,7 +122,6 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                         zaak = any(),
                         templateId = any(),
                         taskId = any(),
-                        variant = any()
                     )
                 }
             }
@@ -149,14 +145,13 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                         zaak = any(),
                         templateId = any(),
                         taskId = any(),
-                        variant = any()
                     )
                 }
             }
         }
     }
 
-    given("a preview of an Epistola document requested for a zaak, and not from a task or for a variant") {
+    given("a preview of an Epistola document requested for a zaak, and not from a task") {
         val zaak = createZaak()
         val loggedInUser = createLoggedInUser()
         every { zrcClientService.readZaak(zaak.uuid) } returns zaak
@@ -171,7 +166,6 @@ class DocumentCreationRestServicePreviewTest : BehaviorSpec({
                     zaak = zaak,
                     templateId = "fake-template",
                     taskId = null,
-                    variant = null
                 )
             } returns FAKE_PREVIEW
 

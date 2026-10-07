@@ -6,12 +6,11 @@ package nl.info.client.epistola.model
 
 import java.util.UUID
 
-/** [kanaal] and [locale] are the ones ZAC asked Epistola for, and null when it asked for none. */
+/** [locale] is the one ZAC asked Epistola for, and null when it asked for none. */
 data class EpistolaGeneratedDocument(
     val documentId: UUID,
     val fileName: String,
     val content: ByteArray,
-    val kanaal: String? = null,
     val locale: String? = null
 ) {
     override fun equals(other: Any?) =
@@ -21,7 +20,6 @@ data class EpistolaGeneratedDocument(
                     documentId == other.documentId &&
                     fileName == other.fileName &&
                     content.contentEquals(other.content) &&
-                    kanaal == other.kanaal &&
                     locale == other.locale
                 )
 
@@ -29,7 +27,6 @@ data class EpistolaGeneratedDocument(
         var result = documentId.hashCode()
         result = 31 * result + fileName.hashCode()
         result = 31 * result + content.contentHashCode()
-        result = 31 * result + (kanaal?.hashCode() ?: 0)
         result = 31 * result + (locale?.hashCode() ?: 0)
         return result
     }

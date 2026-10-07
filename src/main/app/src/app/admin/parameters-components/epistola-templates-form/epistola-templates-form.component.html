@@ -134,53 +134,6 @@
                                   ("epistola.template.talen.geen" | translate)
                               }}
                             </dd>
-                            <dt>
-                              {{ "epistola.template.varianten" | translate }}
-                            </dt>
-                            <dd>
-                              @if (row.variants.length) {
-                                <ul class="template-variants">
-                                  @for (
-                                    variant of row.variants;
-                                    track variant.id
-                                  ) {
-                                    <li>
-                                      <strong>{{ variant.title }}</strong>
-                                      @if (variant.isDefault) {
-                                        <span class="variant-default">{{
-                                          "epistola.template.variant.standaard"
-                                            | translate
-                                        }}</span>
-                                      }
-                                      @for (
-                                        attribute of variant.attributes;
-                                        track attribute.key
-                                      ) {
-                                        <span class="variant-attribute">
-                                          @if (attribute.key === "locale") {
-                                            {{ attribute.languageName }}
-                                          } @else if (
-                                            attribute.key === "kanaal"
-                                          ) {
-                                            {{
-                                              variantLabel(attribute.value)
-                                                | translate
-                                            }}
-                                          } @else {
-                                            {{ attribute.key }}:
-                                            {{ attribute.value }}
-                                          }
-                                        </span>
-                                      }
-                                    </li>
-                                  }
-                                </ul>
-                              } @else {
-                                {{
-                                  "epistola.template.varianten.geen" | translate
-                                }}
-                              }
-                            </dd>
                           }
                         </dl>
                         <div class="template-settings flex-row">

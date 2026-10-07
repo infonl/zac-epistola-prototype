@@ -44,57 +44,22 @@ const BESLUIT_TEMPLATE: GeneratedType<"RestEpistolaTemplate"> = {
   id: "besluit-evenementenvergunning",
   name: "Besluit evenementenvergunning",
   locales: ["en-GB", "nl-NL"],
-  kanalen: ["post", "digitaal"],
-  variants: [
-    {
-      id: "initial",
-      title: "Initial",
-      isDefault: true,
-      attributes: [
-        { key: "locale", value: "nl-NL" },
-        { key: "kanaal", value: "post" },
-      ],
-    },
-    {
-      id: "groot-lettertype",
-      title: "Groot lettertype",
-      isDefault: false,
-      attributes: [
-        { key: "locale", value: "nl-NL" },
-        { key: "kanaal", value: "post" },
-        { key: "weergave", value: "groot" },
-      ],
-    },
-    {
-      id: "english",
-      title: "English",
-      isDefault: false,
-      attributes: [
-        { key: "locale", value: "en-GB" },
-        { key: "kanaal", value: "digitaal" },
-      ],
-    },
-  ],
 };
 const ONTVANGSTBEVESTIGING_TEMPLATE: GeneratedType<"RestEpistolaTemplate"> = {
   id: "ontvangstbevestiging-aanvraag",
   name: "Ontvangstbevestiging aanvraag",
   locales: ["en-GB", "nl-NL"],
-  kanalen: [],
-  variants: [],
 };
 const HANDHAVING_TEMPLATES: GeneratedType<"RestEpistolaTemplate">[] = [
   {
     id: "besluit-evenementenvergunning",
     name: "Besluit evenementenvergunning",
     locales: ["de-DE", "nl-NL"],
-    kanalen: ["post"],
   },
   {
     id: "vooraankondiging-last",
     name: "Vooraankondiging last",
     locales: ["de-DE", "nl-NL"],
-    kanalen: ["post"],
   },
 ];
 
@@ -408,131 +373,10 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).toBeVisible();
     });
 
-    it("lists every variant of a template by its title, once its item is opened", async () => {
-      const { user } = await setup();
-
-      await openTemplate(user, "Besluit evenementenvergunning");
-
-      const variants = await within(
-        await screen.findByRole("region", {
-          name: /Besluit evenementenvergunning/,
-        }),
-      ).findAllByRole("listitem");
-      expect(variants).toHaveLength(3);
-      expect(within(variants[0]).getByText("Initial")).toBeVisible();
-      expect(within(variants[1]).getByText("Groot lettertype")).toBeVisible();
-      expect(within(variants[2]).getByText("English")).toBeVisible();
-    });
-
-    it("names the language and the channel of a variant, and shows any other attribute as received", async () => {
-      const { user } = await setup();
-
-      await openTemplate(user, "Besluit evenementenvergunning");
-
-      const [initial, largePrint, english] = await within(
-        await screen.findByRole("region", {
-          name: /Besluit evenementenvergunning/,
-        }),
-      ).findAllByRole("listitem");
-      expect(within(initial).getByText("Nederlands (Nederland)")).toBeVisible();
-      expect(within(initial).getByText("epistola.variant.post")).toBeVisible();
-      expect(
-        within(largePrint).getByText("Nederlands (Nederland)"),
-      ).toBeVisible();
-      expect(
-        within(largePrint).getByText("epistola.variant.post"),
-      ).toBeVisible();
-      expect(within(largePrint).getByText("weergave: groot")).toBeVisible();
-      expect(
-        within(english).getByText("Engels (Verenigd Koninkrijk)"),
-      ).toBeVisible();
-      expect(
-        within(english).getByText("epistola.variant.digitaal"),
-      ).toBeVisible();
-    });
-
-    it("marks only the default variant", async () => {
-      const { user } = await setup();
-
-      await openTemplate(user, "Besluit evenementenvergunning");
-
-      const [initial, largePrint, english] = await within(
-        await screen.findByRole("region", {
-          name: /Besluit evenementenvergunning/,
-        }),
-      ).findAllByRole("listitem");
-      expect(
-        within(initial).getByText("epistola.template.variant.standaard"),
-      ).toBeVisible();
-      expect(
-        within(largePrint).queryByText("epistola.template.variant.standaard"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(english).queryByText("epistola.template.variant.standaard"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows a variant without attributes by its title alone", async () => {
-      const { user } = await setup({
-        templatesByCatalog: {
-          [VERGUNNINGEN.id]: [
-            {
-              id: "brief",
-              name: "Brief",
-              locales: [],
-              kanalen: [],
-              variants: [
-                {
-                  id: "plain",
-                  title: "Plain",
-                  isDefault: true,
-                  attributes: [],
-                },
-              ],
-            },
-          ],
-        },
-      });
-
-      await openTemplate(user, "Brief");
-
-      const [plain] = await within(
-        await screen.findByRole("region", { name: /Brief/ }),
-      ).findAllByRole("listitem");
-      expect(within(plain).getByText("Plain")).toBeVisible();
-      expect(plain).toHaveTextContent(
-        /^\s*Plain\s*epistola.template.variant.standaard\s*$/,
-      );
-    });
-
-    it("says so briefly when a template has no variants", async () => {
-      const { user } = await setup();
-
-      await openTemplate(user, "Ontvangstbevestiging aanvraag");
-
-      expect(
-        await within(
-          await screen.findByRole("region", {
-            name: /Ontvangstbevestiging aanvraag/,
-          }),
-        ).findByText("epistola.template.varianten.geen"),
-      ).toBeVisible();
-      expect(
-        templatePanel("Ontvangstbevestiging aanvraag").queryByRole("listitem"),
-      ).not.toBeInTheDocument();
-      expect(
-        templatePanel("Ontvangstbevestiging aanvraag").queryByText(
-          "epistola.template.talen.geen",
-        ),
-      ).not.toBeInTheDocument();
-    });
-
     it("says so briefly when a template has no languages", async () => {
       const { user } = await setup({
         templatesByCatalog: {
-          [VERGUNNINGEN.id]: [
-            { id: "brief", name: "Brief", locales: [], kanalen: ["post"] },
-          ],
+          [VERGUNNINGEN.id]: [{ id: "brief", name: "Brief", locales: [] }],
         },
       });
 
@@ -543,7 +387,7 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).toBeVisible();
     });
 
-    it("shows the id, the document type and the offering of a template whose details Epistola could not give, but no languages or variants", async () => {
+    it("shows the id, the document type and the offering of a template whose details Epistola could not give, but no languages", async () => {
       const { user } = await setup({
         templatesByCatalog: {
           [VERGUNNINGEN.id]: [{ id: "brief", name: "Brief" }],
@@ -568,12 +412,6 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       ).toBeVisible();
       expect(
         templatePanel("Brief").queryByText("epistola.template.talen"),
-      ).not.toBeInTheDocument();
-      expect(
-        templatePanel("Brief").queryByRole("listitem"),
-      ).not.toBeInTheDocument();
-      expect(
-        templatePanel("Brief").queryByText("epistola.template.varianten.geen"),
       ).not.toBeInTheDocument();
       expect(templatePanel("Brief").getByText("brief")).toBeVisible();
     });
@@ -1014,7 +852,6 @@ describe(EpistolaTemplatesFormComponent.name, () => {
         id: "brief-nederlands",
         name: "Brief Nederlands",
         locales: ["nl-NL"],
-        kanalen: ["post"],
       },
     ];
 
@@ -1244,8 +1081,8 @@ describe(EpistolaTemplatesFormComponent.name, () => {
       const { user } = await setup({
         templatesByCatalog: {
           [VERGUNNINGEN.id]: [
-            { id: "een", name: "Een", locales: ["nl-NL"], kanalen: [] },
-            { id: "twee", name: "Twee", locales: ["en-GB"], kanalen: [] },
+            { id: "een", name: "Een", locales: ["nl-NL"] },
+            { id: "twee", name: "Twee", locales: ["en-GB"] },
           ],
         },
       });

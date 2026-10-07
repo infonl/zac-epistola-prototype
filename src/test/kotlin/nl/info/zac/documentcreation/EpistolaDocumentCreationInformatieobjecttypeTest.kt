@@ -17,7 +17,6 @@ import jakarta.enterprise.inject.Instance
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.model.createZaak
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
@@ -95,7 +94,7 @@ class EpistolaDocumentCreationInformatieobjecttypeTest : BehaviorSpec({
         }
         every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
         every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, templateId) } returns
-            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA)
         every {
             epistolaClientService.generateDocument(
                 catalogId = FAKE_CATALOG_ID,
@@ -103,7 +102,6 @@ class EpistolaDocumentCreationInformatieobjecttypeTest : BehaviorSpec({
                 data = any(),
                 fileName = "$FAKE_TITLE.pdf",
                 correlationId = zaak.uuid.toString(),
-                kanaal = any(),
                 locale = any(),
                 onJobStatus = any()
             )
