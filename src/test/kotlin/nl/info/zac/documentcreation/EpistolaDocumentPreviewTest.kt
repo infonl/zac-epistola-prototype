@@ -37,6 +37,7 @@ import nl.info.zac.epistola.exception.EpistolaTemplateNotConfiguredException
 import nl.info.zac.epistola.model.OfferedEpistolaCatalog
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_RATE_LIMITED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_TEMPLATE_DATA_REJECTED
+import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_UNAVAILABLE
 import java.util.UUID
 
 private const val FAKE_CATALOG_ID = "fake-catalog"
@@ -212,6 +213,35 @@ class EpistolaDocumentPreviewTest : BehaviorSpec({
                             data = any()
                         )
                     }
+                }
+            }
+        }
+
+        given("Epistola is unavailable when the template is read") {
+            val zaak = createZaak()
+            every { epistolaTemplatesService.readCatalogOfferingTemplate(zaak.zaaktype.extractUuid(), any()) } returns
+                OfferedEpistolaCatalog(
+                    catalogId = FAKE_CATALOG_ID,
+                    informatieObjectTypeUuid = UUID.randomUUID()
+                )
+            every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } throws
+                EpistolaRequestFailedException(
+                    errorCode = ERROR_CODE_EPISTOLA_UNAVAILABLE,
+                    message = "fakeUnavailable",
+                    cause = RuntimeException()
+                )
+
+            `when`("a preview is made") {
+                val epistolaDocumentCreationException = shouldThrow<EpistolaDocumentCreationException> {
+                    epistolaDocumentCreationService.previewDocument(zaak = zaak, templateId = FAKE_TEMPLATE_ID)
+                }
+
+                then(
+                    "the behandelaar is told that Epistola is unavailable, and no zaak data is collected from the " +
+                        "ZGW, BRP and KVK sources"
+                ) {
+                    epistolaDocumentCreationException.errorCode shouldBe ERROR_CODE_EPISTOLA_UNAVAILABLE
+                    verify(exactly = 0) { documentCreationDataService.createEpistolaData(any(), any(), any()) }
                 }
             }
         }

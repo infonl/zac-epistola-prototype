@@ -186,16 +186,15 @@ class EpistolaDocumentCreationService @Inject constructor(
         }
     }
 
-    private fun readTemplateData(zaak: Zaak, catalogId: String, templateId: String, taskId: String?) =
-        documentCreationDataService.createEpistolaData(
+    private fun readTemplateData(zaak: Zaak, catalogId: String, templateId: String, taskId: String?): Map<String, Any> {
+        val templateSchema = epistolaClientService.readGenerationTemplate(catalogId = catalogId, templateId = templateId)
+            .dataContract
+        return documentCreationDataService.createEpistolaData(
             loggedInUser = loggedInUserInstance.get(),
             zaak = zaak,
             taskId = taskId
-        ).toEpistolaTemplateData(
-            templateId = templateId,
-            templateSchema = epistolaClientService.readGenerationTemplate(catalogId = catalogId, templateId = templateId)
-                .dataContract
-        )
+        ).toEpistolaTemplateData(templateId = templateId, templateSchema = templateSchema)
+    }
 
     fun readStatus(zaakUuid: UUID): EpistolaDocumentCreationStatus? =
         epistolaDocumentCreationStatusStore.read(userId = loggedInUserInstance.get().id, zaakUuid = zaakUuid)
