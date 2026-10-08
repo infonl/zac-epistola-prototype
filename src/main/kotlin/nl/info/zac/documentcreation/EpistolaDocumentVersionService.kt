@@ -19,7 +19,6 @@ import nl.info.zac.documentcreation.exception.EpistolaDocumentNotStoredException
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus.STORING
 import nl.info.zac.documentcreation.model.toEpistolaDocumentCreationStatus
-import nl.info.zac.documentcreation.model.toInformatieobjectTaal
 import nl.info.zac.epistola.EpistolaTemplatesService
 import nl.info.zac.epistola.documents.EpistolaDocumentRepository
 import nl.info.zac.epistola.exception.EpistolaNewVersionNotPossibleException
@@ -62,10 +61,9 @@ class EpistolaDocumentVersionService @Inject constructor(
 
     /**
      * Generates the document again from the template that produced it, read from the catalog it came from also after the
-     * zaaktype has moved to another one, asking for the kanaal and the language stored with it while the template still
-     * offers them, and otherwise for the language of the zaaktype, with the zaak's data as it is now, and stores it as
-     * the next version of the same informatieobject. The versions before it stay in Open Zaak, and when the new version
-     * cannot be stored the current one is left as it was.
+     * zaaktype has moved to another one, with the zaak's data as it is now, and stores it as the next version of the same
+     * informatieobject. The versions before it stay in Open Zaak, and when the new version cannot be stored the current
+     * one is left as it was.
      *
      * Like [EpistolaDocumentCreationService.createAndStoreDocument], it returns once the document is stored and
      * Epistola's copy is deleted.
@@ -85,16 +83,13 @@ class EpistolaDocumentVersionService @Inject constructor(
                 "Document '$informatieObjectUUID' was not generated with Epistola, so it has no template to use."
             )
         val templateId = epistolaDocument.templateId
-        val offeredCatalog = epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
+        epistolaTemplatesService.readOfferedCatalog(zaak.zaaktype.extractUuid())
         try {
             val generatedDocument = epistolaDocumentCreationService.createDocument(
                 zaak = zaak,
                 catalogId = epistolaDocument.catalogId ?: epistolaClientService.defaultCatalogId,
                 templateId = templateId,
-                fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION,
-                variant = epistolaDocument.kanaal,
-                taal = epistolaDocument.locale,
-                zaaktypeLocale = offeredCatalog.locale
+                fileName = enkelvoudigInformatieObject.bestandsnaam.substringBeforeLast(".") + PDF_EXTENSION
             ) { reportStatus(loggedInUser, zaak, it.toEpistolaDocumentCreationStatus()) }
             reportStatus(loggedInUser, zaak, STORING)
             return storeNewVersion(
@@ -140,11 +135,9 @@ class EpistolaDocumentVersionService @Inject constructor(
             epistolaClientService.deleteDocument(generatedDocument.documentId)
         }
 
-    /** A version whose language ZAC did not ask for keeps the language the informatieobject has. */
     private fun EpistolaGeneratedDocument.toNewVersionRequest(author: String) =
         EnkelvoudigInformatieObjectWithLockRequest().apply {
             auteur = author
-            taal = this@toNewVersionRequest.locale?.let(::toInformatieobjectTaal)
             formaat = PDF_MEDIA_TYPE
             bestandsnaam = this@toNewVersionRequest.fileName
             inhoud = this@toNewVersionRequest.content.toBase64String()

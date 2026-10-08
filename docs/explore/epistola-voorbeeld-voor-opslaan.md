@@ -4,7 +4,7 @@
 |---|---|
 | Soort | Begonnen als verkenning, op 5 oktober 2026 door de stakeholders gevraagd (#54). Een extra buiten de Definition of Done. Geen onderdeel van het testplan, zoals de andere extra's (B25) |
 | Branch | `feat/epistola-preview-before-generating`, gebouwd op `fix/epistola-dry-run-rough-edges` (#45). Gaat via een pull request naar `main` |
-| Stand | **5 oktober 2026.** Op #45 gezet en opnieuw gecontroleerd met unittests. Epistola's testserver en de controle in een draaiende ZAC met een echte browser zijn van 3 oktober, op de verkenningsbranch ([§5](#5-wat-is-gecontroleerd-en-wat-niet)) |
+| Stand | **5 oktober 2026.** Op #45 gezet en opnieuw gecontroleerd met unittests. Epistola's testserver en de controle in een draaiende ZAC met een echte browser zijn van 3 oktober, op de verkenningsbranch ([§5](#5-wat-is-gecontroleerd-en-wat-niet)). Op 7 oktober bijgewerkt: de variant- en de taalkeuze zijn uit `main` gehaald (B32), dus een voorbeeld en genereren geven allebei de standaardvariant van het template. §4 en §5 beschrijven de metingen van 3 en 5 oktober, toen de variantkeuze er nog was |
 
 > **Waarom deze branch bestaat.** Het begon als een voorstel dat de stakeholders konden overnemen of laten liggen, op
 > de branch `explore/epistola-preview-before-saving`. Op 5 oktober vroegen ze erom (#54). Daarom gaat het nu als
@@ -17,7 +17,7 @@ ZAC gebruikt dat nu niet. Een behandelaar die een brief genereert, ziet hem pas 
 er iets mis, dan blijft het document in Open Zaak staan, en de omweg is *Nieuwe versie genereren*.
 
 Hiermee krijgt het formulier *Document maken* een knop **Voorbeeld bekijken**. ZAC vraagt Epistola om een preview
-van het gekozen template, met dezelfde zaakgegevens en in dezelfde variant als bij genereren, en toont de PDF in een
+van het gekozen template, met dezelfde zaakgegevens als bij genereren, en toont de PDF in een
 dialoog. Er wordt niets opgeslagen.
 
 Het is wat de stakeholders op 5 oktober vroegen: *kan ik het zien voordat het in de zaak staat?* Het is de bedoelde
@@ -25,11 +25,13 @@ toepassing van het endpoint, dus het botst niet met besluit B5 (de preview niet 
 
 ## 2. Wat een behandelaar ziet
 
-1. *Document maken*, een template en eventueel een variant kiezen. Bij Epistola is er geen templategroep meer: de
+1. *Document maken*, een template kiezen. Bij Epistola is er geen templategroep meer: de
    templates komen uit de catalog van het zaaktype (#51). Heeft die catalog maar één template, dan kiest ZAC dat zelf.
-2. **Voorbeeld bekijken** (naast *Genereren*). De knop is pas actief als het template en, waar nodig, de variant
-   bekend zijn, zodat een voorbeeld nooit een andere variant toont dan die ZAC straks genereert. Een template dat ZAC
-   zelf koos, telt even goed.
+2. **Voorbeeld bekijken** (naast *Genereren*). De knop is actief zodra er een template gekozen is. Een template dat
+   ZAC zelf koos, telt even goed. Het voorbeeld vraagt Epistola, net als genereren, om geen variant, dus het toont
+   dezelfde standaardvariant die ZAC straks genereert. Tot 7 oktober vroegen beide om de taal van het zaaktype, en
+   wachtte de knop eerder ook op de variant uit de keuzelijst *Variant*; dat staat nu op de branch
+   `explore/epistola-variant-picker` (B32).
 3. Binnen enkele seconden opent een dialoog met de PDF, en de zin dat dit een voorbeeld is dat nog niet in de zaak
    staat. Pas *Genereren* maakt het document dat in het dossier komt.
 4. Breekt de zaak het datacontract van het template, dan meldt ZAC dat **meteen**, met dezelfde melding en dezelfde
@@ -43,7 +45,7 @@ de taak als het document bij een taak hoort), omdat het de zaakgegevens op dezel
 | Onderdeel | Waar |
 |---|---|
 | Endpoint `POST /rest/document-creation/epistola/preview-document`, antwoordt `application/pdf` | `src/main/kotlin/nl/info/zac/app/documentcreation/DocumentCreationRestService.kt` |
-| De zaakgegevens en het kanaal voor een preview en voor genereren komen uit één stap, `readGenerationInput`, zodat ze niet uit elkaar kunnen lopen | `src/main/kotlin/nl/info/zac/documentcreation/EpistolaDocumentCreationService.kt` |
+| De zaakgegevens voor een preview en voor genereren komen uit één stap, `readTemplateData`, zodat ze niet uit elkaar kunnen lopen. Geen van beide vraagt om een variant | `src/main/kotlin/nl/info/zac/documentcreation/EpistolaDocumentCreationService.kt` |
 | De aanroep van Epistola's `previewDocument`; geen job, niets te verwijderen | `src/main/kotlin/nl/info/client/epistola/EpistolaClientService.kt` |
 | Een 400 van Epistola met `Data validation failed: …` wordt dezelfde `EpistolaTemplateDataRejectedException` als bij een mislukte job. Beide lezen de velden met één functie, `toDataRejectionDetailOrNull`, dus ook een preview toont een veld bovenaan de gegevens zonder de losse dubbele punt die #45 wegnam | `src/main/kotlin/nl/info/client/epistola/EpistolaApiExceptions.kt`, `EpistolaGenerationItems.kt` |
 | De knop, de dialoog en het lezen van een foutmelding die als Blob aankomt | `informatie-object-create-attended.component.*`, `epistola-preview-dialog/`, `shared/http/parse-blob-error.ts` (onder `src/main/app/src/app/`) |
@@ -60,7 +62,7 @@ dag opnieuw ingericht, omdat de tenant elke dag wordt gereset.
 | De meegestuurde gegevens verschijnen in de PDF | Het voorbeeld toont echt de gegevens van deze zaak |
 | Een verbroken datacontract geeft **direct** `400 template-data-invalid`, met `detail` `Data validation failed: /aanvrager: is required`: dezelfde tekst als een mislukte job | ZAC gebruikt alleen `detail` en laat de gebruiker die zien. `missingFields` bevat ook velden die niet verplicht zijn (`required: false`), en is dus niet geschikt om te tonen |
 | Een onbekend template geeft `404 Default Variant Not Found` | Wordt de bestaande melding *het template bestaat niet meer* |
-| Het kanaal `post` zonder voorkeur voor `system.locale` geeft `409 ambiguous-variant`, omdat de Nederlandse en de Engelse variant voor post even goed passen | Raakt ZAC niet: de variantkeuze uit #49 stuurt `nl-NL` als voorkeur mee |
+| Het kanaal `post` zonder voorkeur voor `system.locale` geeft `409 ambiguous-variant`, omdat de Nederlandse en de Engelse variant voor post even goed passen | Raakte ZAC toen niet: de variantkeuze uit #49 stuurde `nl-NL` als voorkeur mee. Sinds B32 vraagt ZAC om geen variant, dus Epistola geeft de standaardvariant en dit kan niet meer voorkomen (zie het [ontwerp, §5](../epistola/technisch-functioneel-ontwerp.md#verzoek)) |
 | Epistola zet de tekst **Epistola Preview** in de PDF (twee keer per pagina); een gegenereerd document heeft die niet | Een voorbeeld is zichtbaar een voorbeeld en niet te verwarren met het echte document. ZAC hoeft er niets voor te doen |
 | De preview-PDF heeft op Suite 1.3.0 dezelfde PDF/A-kenmerken en dezelfde producer als een gegenereerd document | Het contract belooft dat niet. ZAC bewaart een preview daarom nooit, en zegt in de dialoog alleen dat het niet is opgeslagen |
 

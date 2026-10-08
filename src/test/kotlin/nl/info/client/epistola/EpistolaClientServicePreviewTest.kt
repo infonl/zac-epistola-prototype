@@ -92,54 +92,6 @@ class EpistolaClientServicePreviewTest : BehaviorSpec({
             }
         }
 
-        given("a template with a post and a digital variant") {
-            val previewFile = Files.createTempFile("epistola", ".pdf").toFile().apply {
-                writeBytes("fakePreviewContent".toByteArray())
-            }
-            val previewRequestSlot = slot<PreviewDocumentRequest>()
-            every { generationApi.previewDocument(FAKE_TENANT_ID, capture(previewRequestSlot)) } returns previewFile
-
-            `when`("a preview is made for the digital kanaal") {
-                epistolaClientService.previewDocument(
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    data = emptyMap(),
-                    kanaal = "digitaal"
-                )
-
-                then("the variant for that kanaal is required, and no language is asked for, as when generating") {
-                    previewRequestSlot.captured.attributes.map { Triple(it.catalog, it.key, it.value) to it.required } shouldBe
-                        listOf(Triple(FAKE_CATALOG_ID, "kanaal", "digitaal") to true)
-                }
-            }
-        }
-
-        given("a template with a post and a digital variant in Dutch and in English") {
-            val previewFile = Files.createTempFile("epistola", ".pdf").toFile().apply {
-                writeBytes("fakePreviewContent".toByteArray())
-            }
-            val previewRequestSlot = slot<PreviewDocumentRequest>()
-            every { generationApi.previewDocument(FAKE_TENANT_ID, capture(previewRequestSlot)) } returns previewFile
-
-            `when`("a preview is made for the digital kanaal in Dutch") {
-                epistolaClientService.previewDocument(
-                    catalogId = FAKE_CATALOG_ID,
-                    templateId = FAKE_TEMPLATE_ID,
-                    data = emptyMap(),
-                    kanaal = "digitaal",
-                    locale = "nl-NL"
-                )
-
-                then("both the kanaal and the language are required, as when generating") {
-                    previewRequestSlot.captured.attributes.map { Triple(it.catalog, it.key, it.value) to it.required } shouldBe
-                        listOf(
-                            Triple(FAKE_CATALOG_ID, "kanaal", "digitaal") to true,
-                            Triple("system", "locale", "nl-NL") to true
-                        )
-                }
-            }
-        }
-
         given("data that breaks the template's data contract in a field at the top of the data") {
             every { generationApi.previewDocument(FAKE_TENANT_ID, any()) } throws createApiException(
                 status = 400,

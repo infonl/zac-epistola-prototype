@@ -18,8 +18,6 @@ import io.mockk.verify
 import jakarta.ws.rs.ProcessingException
 import nl.info.client.epistola.EpistolaClientService
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
-import nl.info.client.epistola.model.EpistolaKanalen
-import nl.info.client.epistola.model.EpistolaLocales
 import nl.info.client.epistola.model.createCatalog
 import nl.info.client.epistola.model.createGenerationTemplate
 import nl.info.client.epistola.model.createTemplateSummary
@@ -71,12 +69,10 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
         zaaktypeUuid: UUID,
         catalogId: String?,
         informatieObjectTypeUuid: UUID?,
-        isEpistolaEnabled: Boolean = true,
-        locale: String? = null
+        isEpistolaEnabled: Boolean = true
     ) = createZaaktypeCmmnConfiguration(zaaktypeUUID = zaaktypeUuid).apply {
         this.isEpistolaEnabled = isEpistolaEnabled
         epistolaCatalogId = catalogId
-        epistolaLocale = locale
         epistolaInformatieobjecttypeUuid = informatieObjectTypeUuid
     }
 
@@ -134,32 +130,6 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
     }
 
     context("reading the catalog mapping of a zaaktype") {
-        given("a zaaktype for which the beheerder chose a catalog, a language and an informatieobjecttype") {
-            val zaaktypeUuid = UUID.randomUUID()
-            val informatieObjectTypeUuid = UUID.randomUUID()
-            givenActiveProvider(DocumentCreationProvider.EPISTOLA)
-            every { zaaktypeConfigurationService.readZaaktypeConfiguration(zaaktypeUuid) } returns
-                offeringZaaktypeConfiguration(
-                    zaaktypeUuid = zaaktypeUuid,
-                    catalogId = "fake-catalog",
-                    informatieObjectTypeUuid = informatieObjectTypeUuid,
-                    locale = "en-GB"
-                )
-
-            `when`("the mapping is read") {
-                val catalogMapping = epistolaTemplatesService.readCatalogMapping(zaaktypeUuid)
-
-                then("the language is returned with the catalog and the informatieobjecttype") {
-                    catalogMapping shouldBe RestEpistolaCatalogMapping(
-                        catalogId = "fake-catalog",
-                        informatieObjectTypeUUID = informatieObjectTypeUuid,
-                        locale = "en-GB",
-                        templateSettings = emptyList()
-                    )
-                }
-            }
-        }
-
         given("a zaaktype for which the beheerder chose a catalog and an informatieobjecttype") {
             val zaaktypeUuid = UUID.randomUUID()
             val informatieObjectTypeUuid = UUID.randomUUID()
@@ -178,7 +148,6 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = "fake-catalog",
                         informatieObjectTypeUUID = informatieObjectTypeUuid,
-                        locale = null,
                         templateSettings = emptyList()
                     )
                 }
@@ -245,7 +214,6 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = FAKE_DEFAULT_CATALOG_ID,
                         informatieObjectTypeUUID = informatieObjectTypeUuid,
-                        locale = null,
                         templateSettings = emptyList()
                     )
                 }
@@ -265,7 +233,6 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                     catalogMapping shouldBe RestEpistolaCatalogMapping(
                         catalogId = FAKE_DEFAULT_CATALOG_ID,
                         informatieObjectTypeUUID = null,
-                        locale = null,
                         templateSettings = emptyList()
                     )
                 }
@@ -312,34 +279,16 @@ class EpistolaTemplatesServiceTest : BehaviorSpec({
                     catalogMapping = createRestEpistolaCatalogMapping(
                         catalogId = "fake-catalog",
                         informatieObjectTypeUUID = informatieObjectTypeUuid,
-                        locale = "en-GB",
                         templateSettings = emptyList()
                     )
                 )
 
-                then("the zaaktype configuration is stored with the catalog, the language and the informatieobjecttype") {
+                then("the zaaktype configuration is stored with the catalog and the informatieobjecttype") {
                     with(storedConfigurationSlot.captured) {
                         this shouldBeSameInstanceAs zaaktypeCmmnConfiguration
                         epistolaCatalogId shouldBe "fake-catalog"
-                        epistolaLocale shouldBe "en-GB"
                         epistolaInformatieobjecttypeUuid shouldBe informatieObjectTypeUuid
                     }
-                }
-            }
-
-            `when`("the mapping is stored without a language") {
-                zaaktypeCmmnConfiguration.epistolaLocale = "en-GB"
-                epistolaTemplatesService.storeCatalogMapping(
-                    zaaktypeUuid = zaaktypeUuid,
-                    catalogMapping = createRestEpistolaCatalogMapping(
-                        catalogId = "fake-catalog",
-                        informatieObjectTypeUUID = informatieObjectTypeUuid,
-                        locale = ""
-                    )
-                )
-
-                then("a language chosen earlier is cleared") {
-                    storedConfigurationSlot.captured.epistolaLocale shouldBe null
                 }
             }
         }

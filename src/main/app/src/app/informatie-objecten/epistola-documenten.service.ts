@@ -93,26 +93,6 @@ export class EpistolaDocumentenService {
     };
   }
 
-  /**
-   * Without an answer the behandelaar just has no variant to choose, and ZAC still picks one by the zaak's
-   * communicatiekanaal, so a failure is not reported.
-   *
-   * The suggested variant follows the zaak's communicatiekanaal, which can be edited while this page stays open, so an
-   * answer is never kept for a next time.
-   */
-  readEpistolaVariantenQuery(zaakUuid: string, templateId: string) {
-    return {
-      ...this.zacQueryClient.GET(
-        "/rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/varianten",
-        { path: { zaakUuid, templateId } },
-      ),
-      meta: { reportErrors: false },
-      staleTime: StaleTimes.Instant,
-      gcTime: StaleTimes.Instant,
-      retry: false,
-    };
-  }
-
   readEpistolaDocument(uuid: string) {
     return this.zacHttpClient.GET("/rest/epistola-documents/{uuid}", {
       path: { uuid },

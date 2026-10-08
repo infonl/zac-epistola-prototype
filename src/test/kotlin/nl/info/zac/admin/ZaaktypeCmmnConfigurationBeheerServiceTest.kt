@@ -262,7 +262,6 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
         originalZaaktypeCmmnConfiguration.apply {
             isEpistolaEnabled = true
             epistolaCatalogId = "fake-catalog"
-            epistolaLocale = "en-GB"
             this.epistolaInformatieobjecttypeUuid = epistolaInformatieobjecttypeUuid
             replaceEpistolaTemplateSettings(
                 mapOf(
@@ -438,11 +437,10 @@ class ZaaktypeCmmnConfigurationBeheerServiceTest : BehaviorSpec({
                 }
             }
 
-            and("the Epistola setting, catalog, language and informatieobjecttype are copied to the new zaaktype") {
+            and("the Epistola setting, catalog and informatieobjecttype are copied to the new zaaktype") {
                 with(slotPersistZaaktypeCmmnConfiguration.captured) {
                     isEpistolaEnabled shouldBe true
                     epistolaCatalogId shouldBe "fake-catalog"
-                    epistolaLocale shouldBe "en-GB"
                     this.epistolaInformatieobjecttypeUuid shouldBe epistolaInformatieobjecttypeUuid
                 }
             }

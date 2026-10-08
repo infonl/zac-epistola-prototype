@@ -15,13 +15,8 @@ import {
   output,
   signal,
 } from "@angular/core";
-import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
-import {
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidatorFn,
-  Validators,
-} from "@angular/forms";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
@@ -42,7 +37,6 @@ import {
   ReplaySubject,
   switchMap,
   take,
-  tap,
   timer,
 } from "rxjs";
 import { EpistolaTemplatesService } from "../../admin/epistola-templates.service";
@@ -51,10 +45,8 @@ import { IdentityService } from "../../identity/identity.service";
 import { ZacAutoComplete } from "../../shared/form/auto-complete/auto-complete";
 import { ZacFormActions } from "../../shared/form/form-actions/form-actions.component";
 import { ZacInput } from "../../shared/form/input/input";
-import { ZacSelect } from "../../shared/form/select/select";
 import { injectMutation } from "../../shared/http/inject-mutation";
 import { VertrouwelijkaanduidingToTranslationKeyPipe } from "../../shared/pipes/vertrouwelijkaanduiding-to-translation-key.pipe";
-import { epistolaVariantLabel } from "../../shared/utils/epistola-variant-label";
 import { GeneratedType } from "../../shared/utils/generated-types";
 import { EpistolaDocumentenService } from "../epistola-documenten.service";
 import {
@@ -68,10 +60,6 @@ import {
 import { InformatieObjectenService } from "../informatie-objecten.service";
 
 type EpistolaTemplate = GeneratedType<"RestOfferedEpistolaTemplate">;
-
-/** A disabled control is left out of the form's validity, so the picker's wait for the variants has to be checked here. */
-const variantenLookupFinished: ValidatorFn = (form) =>
-  form.get("variant")?.disabled ? { variantenLookupPending: true } : null;
 
 /**
  * Epistola renders the document while ZAC waits, so there is no wizard to choose a date or an author in:
@@ -94,7 +82,6 @@ const variantenLookupFinished: ValidatorFn = (form) =>
     TranslateModule,
     ZacAutoComplete,
     ZacInput,
-    ZacSelect,
     ZacFormActions,
     EpistolaGenerationProgressComponent,
   ],
@@ -127,59 +114,38 @@ export class EpistolaDocumentCreateComponent implements OnInit {
     GeneratedType<"RestInformatieobjecttype">[]
   >(1);
 
-  protected readonly form = this.formBuilder.group(
-    {
-      template: this.formBuilder.control<EpistolaTemplate | null>(
-        { value: null, disabled: true },
-        [Validators.required],
-      ),
-      title: this.formBuilder.control<string | null>(null, [
-        Validators.required,
-        Validators.maxLength(100),
-      ]),
-      description: this.formBuilder.control<string | null>(null, [
-        Validators.maxLength(100),
-      ]),
-      informationObjectType: this.formBuilder.control<string | null>({
-        value: null,
-        disabled: true,
-      }),
-      confidentiality: this.formBuilder.control<string | null>({
-        value: null,
-        disabled: true,
-      }),
-      format: this.formBuilder.control<string | null>({
-        value: "PDF",
-        disabled: true,
-      }),
-      author: this.formBuilder.control<string | null>({
-        value: null,
-        disabled: true,
-      }),
-      variant: this.formBuilder.control<string | null>(null),
-    },
-    { validators: variantenLookupFinished },
-  );
+  protected readonly form = this.formBuilder.group({
+    template: this.formBuilder.control<EpistolaTemplate | null>(
+      { value: null, disabled: true },
+      [Validators.required],
+    ),
+    title: this.formBuilder.control<string | null>(null, [
+      Validators.required,
+      Validators.maxLength(100),
+    ]),
+    description: this.formBuilder.control<string | null>(null, [
+      Validators.maxLength(100),
+    ]),
+    informationObjectType: this.formBuilder.control<string | null>({
+      value: null,
+      disabled: true,
+    }),
+    confidentiality: this.formBuilder.control<string | null>({
+      value: null,
+      disabled: true,
+    }),
+    format: this.formBuilder.control<string | null>({
+      value: "PDF",
+      disabled: true,
+    }),
+    author: this.formBuilder.control<string | null>({
+      value: null,
+      disabled: true,
+    }),
+  });
 
   protected templates: EpistolaTemplate[] = [];
   protected readonly templatesError = signal<string | null>(null);
-
-  protected readonly varianten =
-    signal<GeneratedType<"RestEpistolaVarianten"> | null>(null);
-  protected readonly variantOptions = computed(() => {
-    const varianten = this.varianten()?.varianten ?? [];
-    return varianten.length > 1 ? varianten : [];
-  });
-  protected readonly variantLabel = epistolaVariantLabel;
-  private readonly chosenVariant = toSignal(
-    this.form.controls.variant.valueChanges,
-    { initialValue: null },
-  );
-  protected readonly isSuggestedVariantChosen = computed(
-    () =>
-      !!this.chosenVariant() &&
-      this.chosenVariant() === this.varianten()?.voorgesteldeVariant,
-  );
 
   private readonly loggedInUserQuery = injectQuery(() =>
     this.identityService.readLoggedInUser(),
@@ -223,16 +189,9 @@ export class EpistolaDocumentCreateComponent implements OnInit {
     });
   }
 
-  /**
-   * A preview in another variant than the one that is generated would mislead, so it waits for the variants of the
-   * chosen template, and for a variant where the template asks for one.
-   */
   protected get canPreviewEpistolaDocument() {
-    const { template, variant } = this.form.controls;
     return (
-      !!template.value &&
-      variant.enabled &&
-      variant.valid &&
+      !!this.form.controls.template.value &&
       !this.createEpistolaDocumentMutation.isPending() &&
       !this.previewEpistolaDocumentMutation.isPending()
     );
@@ -275,46 +234,7 @@ export class EpistolaDocumentCreateComponent implements OnInit {
         );
       });
 
-    this.form.controls.template.valueChanges
-      .pipe(
-        takeUntilDestroyed(this.destroyRef),
-        tap(() => this.awaitVarianten()),
-        switchMap((template) =>
-          template?.id
-            ? from(
-                this.queryClient.query(
-                  this.epistolaDocumentenService.readEpistolaVariantenQuery(
-                    this.zaak().uuid,
-                    template.id,
-                  ),
-                ),
-              ).pipe(catchError(() => of(null)))
-            : EMPTY,
-        ),
-      )
-      .subscribe((varianten) => this.offerVarianten(varianten));
-
     this.offerTemplates();
-  }
-
-  /** Hiding the picker until another template is chosen and its variants arrive would make the form below it jump. */
-  private awaitVarianten() {
-    const { variant } = this.form.controls;
-    variant.setValue(null);
-    variant.disable();
-  }
-
-  private offerVarianten(
-    varianten: GeneratedType<"RestEpistolaVarianten"> | null,
-  ) {
-    this.varianten.set(varianten);
-    const { variant } = this.form.controls;
-    const isChoiceOffered = this.variantOptions().length > 0;
-    variant.setValidators(isChoiceOffered ? Validators.required : null);
-    variant.setValue(
-      isChoiceOffered ? (varianten?.voorgesteldeVariant ?? null) : null,
-    );
-    variant.enable();
   }
 
   /** Empty, with the reason shown, when the templates cannot be loaded. */
@@ -368,12 +288,11 @@ export class EpistolaDocumentCreateComponent implements OnInit {
       values.template!.id,
       values.title!,
       values.description,
-      values.variant,
     );
   }
 
   protected previewEpistolaDocument() {
-    const { template, variant } = this.form.getRawValue();
+    const { template } = this.form.getRawValue();
     if (!template) return;
 
     this.previewEpistolaDocumentMutation.mutate(
@@ -381,7 +300,6 @@ export class EpistolaDocumentCreateComponent implements OnInit {
         zaakUuid: this.zaak().uuid,
         taskId: this.taak()?.id,
         templateId: template.id,
-        variant,
       },
       {
         onSuccess: (pdf) =>
@@ -401,7 +319,6 @@ export class EpistolaDocumentCreateComponent implements OnInit {
     templateId: string,
     title: string,
     description?: string | null,
-    variant?: string | null,
   ) {
     const zaakUuid = this.zaak().uuid;
     this.generatingForZaakUuid.set(zaakUuid);
@@ -412,7 +329,6 @@ export class EpistolaDocumentCreateComponent implements OnInit {
         templateId,
         title,
         description,
-        variant,
       },
       {
         onSuccess: () => {

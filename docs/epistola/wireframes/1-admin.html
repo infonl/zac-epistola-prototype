@@ -16,13 +16,10 @@
       <h1>1 · Admin — Epistola-documenttemplates per zaaktype</h1>
       <p class="subtitle">
         Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 1. Spiegelt
-        <code>smart-documents-form.component</code>. De beheerder kiest één catalog, één documenttype en één taal voor het
-        zaaktype (#51), en ziet welke templates de catalog heeft. De taal is die van alle templates van het zaaktype, uit
-        de talen die elk template van de catalog heeft; de behandelaar kiest geen taal. De templates van de catalog staan
-        als accordeon: per template het id, de talen en alle varianten met titel, een markering voor de standaardvariant en
-        hun attributen, een eigen documenttype dat dat van het zaaktype overschrijft, en een schuifknop die het template
-        verbergt in Document maken. Verschillen varianten in meer dan taal en kanaal, dan kan ZAC daar niet tussen kiezen
-        (#50).
+        <code>smart-documents-form.component</code>. De beheerder kiest één catalog en één documenttype voor het zaaktype
+        (#51), en ziet welke templates de catalog heeft. De templates van de catalog staan als accordeon: per template het
+        id, een eigen documenttype dat dat van het zaaktype overschrijft, en een schuifknop die het template verbergt in
+        Document maken. Er is geen taal te kiezen: elk template wordt gemaakt in zijn standaardvariant (B32).
       </p>
 
       <div class="frame">
@@ -36,8 +33,8 @@
               <div>
                 <div class="card-title">Epistola-documenttemplates</div>
                 <div class="card-sub">
-                  Kies de Epistola-catalog waarvan zaken van dit zaaktype alle templates aanbieden, de taal waarin
-                  de documenten worden gemaakt, en het documenttype waaronder ze worden opgeslagen.
+                  Kies de Epistola-catalog waarvan dit zaaktype de templates aanbiedt, en het documenttype waaronder
+                  de documenten worden opgeslagen.
                 </div>
               </div>
               <div class="toggle" role="img" aria-label="Documenten maken met Epistola"><i></i></div>
@@ -48,14 +45,6 @@
                 <div class="fieldlabel">Catalog <span class="req">*</span></div>
                 <div class="box">ZAC-catalogus <i class="caret">▾</i></div>
                 <div class="fieldnote">Keuzes: de catalogs van de tenant, zonder system</div>
-              </div>
-              <div class="field">
-                <div class="fieldlabel">Taal</div>
-                <div class="box">Nederlands (Nederland) <i class="caret">▾</i></div>
-                <div class="fieldnote">
-                  Alle templates van dit zaaktype worden in deze taal gemaakt. Keuzes: Nederlands waar aangeboden
-                  &middot; de talen die elk aangeboden template van de catalog heeft, zoals Engels (Verenigd Koninkrijk)
-                </div>
               </div>
               <div class="field">
                 <div class="fieldlabel">Documenttype <span class="req">*</span></div>
@@ -79,26 +68,6 @@
                   <dl class="acc-info">
                     <dt>Template-id</dt>
                     <dd>besluit-evenementenvergunning</dd>
-                    <dt>Talen</dt>
-                    <dd>Engels (Verenigd Koninkrijk), Nederlands (Nederland)</dd>
-                    <dt>Varianten</dt>
-                    <dd>
-                      <ul class="acc-variants">
-                        <li>
-                          <strong>Initial</strong><span class="tag tag-default">Standaard</span>
-                          <span class="tag">Nederlands (Nederland)</span><span class="tag">Per post</span>
-                        </li>
-                        <li>
-                          <strong>Groot lettertype</strong>
-                          <span class="tag">Nederlands (Nederland)</span><span class="tag">Per post</span>
-                          <span class="tag">weergave: groot</span>
-                        </li>
-                        <li>
-                          <strong>English</strong>
-                          <span class="tag">Engels (Verenigd Koninkrijk)</span><span class="tag">Digitaal</span>
-                        </li>
-                      </ul>
-                    </dd>
                   </dl>
                   <div class="acc-settings">
                     <div class="field">

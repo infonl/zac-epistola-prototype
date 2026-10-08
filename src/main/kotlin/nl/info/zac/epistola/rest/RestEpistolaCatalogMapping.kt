@@ -11,15 +11,13 @@ import jakarta.validation.constraints.NotNull
 import nl.info.zac.epistola.exception.EpistolaTemplateMappingException
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
-import java.util.Locale
 import java.util.UUID
 
 /**
- * The Epistola catalog whose templates a zaaktype offers, the informatieobjecttype a document generated from one of
- * them is stored under, and the language ZAC asks Epistola for. The informatieobjecttype is empty until the beheerder
- * chooses one. The [locale] is a BCP-47 tag such as `nl-NL`, and empty when the beheerder chose none, and then ZAC asks
- * for Dutch where the template has it. The [templateSettings] are the templates that differ from the zaaktype, and
- * replace those stored: a template without one is offered and takes the zaaktype's informatieobjecttype.
+ * The Epistola catalog whose templates a zaaktype offers, and the informatieobjecttype a document generated from one
+ * of them is stored under, which is empty until the beheerder chooses one. The [templateSettings] are the templates
+ * that differ from the zaaktype, and replace those stored: a template without one is offered and takes the zaaktype's
+ * informatieobjecttype.
  */
 @NoArgConstructor
 @AllOpen
@@ -27,7 +25,6 @@ data class RestEpistolaCatalogMapping(
     @field:NotBlank
     var catalogId: String,
     var informatieObjectTypeUUID: UUID?,
-    var locale: String?,
     @field:NotNull
     @field:Valid
     var templateSettings: List<RestEpistolaTemplateSetting>
@@ -63,7 +60,6 @@ fun RestEpistolaCatalogMapping.validate(availableCatalogIds: Set<String>, inform
         throw EpistolaTemplateMappingException("Unknown Epistola catalog: '$catalogId'")
     }
     validateInformatieobjecttype(informatieobjecttypeUuids)
-    validateLocale()
     validateTemplateSettings(informatieobjecttypeUuids)
 }
 
@@ -72,14 +68,6 @@ private fun RestEpistolaCatalogMapping.validateTemplateSettings(informatieobject
         ?.let {
             throw EpistolaTemplateMappingException("Informatieobjecttype '$it' is not one of the zaaktype's.")
         }
-}
-
-private fun RestEpistolaCatalogMapping.validateLocale() {
-    locale?.takeIf(String::isNotBlank)?.let {
-        if (Locale.forLanguageTag(it).language.isEmpty()) {
-            throw EpistolaTemplateMappingException("Invalid Epistola language: '$it'")
-        }
-    }
 }
 
 private fun RestEpistolaCatalogMapping.validateInformatieobjecttype(informatieobjecttypeUuids: Set<UUID>) {

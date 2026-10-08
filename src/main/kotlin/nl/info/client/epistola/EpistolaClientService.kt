@@ -26,10 +26,6 @@ import nl.info.client.epistola.exception.toEpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.selectVariantFor
-import nl.info.client.epistola.model.toEpistolaKanalen
-import nl.info.client.epistola.model.toEpistolaLocales
-import nl.info.client.epistola.model.toEpistolaVariants
 import nl.info.zac.configuration.EpistolaSettings
 import nl.info.zac.util.AllOpen
 import nl.info.zac.util.NoArgConstructor
@@ -78,7 +74,7 @@ class EpistolaClientService @Inject constructor(
 
     /**
      * Epistola keeps [correlationId] with the job, which traces a document in its audit trail back to the zaak.
-     * Without a [kanaal] and a [locale], Epistola renders the template's default variant.
+     * ZAC asks for no variant, so Epistola renders the template's default one.
      * [onJobStatus] hears the job's status at every poll until it finishes.
      */
     @Suppress("LongParameterList")
@@ -88,8 +84,6 @@ class EpistolaClientService @Inject constructor(
         data: Map<String, Any>,
         fileName: String,
         correlationId: String,
-        kanaal: String? = null,
-        locale: String? = null,
         onJobStatus: (EpistolaJobStatus) -> Unit = {}
     ): EpistolaGeneratedDocument {
         val tenant = epistolaSettings.tenantId
@@ -103,14 +97,13 @@ class EpistolaClientService @Inject constructor(
                 GenerateDocumentRequest()
                     .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
                     .data(data)
                     .filename(fileName)
                     .correlationId(correlationId)
             )
         }.requestId
         val generationRequest = "generation request '$requestId' for template '$templateId' of catalog '$catalogId' " +
-            "(correlation id '$correlationId'${describeVariant(kanaal, locale)?.let { ", $it" }.orEmpty()})"
+            "(correlation id '$correlationId')"
         LOG.fine { "Epistola accepted $generationRequest" }
 
         var isJobFinished = false
@@ -125,32 +118,28 @@ class EpistolaClientService @Inject constructor(
             item = finishedItem,
             fileName = fileName,
             generationRequest = generationRequest
-        ).copy(kanaal = kanaal, locale = locale)
+        )
     }
 
     /**
      * Epistola's preview renders at once and keeps nothing, so there is no job to wait for and no document to delete.
      * Epistola promises neither PDF/A nor a latency for it, and rate-limits it, which is why it is only for a
-     * behandelaar to look at before the document is generated, never what is stored. It sends the data and chooses
-     * the variant exactly as [generateDocument] does, and unlike a generation it tells straight away when the data
-     * breaks the template's contract.
+     * behandelaar to look at before the document is generated, never what is stored. It sends the data exactly as
+     * [generateDocument] does, and unlike a generation it tells straight away when the data breaks the template's
+     * contract.
      */
     fun previewDocument(
         catalogId: String,
         templateId: String,
-        data: Map<String, Any>,
-        kanaal: String? = null,
-        locale: String? = null
+        data: Map<String, Any>
     ): ByteArray {
-        val previewRequest = "a preview of template '$templateId' of catalog '$catalogId'" +
-            describeVariant(kanaal, locale)?.let { " ($it)" }.orEmpty()
+        val previewRequest = "a preview of template '$templateId' of catalog '$catalogId'"
         val previewFile = requestEpistola(request = previewRequest, isTemplateRequest = true) {
             generationApi.previewDocument(
                 epistolaSettings.tenantId,
                 PreviewDocumentRequest()
                     .catalogId(catalogId)
                     .templateId(templateId)
-                    .attributes(selectVariantFor(kanaal = kanaal, locale = locale, catalogId = catalogId))
                     .data(data)
             )
         }
@@ -202,12 +191,7 @@ class EpistolaClientService @Inject constructor(
 
     fun readGenerationTemplate(catalogId: String, templateId: String) =
         readTemplate(catalogId = catalogId, templateId = templateId).let {
-            EpistolaGenerationTemplate(
-                dataContract = it.dataModel ?: it.schema,
-                kanalen = it.toEpistolaKanalen(catalogId),
-                locales = it.toEpistolaLocales(catalogId),
-                variants = it.toEpistolaVariants(catalogId)
-            )
+            EpistolaGenerationTemplate(dataContract = it.dataModel ?: it.schema)
         }
 
     fun readTemplate(catalogId: String, templateId: String): TemplateDto =
@@ -302,8 +286,3 @@ class EpistolaClientService @Inject constructor(
         }
     }
 }
-
-private fun describeVariant(kanaal: String?, locale: String?) =
-    listOfNotNull(kanaal?.let { "kanaal '$it'" }, locale?.let { "locale '$it'" })
-        .takeIf { it.isNotEmpty() }
-        ?.joinToString(", ")

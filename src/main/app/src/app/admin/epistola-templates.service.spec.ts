@@ -76,8 +76,6 @@ describe(EpistolaTemplatesService.name, () => {
         {
           id: "fake-template",
           name: "Standaardbrief",
-          locales: ["nl-NL"],
-          kanalen: ["post"],
         },
       ]);
 
@@ -85,8 +83,6 @@ describe(EpistolaTemplatesService.name, () => {
       {
         id: "fake-template",
         name: "Standaardbrief",
-        locales: ["nl-NL"],
-        kanalen: ["post"],
       },
     ]);
   });
@@ -100,7 +96,6 @@ describe(EpistolaTemplatesService.name, () => {
       epistolaTemplatesService.storeCatalogMapping(ZAAKTYPE_UUID, {
         catalogId: "fake-catalog",
         informatieObjectTypeUUID: "fake-informatieobjecttype-uuid",
-        locale: null,
         templateSettings: [
           {
             templateId: "fake-template",
@@ -117,7 +112,6 @@ describe(EpistolaTemplatesService.name, () => {
     expect(postedRequest.request.body).toEqual({
       catalogId: "fake-catalog",
       informatieObjectTypeUUID: "fake-informatieobjecttype-uuid",
-      locale: null,
       templateSettings: [
         {
           templateId: "fake-template",

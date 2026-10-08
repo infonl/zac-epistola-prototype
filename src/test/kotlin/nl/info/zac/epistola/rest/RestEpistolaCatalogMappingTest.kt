@@ -61,65 +61,6 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
             }
         }
 
-        given("a catalog Epistola has, an informatieobjecttype of the zaaktype and a language") {
-            val catalogMapping = createRestEpistolaCatalogMapping(
-                catalogId = "fake-catalog",
-                informatieObjectTypeUUID = informatieObjectTypeUuid,
-                locale = "en-GB"
-            )
-
-            `when`("it is validated") {
-                then("it passes") {
-                    shouldNotThrowAny {
-                        catalogMapping.validate(
-                            availableCatalogIds = setOf("fake-catalog"),
-                            informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
-                        )
-                    }
-                }
-            }
-        }
-
-        given("a blank language, which the beheerder sends for no choice") {
-            val catalogMapping = createRestEpistolaCatalogMapping(
-                catalogId = "fake-catalog",
-                informatieObjectTypeUUID = informatieObjectTypeUuid,
-                locale = " "
-            )
-
-            `when`("it is validated") {
-                then("it passes") {
-                    shouldNotThrowAny {
-                        catalogMapping.validate(
-                            availableCatalogIds = setOf("fake-catalog"),
-                            informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
-                        )
-                    }
-                }
-            }
-        }
-
-        given("a language that is not a language tag") {
-            val catalogMapping = createRestEpistolaCatalogMapping(
-                catalogId = "fake-catalog",
-                informatieObjectTypeUUID = informatieObjectTypeUuid,
-                locale = "-"
-            )
-
-            `when`("it is validated") {
-                val epistolaTemplateMappingException = shouldThrow<EpistolaTemplateMappingException> {
-                    catalogMapping.validate(
-                        availableCatalogIds = setOf("fake-catalog"),
-                        informatieobjecttypeUuids = setOf(informatieObjectTypeUuid)
-                    )
-                }
-
-                then("it is rejected, naming the language") {
-                    epistolaTemplateMappingException.message shouldBe "Invalid Epistola language: '-'"
-                }
-            }
-        }
-
         given("no informatieobjecttype") {
             val catalogMapping = createRestEpistolaCatalogMapping(catalogId = "fake-catalog", informatieObjectTypeUUID = null)
 
@@ -245,7 +186,7 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
         }
 
         given("a catalog mapping with a template that is switched off, as the frontend sends it") {
-            val json = """{"catalogId":"fake-catalog","informatieObjectTypeUUID":"$informatieObjectTypeUuid","locale":null,""" +
+            val json = """{"catalogId":"fake-catalog","informatieObjectTypeUUID":"$informatieObjectTypeUuid",""" +
                 """"templateSettings":[{"templateId":"fake-template-1","informatieObjectTypeUUID":null,"isEnabled":false}]}"""
 
             `when`("it is deserialized via JSON-B") {
@@ -278,7 +219,7 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
 
         given("a request body without the template settings") {
             val catalogMapping = jsonb.fromJson(
-                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null,"locale":null}""",
+                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null}""",
                 RestEpistolaCatalogMapping::class.java
             )
 
@@ -294,7 +235,7 @@ class RestEpistolaCatalogMappingTest : BehaviorSpec({
 
         given("a request body whose template setting leaves out whether the template is offered") {
             val catalogMapping = jsonb.fromJson(
-                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null,"locale":null,""" +
+                """{"catalogId":"fake-catalog","informatieObjectTypeUUID":null,""" +
                     """"templateSettings":[{"templateId":"fake-template-1","informatieObjectTypeUUID":null}]}""",
                 RestEpistolaCatalogMapping::class.java
             )

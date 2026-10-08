@@ -151,7 +151,6 @@ class ZaaktypeHelperService @Inject constructor(
             isSmartDocumentsEnabled = previousZaaktypeConfiguration.isSmartDocumentsEnabled
             isEpistolaEnabled = previousZaaktypeConfiguration.isEpistolaEnabled
             epistolaCatalogId = previousZaaktypeConfiguration.epistolaCatalogId
-            epistolaLocale = previousZaaktypeConfiguration.epistolaLocale
             epistolaInformatieobjecttypeUuid = previousZaaktypeConfiguration.epistolaInformatieobjecttypeUuid
             replaceEpistolaTemplateSettings(previousZaaktypeConfiguration.readEpistolaTemplateSettings())
             creatiedatum = ZonedDateTime.now()

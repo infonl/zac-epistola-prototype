@@ -31,12 +31,10 @@ import nl.info.client.epistola.exception.EpistolaDocumentGenerationException
 import nl.info.client.epistola.exception.EpistolaDocumentGenerationTimeoutException
 import nl.info.client.epistola.exception.EpistolaRequestFailedException
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.epistola.model.createDocumentGenerationItem
 import nl.info.client.epistola.model.createGenerationJobDetail
 import nl.info.client.epistola.model.createGenerationJobResponse
 import nl.info.client.epistola.model.createTemplate
-import nl.info.client.epistola.model.createVariantSummary
 import nl.info.zac.configuration.createEpistolaSettings
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_ACCESS_DENIED
 import nl.info.zac.exception.ErrorCode.ERROR_CODE_EPISTOLA_GENERATION_HELD_UP_IN_QUEUE
@@ -543,7 +541,7 @@ class EpistolaClientServiceTest : BehaviorSpec({
             }
         }
 
-        given("a template that declares no schema and has no variants") {
+        given("a template that declares no schema") {
             every {
                 templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
             } returns createTemplate()
@@ -553,58 +551,6 @@ class EpistolaClientServiceTest : BehaviorSpec({
 
                 then("it has no data contract, so the caller decides what an unrestricted template means") {
                     generationTemplate.dataContract shouldBe null
-                }
-
-                and("it has no kanalen") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen()
-                }
-            }
-        }
-
-        given("a template whose variants are made for kanalen, some in another catalog") {
-            every {
-                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
-            } returns createTemplate(
-                variants = listOf(
-                    createVariantSummary(id = "fake-dutch-post", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post")),
-                    createVariantSummary(
-                        id = "fake-english-post",
-                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "post", "system.locale" to "en-GB")
-                    ),
-                    createVariantSummary(
-                        id = "fake-digitaal",
-                        isDefault = true,
-                        attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal")
-                    ),
-                    createVariantSummary(id = "fake-other-catalog", attributes = mapOf("fake-other-catalog.kanaal" to "sms")),
-                    createVariantSummary(id = "fake-no-attributes", attributes = null)
-                )
-            )
-
-            `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
-
-                then("each kanaal of the template's own catalog is listed once, with that of the default variant") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "digitaal")
-                }
-            }
-        }
-
-        given("a template whose default variant is made for no kanaal") {
-            every {
-                templatesApi.getTemplate(FAKE_TENANT_ID, FAKE_CATALOG_ID, FAKE_TEMPLATE_ID)
-            } returns createTemplate(
-                variants = listOf(
-                    createVariantSummary(id = "fake-default", isDefault = true),
-                    createVariantSummary(id = "fake-digitaal", attributes = mapOf("$FAKE_CATALOG_ID.kanaal" to "digitaal"))
-                )
-            )
-
-            `when`("the template is read") {
-                val generationTemplate = createService().readGenerationTemplate(catalogId = FAKE_CATALOG_ID, templateId = FAKE_TEMPLATE_ID)
-
-                then("it has a kanaal, but no default kanaal") {
-                    generationTemplate.kanalen shouldBe EpistolaKanalen(kanalen = listOf("digitaal"), defaultKanaal = null)
                 }
             }
         }

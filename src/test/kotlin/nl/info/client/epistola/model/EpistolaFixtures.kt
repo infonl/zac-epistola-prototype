@@ -89,27 +89,7 @@ fun createTemplateListResponse(
     .items(items)
     .page(PageMeta().number(pageNumber).totalPages(totalPages))
 
-fun createDutchAndEnglishLocales() = EpistolaLocales(
-    kanalenByLocale = mapOf(
-        "nl-NL" to EpistolaKanalen(kanalen = listOf("post", "digitaal"), defaultKanaal = "post"),
-        "en-GB" to EpistolaKanalen(kanalen = listOf("post"), defaultKanaal = "post")
-    ),
-    defaultLocale = "nl-NL"
-)
-
-fun createGenerationTemplate(
-    dataContract: Any? = null,
-    kanalen: EpistolaKanalen = EpistolaKanalen(),
-    locales: EpistolaLocales = EpistolaLocales(),
-    variants: List<EpistolaVariant> = emptyList()
-) = EpistolaGenerationTemplate(dataContract = dataContract, kanalen = kanalen, locales = locales, variants = variants)
-
-fun createEpistolaVariant(
-    id: String = "fake-variant-id",
-    title: String = "fakeVariantTitle",
-    isDefault: Boolean = false,
-    attributes: Map<String, String> = emptyMap()
-) = EpistolaVariant(id = id, title = title, isDefault = isDefault, attributes = attributes)
+fun createGenerationTemplate(dataContract: Any? = null) = EpistolaGenerationTemplate(dataContract = dataContract)
 
 fun createCatalog(
     slug: String? = "fake-catalog",

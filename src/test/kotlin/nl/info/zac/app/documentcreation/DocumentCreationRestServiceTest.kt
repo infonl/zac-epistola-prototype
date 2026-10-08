@@ -6,12 +6,9 @@
 package nl.info.zac.app.documentcreation
 
 import nl.info.client.epistola.model.createGenerationTemplate
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.model.createZaakInformatieobjectForReads
 import nl.info.zac.app.documentcreation.model.RestEpistolaDocumentCreationData
-import nl.info.zac.app.documentcreation.model.RestEpistolaVarianten
 import nl.info.zac.documentcreation.EpistolaDocumentCreationService
-import nl.info.zac.documentcreation.model.EpistolaTemplateInLocale
 import nl.info.zac.documentcreation.model.EpistolaDocumentCreationStatus
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.IsolationMode

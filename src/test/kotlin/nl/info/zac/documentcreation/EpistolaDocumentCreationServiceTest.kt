@@ -26,7 +26,6 @@ import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
@@ -120,7 +119,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             documentCreationDataService.createEpistolaData(loggedInUser, zaak, null)
         } returns createData()
         every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA)
         every {
             epistolaClientService.generateDocument(
                 catalogId = FAKE_CATALOG_ID,
@@ -168,7 +167,7 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
             documentCreationDataService.createEpistolaData(loggedInUser, zaak, null)
         } returns createData()
         every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = null, kanalen = EpistolaKanalen())
+            EpistolaGenerationTemplate(dataContract = null)
 
         `when`("a document is created") {
             val exception = shouldThrow<EpistolaTemplateSchemaMissingException> {
@@ -189,8 +188,6 @@ class EpistolaDocumentCreationServiceTest : BehaviorSpec({
                         data = any(),
                         fileName = any(),
                         correlationId = any(),
-                        kanaal = any(),
-                        locale = any(),
                         onJobStatus = any()
                     )
                 }

@@ -26,7 +26,6 @@ import nl.info.client.epistola.exception.EpistolaTemplateDataRejectedException
 import nl.info.client.epistola.model.EpistolaGeneratedDocument
 import nl.info.client.epistola.model.EpistolaGenerationTemplate
 import nl.info.client.epistola.model.EpistolaJobStatus
-import nl.info.client.epistola.model.EpistolaKanalen
 import nl.info.client.zgw.drc.exception.DrcRuntimeException
 import nl.info.client.zgw.drc.model.generated.EnkelvoudigInformatieObjectCreateLockRequest
 import nl.info.client.zgw.drc.model.generated.StatusEnum
@@ -117,8 +116,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
             val generatedDocument = EpistolaGeneratedDocument(
                 documentId = UUID.randomUUID(),
                 fileName = "$FAKE_TITLE.pdf",
-                content = "fakePdfContent".toByteArray(),
-                kanaal = "digitaal"
+                content = "fakePdfContent".toByteArray()
             )
             every { loggedInUserInstance.get() } returns loggedInUser
             every {
@@ -130,7 +128,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
             )
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
             every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA)
             every {
                 epistolaClientService.generateDocument(
                     catalogId = FAKE_CATALOG_ID,
@@ -138,8 +136,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    kanaal = any(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } returns generatedDocument
@@ -206,14 +202,12 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     }
                 }
 
-                and("the catalog, the template and the kanaal it was generated in are remembered, for a new version to use") {
+                and("the catalog and the template it was generated from are remembered, for a new version to use") {
                     verify(exactly = 1) {
                         epistolaDocumentRepository.createEpistolaDocument(
                             informatieObjectUUID = zaakInformatieObject.informatieobject.extractUuid(),
                             catalogId = FAKE_CATALOG_ID,
-                            templateId = FAKE_TEMPLATE_ID,
-                            kanaal = "digitaal",
-                            locale = null
+                            templateId = FAKE_TEMPLATE_ID
                         )
                     }
                 }
@@ -236,9 +230,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                 epistolaDocumentRepository.createEpistolaDocument(
                     informatieObjectUUID = any(),
                     catalogId = any(),
-                    templateId = any(),
-                    kanaal = any(),
-                    locale = any()
+                    templateId = any()
                 )
             } throws PersistenceException("fakeDatabaseFailure")
 
@@ -303,8 +295,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    kanaal = any(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } answers {
@@ -555,7 +545,7 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
             } returns createInformatieObjectType()
             every { documentCreationDataService.createEpistolaData(loggedInUser, zaak, any()) } returns createData()
             every { epistolaClientService.readGenerationTemplate(FAKE_CATALOG_ID, FAKE_TEMPLATE_ID) } returns
-            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA, kanalen = EpistolaKanalen())
+            EpistolaGenerationTemplate(dataContract = TEMPLATE_SCHEMA)
             val epistolaTemplateDataRejectedException = EpistolaTemplateDataRejectedException(
                 message = "fakeRejectedMessage",
                 detail = "/aanvrager: is required"
@@ -567,8 +557,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                     data = any(),
                     fileName = "$FAKE_TITLE.pdf",
                     correlationId = zaak.uuid.toString(),
-                    kanaal = any(),
-                    locale = any(),
                     onJobStatus = any()
                 )
             } throws epistolaTemplateDataRejectedException
@@ -639,8 +627,6 @@ class EpistolaDocumentCreationServiceStoreTest : BehaviorSpec({
                             data = any(),
                             fileName = any(),
                             correlationId = any(),
-                            kanaal = any(),
-                            locale = any(),
                             onJobStatus = any()
                         )
                     }
