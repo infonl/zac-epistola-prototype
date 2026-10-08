@@ -69,7 +69,6 @@ class EpistolaDocumentCreationService @Inject constructor(
      * Epistola's copy is deleted whether or not storing succeeds. A document that could not be stored is not kept:
      * the behandelaar is told, and can generate it again from the zaak.
      */
-    @Suppress("LongParameterList")
     fun createAndStoreDocument(
         zaak: Zaak,
         templateId: String,
