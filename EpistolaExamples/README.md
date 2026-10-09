@@ -8,8 +8,9 @@ Epistola for no variant at all.
 |---|---|---|
 | `author_standaardbrief.py` | `zac-standaardbrief` (*ZAC Standaardbrief*) | A plain letter with about every field ZAC sends: the zaak, its initiator's name and address, the signed-in user, three dates as dd-mm-jjjj and a list from the startformulier |
 | `author_verplichte_aanvrager.py` | `zac-verplichte-aanvrager` (*ZAC Verplichte aanvrager*) | The same layout with a contract that requires the initiator's name, so a zaak without an initiator shows how ZAC reports data that Epistola refuses |
+| `author_taakbrief.py` | `zac-taakbrief` (*ZAC Taakbrief*) | A letter sent from a task, whose contract requires `taak.naam` and `taak.behandelaar`, so it only renders from *Document maken* on a task that is assigned to someone |
 
-`template-model-base.json` is the letter's layout; `epistola_api.py` holds the calls both scripts make.
+`template-model-base.json` is the letter's layout; `epistola_api.py` holds the calls the scripts make.
 
 ## Running them
 
@@ -18,6 +19,7 @@ From the root of the ZAC checkout, with the Epistola key, tenant and catalog fro
 ```bash
 op run --env-file=./.env.epistola.tpl -- python3 EpistolaExamples/author_standaardbrief.py
 op run --env-file=./.env.epistola.tpl -- python3 EpistolaExamples/author_verplichte_aanvrager.py
+op run --env-file=./.env.epistola.tpl -- python3 EpistolaExamples/author_taakbrief.py
 ```
 
 Every step should print `HTTP 200` or `201`; `201` on *create template* means the template did not exist yet. Each
