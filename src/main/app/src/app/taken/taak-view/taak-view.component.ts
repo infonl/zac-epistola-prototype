@@ -53,6 +53,7 @@ import {
 import { FoutAfhandelingService } from "../../fout-afhandeling/fout-afhandeling.service";
 import { IdentityService } from "../../identity/identity.service";
 import { DocumentCreateComponent } from "../../informatie-objecten/document-create/document-create.component";
+import { buildEpistolaTaskMenuItems } from "../../informatie-objecten/epistola-document-create/epistola-task-menu.builder";
 import { InformatieObjectAddComponent } from "../../informatie-objecten/informatie-object-add/informatie-object-add.component";
 import { InformatieObjectLinkComponent } from "../../informatie-objecten/informatie-object-link/informatie-object-link.component";
 import { InformatieObjectenService } from "../../informatie-objecten/informatie-objecten.service";
@@ -396,6 +397,11 @@ export class TaakViewComponent
           ),
         );
       }
+      this.menu.push(
+        ...buildEpistolaTaskMenuItems(this.zaak, this.menu, () =>
+          this.actionsSidenav.open(),
+        ),
+      );
     }
   }
 
@@ -416,8 +422,7 @@ export class TaakViewComponent
 
   onHardCodedFormSubmit(formGroup: FormGroup, partial = false) {
     const taskBody:
-      | PutBody<"/rest/taken/taakdata">
-      | PatchBody<"/rest/taken/complete"> = {
+      PutBody<"/rest/taken/taakdata"> | PatchBody<"/rest/taken/complete"> = {
       ...this.taak!,
       taakdata: {
         ...this.taak!.taakdata,
