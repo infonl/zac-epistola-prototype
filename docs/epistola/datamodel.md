@@ -65,11 +65,13 @@ erDiagram
         varchar epistola_id "template in de catalog"
         uuid informatie_object_type_uuid "leeg = dat van het zaaktype"
         boolean is_enabled
+        timestamptz aanmaakdatum
     }
     epistola_document {
         uuid informatieobject_uuid PK "NIEUW, geen FK"
         varchar template_id
-        varchar catalog_id
+        timestamptz aanmaakdatum
+        varchar catalog_id "leeg = catalog van EPISTOLA_CATALOG_ID"
     }
 ```
 

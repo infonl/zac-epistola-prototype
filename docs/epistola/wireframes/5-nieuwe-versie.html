@@ -1,0 +1,76 @@
+<!--
+  ~ SPDX-FileCopyrightText: 2026 INFO.nl
+  ~ SPDX-License-Identifier: EUPL-1.2+
+  -->
+
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wireframe 5 — Documentpagina: Nieuwe versie genereren</title>
+    <link rel="stylesheet" href="wireframes.css" />
+  </head>
+  <body>
+    <main>
+      <h1>5 · Documentpagina — Nieuwe versie genereren</h1>
+      <p class="subtitle">
+        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 5. Op de pagina van een document dat Epistola
+        maakte, staat Nieuwe versie genereren naast het bestaande Nieuwe versie (#9). Hetzelfde template uit dezelfde
+        catalog, met de zaakgegevens van nu. Er is niets te kiezen.
+      </p>
+
+      <div class="pair">
+        <div>
+          <div class="pair-label">Menu van de documentpagina</div>
+          <div class="frame">
+            <div class="frame-bar">
+              <i class="dot"></i><span class="path">/informatie-objecten/{uuid}</span>
+            </div>
+            <div class="frame-body">
+              <div class="sidebar">
+                <div class="side-sec">Document</div>
+                <div class="side-item"><i class="ico"></i>Downloaden</div>
+                <div class="side-item"><i class="ico"></i>Nieuwe versie</div>
+                <div class="side-item hl"><i class="ico"></i>Nieuwe versie genereren</div>
+                <div class="side-item"><i class="ico"></i>Vergrendelen</div>
+                <div class="side-item"><i class="ico"></i>Verwijderen</div>
+                <div class="side-item"><i class="ico"></i>Ondertekenen</div>
+              </div>
+              <div class="fieldnote">
+                Alleen bij een document dat met Epistola is gemaakt, als de gebruiker documenten mag maken en een nieuwe
+                versie mag toevoegen. Niet bij een ondertekend document
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="pair-label">Bezig</div>
+          <div class="frame">
+            <div class="frame-bar"><i class="dot"></i><span class="path">dialoog · Nieuwe versie genereren</span></div>
+            <div class="frame-body">
+              <div class="dialog">
+                <div class="dialog-head">Nieuwe versie genereren</div>
+                <div class="dialog-body">
+                  <p>Besluit evenementenvergunning</p>
+                  <div class="steps" role="img" aria-label="Voortgang van het document">
+                    <div class="step done"><i>✓</i>Voorbereiden</div>
+                    <div class="step done"><i>✓</i>In de wachtrij</div>
+                    <div class="step active"><i>3</i>Maken</div>
+                    <div class="step"><i>4</i>Opslaan</div>
+                  </div>
+                  <div class="bar"><i></i></div>
+                  <div class="status">Epistola maakt het document.</div>
+                </div>
+              </div>
+              <div class="fieldnote">
+                Klaar: „Er is een nieuwe versie van "Besluit evenementenvergunning" gemaakt met Epistola.” De pagina toont
+                Versie 2 van 2; versie 1 blijft ongewijzigd. Mislukt het, dan blijft de huidige versie zoals ze was
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

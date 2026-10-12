@@ -7,7 +7,7 @@
 | Projectnaam | Epistola-integratie in ZAC (zaakafhandelcomponent) |
 | Student | Symon Vleeshouwers (198462) |
 | Klas | ZWSD24 |
-| Stand | **6 oktober 2026** (de samenvatting volgt de indeling van §4); VV-16 op 7 oktober bijgewerkt naar B32. Op 1 oktober door Symon nagelezen. De Confluence-pagina (#10, sectie 6) spiegelt de stand van 30 september. Nog niet gedeeld met de stakeholders |
+| Stand | **6 oktober 2026** (de samenvatting volgt de indeling van §4); VV-16 op 7 oktober bijgewerkt naar B32. Op 1 oktober door Symon nagelezen. Op 12 oktober nagelopen tegen `main` (`9c353dd33`). De Confluence-overdracht (#10, hub sectie 6) spiegelt de stand van 8 oktober. Nog niet gedeeld met de stakeholders |
 
 > **Wat dit document is.** De uitkomst van het prototype, vertaald naar besluiten die Dimpact kan nemen: wat er
 > tussen dit prototype en productiegebruik ligt, wat nu al is opgelost, en welke voorstellen realiseerbaar zijn.
@@ -51,7 +51,7 @@ Van de negen risico's uit #16 zijn er vier tijdens het prototype opgelost, drie 
 | Risicoregister R1 t/m R9 (#16, bijgehouden in #20) | [§3](#3-het-risicoregister-alle-negen) |
 | Stakeholderoverleggen van 21 en 28 september (#21) | Besluiten die risico's sloten of vernauwden, en nieuwe vragen |
 | Reviews op #24 (Marcel, Edgar, Copilot) | Vragen aan Epistola, contractversie, bewaartermijn |
-| De gebouwde code, nagelopen op 29 september | Elke bewering over de huidige stand hieronder, met bestand erbij |
+| De gebouwde code, nagelopen op 12 oktober op `main` (`9c353dd33`) | Elke bewering over de huidige stand hieronder, met bestand erbij |
 
 Een voorstel staat alleen in dit document als het (a) volgt uit een testuitkomst, een risico of een besluit, en (b)
 in een paar zinnen te zeggen is wat er gebouwd moet worden. **De omvang is een grove schatting van de student en
@@ -69,10 +69,10 @@ verwijzing naar [§4](#4-de-verbetervoorstellen)), of **geaccepteerd** (met de r
 | R3 | Persoonsgegevens uit de BRP staan in het applicatielog door de standaard-logniveaus | **Geaccepteerd voor dit project** | Buiten de scope van dit prototype en dit team: het loggen van BRP-verkeer wordt door een ander team beheerd. Het staat hier omdat het productiegebruik met echte burgergegevens raakt |
 | R4 | Geen verwerkersovereenkomst met Epistola | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie | Besloten op 21 september: voor het prototype is geen overeenkomst nodig. Het prototype, de tests en de einddemo draaien tegen Epistola's gehoste testserver, niet tegen een lokale Epistola, maar er gaan alleen testgegevens heen: de zaken uit de lokale testomgeving en de fictieve personen uit de BRP-mock. Dat geldt zolang het testgegevens zijn. De bewaartermijn is drie tot vier maanden: in de broncode van Epistola Suite leest geen code `documents.retention-days: 30`, een document blijft tot zijn maandpartitie na drie maanden wordt verwijderd |
 | R5 | Startformuliergegevens gingen ongefilterd naar Epistola | **Opgelost** (#4), restpunt **voorstel** VV-09 | De payload wordt recursief afgestemd op het JSON Schema van het gekozen template, ook waar het schema extra eigenschappen toelaat. Een template zonder schema wordt geweigerd. Een template mag een sectie als vormvrij object vragen: besloten op 28 september als keuze van de templatebouwer |
-| R6 | Vertrouwelijkheidaanduiding stond hard op `OPENBAAR` | **Opgelost** voor Epistola (#6), **voorstel** VV-11 voor SmartDocuments | Het Epistola-document krijgt de vertrouwelijkheid van zijn informatieobjecttype; op 25 september eind-tot-eind nagegaan met een zaakvertrouwelijk type. De SmartDocuments-flow codeert nog steeds `OPENBAAR` (`DocumentCreationService.kt:236`) |
-| R7 | De providerabstractie is alleen op configuratieniveau | **Geaccepteerd**, met reden | Versmald in #5: elke provider heeft een eigen endpoint dat zijn eigen provider toetst, achter één dialoog. De gedeelde interface uit het ontwerp is er niet. Bij twee providers is dat structuur die te vroeg wordt gekocht; zie [§5](#5-bewust-niet-voorgesteld) |
+| R6 | Vertrouwelijkheidaanduiding stond hard op `OPENBAAR` | **Opgelost** voor Epistola (#6), **voorstel** VV-11 voor SmartDocuments | Het Epistola-document krijgt de vertrouwelijkheid van zijn informatieobjecttype; op 25 september eind-tot-eind nagegaan met een zaakvertrouwelijk type. De SmartDocuments-flow codeert nog steeds `OPENBAAR` (`DocumentCreationService.kt:219`) |
+| R7 | De providerabstractie is alleen op configuratieniveau | **Geaccepteerd**, met reden | Versmald in #5: elke provider heeft een eigen endpoint dat zijn eigen provider toetst, en sinds #64 ook een eigen formulier achter één menuactie *Document maken*. De gedeelde interface uit het ontwerp is er niet. Bij twee providers is dat structuur die te vroeg wordt gekocht; zie [§5](#5-bewust-niet-voorgesteld) |
 | R8 | Een verkeerd tenant-id wijst ZAC stilletjes naar een andere tenant | **Opgelost**, optioneel restpunt **voorstel** VV-07 | Een API key hoort bij één tenant, dus een ander tenant-id geeft `403` op elke aanroep (nagegaan tegen drie andere tenants). Een fout geformuleerd id wordt bij het opstarten geweigerd |
-| R9 | Transport naar Epistola wordt aangenomen, niet afgedwongen | **Voorstel** VV-03 | Nagelopen op 29 september: `EpistolaSettings` controleert aanwezigheid en formaat van de URL, niet het schema |
+| R9 | Transport naar Epistola wordt aangenomen, niet afgedwongen | **Voorstel** VV-03 | Nagelopen op 12 oktober: `EpistolaSettings` controleert of de URL is ingesteld, niet het formaat of het schema; tenant-id en catalog-id worden wel op formaat gecontroleerd |
 
 ## 4. De verbetervoorstellen
 
@@ -84,7 +84,9 @@ Drie groepen. **A** is wat productiegebruik vraagt. **B** is wat het verstandig 
 *Probleem.* De API key heeft in ZAC geen vervaldatum en er is geen beschreven manier om hem te vernieuwen.
 *Voorstel.* Geef de sleutel bij het uitgeven een vervaldatum. Leg de procedure vast in de chart-README: de
 tenantbeheerder geeft een nieuwe sleutel uit, die gaat in het Kubernetes Secret, ZAC start opnieuw, daarna wordt de
-oude ingetrokken. Geef de sleutel alleen de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER`.
+oude ingetrokken.
+*Al gedaan.* De chart-README en `.env.example` noemen de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER` voor de
+sleutel; een vervaldatum en de rotatieprocedure ontbreken nog.
 *Waarom realiseerbaar.* Het is documentatie en een uitgiftebesluit; er verandert niets in de code.
 
 **VV-02 · Verwerkersovereenkomst, verwerkingsregister en de echte bewaartermijn** (R4) · organisatie, geen code
@@ -162,7 +164,7 @@ veld noemen is de volgende stap.
 
 **VV-11 · Vertrouwelijkheid ook bij SmartDocuments afleiden** (R6, restant) · S · ZAC-team
 *Voorstel.* Laat de SmartDocuments-flow de vertrouwelijkheid van het informatieobjecttype overnemen, zoals de
-uploadformulieren van ZAC. Het is één regel (`DocumentCreationService.kt:236`), maar het ligt buiten dit prototype,
+uploadformulieren van ZAC. Het is één regel (`DocumentCreationService.kt:219`), maar het ligt buiten dit prototype,
 want SmartDocuments mocht niet van gedrag veranderen (DoD 1). Het is een fout die daar al bestond.
 
 **VV-16 · Een andere variant kiezen dan de standaardvariant, en een duidelijke melding bij een dubbelzinnige variant** (#50) · S–M · ZAC-team
@@ -192,7 +194,8 @@ behandelaar in een procesgestuurde zaak een document maakt, want ZAC verbergt da
 productkeuze en geen technische.
 
 **VV-13 · Een document maken vanuit een taak** · S–M · besluit van de stakeholders nodig
-*Nu.* De dialoog opent alleen vanuit de zaak. Het endpoint ondersteunt een taak wel (getest in TS-28).
+*Nu.* *Document maken* met Epistola opent alleen vanuit de zaak. Het endpoint ondersteunt een taak wel (getest in TS-28).
+Een mogelijke uitwerking staat op de branch `explore/epistola-document-from-task`, die niet in `main` is gemerged.
 *Vraag.* Blijft dit een bekende beperking, of moet het kunnen? Op 28 september geagendeerd, niet beantwoord.
 
 **VV-15 · Meerdere documenten in één keer maken** · L · pas na VV-05
@@ -204,8 +207,8 @@ per document vasthoudt, herhaalt het probleem uit VV-05 op grotere schaal.
 | Onderwerp | Reden |
 |---|---|
 | Een gedeelde `DocumentCreationProvider`-interface (R7) | Met twee providers is het structuur die te vroeg wordt gekocht. Bij een derde provider wel doen, met een sealed uitkomst zoals het ontwerp beschreef |
-| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het een tabel met de namen per catalog, want er is geen rij per template om een kolom aan toe te voegen (#51) |
-| `preview` gebruiken voor het dossierdocument | Geen PDF/A, rate-limited, niet opgeslagen (besluit B5) |
+| De templatenamen bewaren na een herstart van ZAC | #30 bewaart de namen in het geheugen. Een naam naast het id schrijft bij een leesactie. Alleen nodig als "Epistola valt uit direct na een herstart van ZAC" een reëel scenario wordt; dan is het een tabel met de namen per catalog, want er is alleen een rij voor een template met een eigen instelling (`zaaktype_epistola_template_settings`), niet voor elk template |
+| `preview` gebruiken voor het dossierdocument | Geen PDF/A, rate-limited, niet opgeslagen (besluit B5). `main` gebruikt `preview` alleen voor *Voorbeeld bekijken* (#54), dat niets opslaat |
 | Een eigen provider-onafhankelijke templatetaal | Buiten scope. Namen en variabelen volgen Epistola, niet SmartDocuments (besluit van 28 september) |
 
 ## 6. Doorgeschoven naar de reflectie (#23)
@@ -262,8 +265,9 @@ belastingtest).
 
 ## Verantwoording
 
-Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cache` (PR #34, gestapeld op #33 en #32):
-`EpistolaSettings.kt` (geen controle van het schema, R9), `DocumentCreationService.kt:236` (`OPENBAAR`, R6),
+Nagelopen op 29 september 2026 tegen de branch `feat/epistola-template-name-cache` (PR #34, gestapeld op #33 en #32), en
+op 12 oktober 2026 opnieuw tegen `main` (`9c353dd33`):
+`EpistolaSettings.kt` (geen controle van het schema, R9), `DocumentCreationService.kt:219` (`OPENBAAR`, R6),
 `EpistolaDocumentCreationService.kt` (auteur van het opgeslagen document), `ZaaktypeConfiguration.kt` (draagt de catalog en het
 informatieobjecttype, #51) en `EpistolaTemplatesService.kt` (biedt alleen bij een
 CMMN-zaaktype templates aan), `parameters-edit-cmmn.component.html` (de beheerkaart bestaat alleen in het CMMN-scherm),

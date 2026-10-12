@@ -33,7 +33,7 @@ system. §5 records what that distinction costs.
 
 **Binnen scope:** CMMN zaken; PDF as the only output format; configuration per zaaktype of the Epistola catalog whose
 templates the zaaktype offers and the document type they are stored under, with an own
-type per template and the option to switch a template off (#51); generation, storage in Open Zaak and linking to the
+type per template and the option to switch a template off (#51); generation, a preview before generating (#54), storage in Open Zaak and linking to the
 zaak; a new version of a generated document (the optional DoD 11, #9); the admin and behandelaar frontends;
 authorisation; error handling; test execution and knowledge transfer.
 
@@ -59,7 +59,7 @@ the template-groups requirement into the per-zaaktype one.
 | 7 | ZAC links the stored document to the zaak; the zaakdetailpagina shows metadata and a preview. | #6 | Done |
 | 8 | The agreed test cases — configuratie, autorisatie, creatie, datamapping, Open Zaak-opslag, zaakkoppeling, preview, foutafhandeling — are executed and recorded, including known limitations. | #18, #19 | Done (test report in [PR #41](https://github.com/infonl/zac-epistola-prototype/pull/41)) |
 | 9 | The beheerder can set the available Epistola **templategroepen and templates** per zaaktype. See the note below. | #3 | Done |
-| 10 | Main lessons learned, recommendations and follow-up steps documented on the Confluence wiki page. | #10 | In review (the page exists; the final demo is on Monday 12 October) |
+| 10 | Main lessons learned, recommendations and follow-up steps documented on the Confluence wiki page. | #10 | Done (the Confluence page is published; the final demo is on Monday 12 October). Integration tests against an Epistola stand-in stay a follow-up (#38) |
 | 11 | *Optional:* a new version of a document previously created through Epistola can be created and displayed per the document-detail requirements. | #9 | Done (built in [PR #43](https://github.com/infonl/zac-epistola-prototype/pull/43)) |
 
 > **Besluit op DoD-item 9 — 5 oktober (B26, #51).** "Templategroepen" assumes a group structure, and Epistola has none.
@@ -119,8 +119,8 @@ new one is missing.
   API key, which is Epistola's supported method, also for production. ZAC has no written rotation procedure for it
   (#16 §3, #20 R1, VV-01, #35).
 - No unauthenticated inbound endpoints are added; no case-identifying data in URLs.
-- Transport to Epistola is HTTPS: assumed, not enforced. ZAC checks at startup that the URL is set and well-formed, but
-  not that it starts with `https` (R9, VV-03, #36).
+- Transport to Epistola is HTTPS: assumed, not enforced. ZAC checks at startup that the URL is set, but not that it
+  is well-formed or starts with `https` (R9, VV-03, #36).
 
 ### Common Ground
 

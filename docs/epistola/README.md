@@ -17,7 +17,7 @@ bijbehorende projectbord.
 |---|---|---|
 | [Technisch en functioneel ontwerp](technisch-functioneel-ontwerp.md) | De flow, de provider-abstractie, de datamapping, het autorisatiemodel en de API-integratie. Bevat de sequencevergelijking van beide providers en de componentstructuur | #14 |
 | [Datamodel](datamodel.md) | De zaaktypeconfiguratietabellen en wat Epistola eraan toevoegt: drie kolommen op het zaaktype, de tabel met de instellingen per template en de tabel `epistola_document` (#51), met ERD | #14 |
-| [Wireframes](wireframes.md) | De vier schermen — beheer, zaakzijbalk, dialoog en foutpaden — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
+| [Wireframes](wireframes.md) | De vijf schermen — beheer, zaakzijbalk, *Document maken* met voorbeeld en voortgang, foutpaden en *Nieuwe versie genereren* — met veldenlijsten en de getekende mockups in [`wireframes/`](wireframes/) | #15 |
 | [Testplan](testplan.md) | Scope, omgeving, testdata en 36 testcases, positief en negatief, over de acht afgesproken gebieden, plus 8 voor het optionele #9. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testscenario's](testscenarios.md) | De testcases uit het testplan uitgewerkt tot elf testscenario's, één per functionaliteit, met randvoorwaarden, testdata en teststappen, positief en negatief. Volgens het examensjabloon (B1-K1-W4) | #18 |
 | [Testrapport](testrapport.md) | De uitvoering in drie rondes, op 25 en 30 september (de derde voor #9): resultaat en bewijs per testcase, buglijst, conclusies en aanbevelingen, met de screenshots in [`testrapport/`](testrapport/) | #19 |
@@ -35,6 +35,7 @@ bijbehorende projectbord.
 | Generatie | Asynchroon: indienen, de job pollen, downloaden — alles binnen de al geauthenticeerde aanroep |
 | Authenticatie | Een API key van de tenant, met de rollen `DOCUMENT_GENERATOR` en `CONTENT_VIEWER`. Sinds contract 1.3.1 is dat Epistola's ondersteunde methode; de twee JWT-methoden zijn experimenteel |
 | Catalog | ZAC houdt voor Epistola geen templategroepen bij. Elk zaaktype kiest één Epistola-catalog en biedt elk template daarin aan, met één documenttype voor het hele zaaktype (#51). Dat documenttype is de standaard; een template kan een eigen hebben en kan uit staan |
+| Variant | ZAC vraagt Epistola om geen variant: elk document is de standaardvariant van het template. Geen kanaal- of taalkeuze; die staat alleen op de branch `explore/epistola-variant-picker` (B32). Een variant kiezen is vervolgpunt #50 |
 | Autorisatie | Het bestaande recht `creeren_document` wordt hergebruikt, er komt geen Epistola-specifiek recht |
 | Payload | Allow-listed tegen het JSON Schema van het gekozen template — alleen gedeclareerde variabelen gaan mee. Datums in ISO 8601 |
 | Templatenaam | Het id is de sleutel en Epistola de bron. ZAC onthoudt de namen van de laatste geslaagde lijst per catalog in het geheugen, en toont ze als Epistola niet bereikbaar is (B16) |

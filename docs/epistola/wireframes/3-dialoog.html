@@ -8,38 +8,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Wireframe 3 — Dialoog: document genereren</title>
+    <title>Wireframe 3 — Zijpaneel: Document maken</title>
     <link rel="stylesheet" href="wireframes.css" />
   </head>
   <body>
     <main>
-      <h1>3 · Dialoog — document genereren, invoer en wachtstand</h1>
+      <h1>3 · Zijpaneel — Document maken: invoer, voortgang en voorbeeld</h1>
       <p class="subtitle">
-        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 3. Dezelfde velden als de
-        bestaande SmartDocuments-dialoog, met één veld eruit en één veld niet-onderhandelbaar: zonder het veld
-        Templategroep biedt Template meteen de templates van de catalog van het zaaktype (#51). Er is geen veld Taal en
-        geen veld Variant: ZAC vraagt Epistola om geen variant, dus Epistola maakt de standaardvariant van het template.
-        De keuzelijst Variant (#47, #53) en de taal van het zaaktype staan sinds 7 oktober op de branch
-        explore/epistola-variant-picker (B32).
+        Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 3. Dezelfde velden als het
+        SmartDocuments-formulier, met één veld eruit en één veld niet-onderhandelbaar: zonder het veld Templategroep biedt
+        Template meteen de templates van de catalog van het zaaktype (#51), en het bestandsformaat ligt vast op PDF. Er is
+        geen veld Taal en geen veld Variant: ZAC vraagt Epistola om geen variant, dus Epistola maakt de standaardvariant
+        van het template (B32). Voorbeeld bekijken toont het document voordat het in de zaak komt (#54).
       </p>
 
       <div class="pair">
         <div>
           <div class="pair-label">Invoer</div>
           <div class="frame">
-            <div class="frame-bar"><i class="dot"></i><span class="path">dialog · Document maken</span></div>
+            <div class="frame-bar"><i class="dot"></i><span class="path">zijpaneel · Document maken</span></div>
             <div class="frame-body">
               <div class="field">
                 <div class="fieldlabel">Template <span class="req">*</span></div>
-                <div class="box">Besluit evenementenvergunning <i class="caret">▾</i></div>
-                <div class="fieldnote">Keuzes: de templates van de catalog van het zaaktype. Bij één al gekozen</div>
+                <div class="box">Besluit evenementenvergunning</div>
+                <div class="fieldnote">Zoekt op naam in de templates van de catalog van het zaaktype. Bij één al gekozen en vast</div>
               </div>
               <div class="field">
                 <div class="fieldlabel">Titel <span class="req">*</span></div>
-                <div class="box">Besluit ZAAK-2026-0000000117</div>
+                <div class="box">&nbsp;</div>
+                <div class="fieldnote">Door de behandelaar in te vullen, ten hoogste 100 tekens</div>
               </div>
               <div class="field">
-                <div class="fieldlabel">Toelichting</div>
+                <div class="fieldlabel">Beschrijving</div>
                 <div class="box">&nbsp;</div>
               </div>
               <div class="grid2">
@@ -48,23 +48,22 @@
                   <div class="box ro">Besluit</div>
                 </div>
                 <div class="field">
-                  <div class="fieldlabel">Vertrouwelijkheid</div>
+                  <div class="fieldlabel">Vertrouwelijkheidaanduiding</div>
                   <div class="box ro">Vertrouwelijk</div>
                 </div>
               </div>
-              <div class="grid2">
-                <div class="field">
-                  <div class="fieldlabel">Formaat</div>
-                  <div class="box ro">PDF</div>
-                </div>
-                <div class="field">
-                  <div class="fieldlabel">Auteur <span class="req">*</span></div>
-                  <div class="box ro">Test Behandelaar 1</div>
-                </div>
+              <div class="field">
+                <div class="fieldlabel">Bestandsformaat</div>
+                <div class="box ro">PDF</div>
+              </div>
+              <div class="field">
+                <div class="fieldlabel">Auteur</div>
+                <div class="box ro">Test Behandelaar 1</div>
               </div>
               <div class="btnrow">
-                <span class="btn">Annuleren</span>
+                <span class="btn">Voorbeeld bekijken</span>
                 <span class="btn primary">Genereren</span>
+                <span class="btn">Annuleren</span>
               </div>
             </div>
           </div>
@@ -72,23 +71,47 @@
         <div>
           <div class="pair-label">Bezig</div>
           <div class="frame">
-            <div class="frame-bar"><i class="dot"></i><span class="path">dialog · Document maken</span></div>
+            <div class="frame-bar"><i class="dot"></i><span class="path">zijpaneel · Document maken</span></div>
             <div class="frame-body">
-              <div class="spinner"><i class="ring"></i>Document wordt gegenereerd…</div>
-              <div class="toast warn">
-                <span class="mark">i</span>
-                <span>Dit kan enkele seconden duren. Sluit dit venster niet.</span>
+              <div class="fieldnote">De velden blijven boven de voortgang staan</div>
+              <div class="steps" role="img" aria-label="Voortgang van het document">
+                <div class="step done"><i>✓</i>Voorbereiden</div>
+                <div class="step active"><i>2</i>In de wachtrij</div>
+                <div class="step"><i>3</i>Maken</div>
+                <div class="step"><i>4</i>Opslaan</div>
               </div>
-              <div class="toast warn">
-                <span class="mark">i</span>
-                <span>Het document staat in de wachtrij bij Epistola.</span>
-              </div>
+              <div class="bar"><i></i></div>
+              <div class="status">Het document staat in de wachtrij bij Epistola.</div>
               <div class="btnrow">
-                <span class="btn">Annuleren</span>
-                <span class="btn primary disabled">Genereren</span>
+                <span class="btn disabled">Voorbeeld bekijken</span>
+                <span class="btn primary disabled">Genereren …</span>
+                <span class="btn disabled">Annuleren</span>
+              </div>
+              <div class="fieldnote">
+                Klaar: alle stappen afgevinkt, „Het document is klaar.”, daarna de melding dat het document aan de zaak is
+                toegevoegd, en het zijpaneel sluit
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="pair-label" style="margin-top: 28px">Voorbeeld bekijken</div>
+      <div class="frame">
+        <div class="frame-bar"><i class="dot"></i><span class="path">dialoog · Voorbeeld van het document</span></div>
+        <div class="frame-body">
+          <div class="dialog">
+            <div class="dialog-head">Voorbeeld van het document <span class="x">×</span></div>
+            <div class="dialog-body">
+              <p>
+                Dit is een voorbeeld en nog niet in de zaak opgeslagen. Pas bij Genereren maakt ZAC het document dat in de
+                zaak komt.
+              </p>
+              <p><strong>Besluit evenementenvergunning</strong></p>
+              <div class="pdf">PDF van Epistola, met watermerk</div>
+            </div>
+          </div>
+          <div class="fieldnote">Dezelfde zaakgegevens als bij genereren. ZAC slaat niets op, Epistola bewaart niets</div>
         </div>
       </div>
     </main>

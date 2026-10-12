@@ -676,6 +676,16 @@ Deze actie maakt het mogelijk om een document met sjablonen in een documentcreat
 
 6 Het document is aan de zaak toegevoegd en beschikbaar in het documentenoverzicht
 
+Met Epistola gaat het anders vanaf stap 3. Documenttype, vertrouwelijkheidaanduiding, bestandsformaat (PDF) en auteur liggen vast:
+
+3 Klik als gewenst op *Voorbeeld bekijken*. Je ziet de PDF met de gegevens van deze zaak; er wordt nog niets in de zaak opgeslagen
+
+4 Klik op *Genereren*. ZAC toont de voortgang in stappen: Voorbereiden, In de wachtrij, Maken, Opslaan. Dat duurt meestal enkele seconden
+
+5 Het document is als PDF aan de zaak toegevoegd en staat direct in het documentenoverzicht
+
+Van een document dat met Epistola is gemaakt, kun je op de documentpagina met *Nieuwe versie genereren* een nieuwe versie maken, met hetzelfde template en de zaakgegevens van dat moment
+
 ### Document toevoegen
 
 Om een bestaand document aan een zaak toe te voegen kan deze actie gebruikt worden. De verplichte metadata moeten worden ingevuld bij het toevoegen.
