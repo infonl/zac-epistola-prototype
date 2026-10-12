@@ -3,17 +3,17 @@
 | | |
 |---|---|
 | Soort | Begonnen als verkenning, op 5 oktober 2026 door de stakeholders gevraagd (#54). Een extra buiten de Definition of Done. Geen onderdeel van het testplan, zoals de andere extra's (B25) |
-| Branch | `feat/epistola-preview-before-generating`, gebouwd op `fix/epistola-dry-run-rough-edges` (#45). Gaat via een pull request naar `main` |
-| Stand | **5 oktober 2026.** Op #45 gezet en opnieuw gecontroleerd met unittests. Epistola's testserver en de controle in een draaiende ZAC met een echte browser zijn van 3 oktober, op de verkenningsbranch ([§5](#5-wat-is-gecontroleerd-en-wat-niet)). Op 7 oktober bijgewerkt: de variant- en de taalkeuze zijn uit `main` gehaald (B32), dus een voorbeeld en genereren geven allebei de standaardvariant van het template. §4 en §5 beschrijven de metingen van 3 en 5 oktober, toen de variantkeuze er nog was |
+| Branch | Staat op `main`, via `feat/epistola-preview-before-generating`, gebouwd op `fix/epistola-dry-run-rough-edges` (#45) |
+| Stand | **5 oktober 2026.** Op #45 gezet en opnieuw gecontroleerd met unittests. Epistola's testserver en de controle in een draaiende ZAC met een echte browser zijn van 3 oktober, op de verkenningsbranch ([§5](#5-wat-is-gecontroleerd-en-wat-niet)). Op 7 oktober bijgewerkt: de variant- en de taalkeuze zijn uit `main` gehaald (B32), dus een voorbeeld en genereren geven allebei de standaardvariant van het template. §4 en §5 beschrijven de metingen van 3 en 5 oktober, toen de variantkeuze er nog was. Sinds 7 oktober 2026 op `main` |
 
 > **Waarom deze branch bestaat.** Het begon als een voorstel dat de stakeholders konden overnemen of laten liggen, op
-> de branch `explore/epistola-preview-before-saving`. Op 5 oktober vroegen ze erom (#54). Daarom gaat het nu als
-> feature naar `main`.
+> de branch `explore/epistola-preview-before-saving`. Op 5 oktober vroegen ze erom (#54). Daarom staat het nu op
+> `main`.
 
 ## 1. Het idee
 
 Epistola kan een document **in één keer renderen en teruggeven zonder het te bewaren**: het endpoint `preview`.
-ZAC gebruikt dat nu niet. Een behandelaar die een brief genereert, ziet hem pas als hij al in het dossier staat. Is
+Vóór deze wijziging gebruikte ZAC dat niet: een behandelaar die een brief genereerde, zag hem pas als hij al in het dossier stond. Is
 er iets mis, dan blijft het document in Open Zaak staan, en de omweg is *Nieuwe versie genereren*.
 
 Hiermee krijgt het formulier *Document maken* een knop **Voorbeeld bekijken**. ZAC vraagt Epistola om een preview
@@ -48,7 +48,7 @@ de taak als het document bij een taak hoort), omdat het de zaakgegevens op dezel
 | De zaakgegevens voor een preview en voor genereren komen uit één stap, `readTemplateData`, zodat ze niet uit elkaar kunnen lopen. Geen van beide vraagt om een variant | `src/main/kotlin/nl/info/zac/documentcreation/EpistolaDocumentCreationService.kt` |
 | De aanroep van Epistola's `previewDocument`; geen job, niets te verwijderen | `src/main/kotlin/nl/info/client/epistola/EpistolaClientService.kt` |
 | Een 400 van Epistola met `Data validation failed: …` wordt dezelfde `EpistolaTemplateDataRejectedException` als bij een mislukte job. Beide lezen de velden met één functie, `toDataRejectionDetailOrNull`, dus ook een preview toont een veld bovenaan de gegevens zonder de losse dubbele punt die #45 wegnam | `src/main/kotlin/nl/info/client/epistola/EpistolaApiExceptions.kt`, `EpistolaGenerationItems.kt` |
-| De knop, de dialoog en het lezen van een foutmelding die als Blob aankomt | `informatie-object-create-attended.component.*`, `epistola-preview-dialog/`, `shared/http/parse-blob-error.ts` (onder `src/main/app/src/app/`) |
+| De knop, de dialoog en het lezen van een foutmelding die als Blob aankomt | `informatie-objecten/epistola-document-create/epistola-document-create.component.*`, `informatie-objecten/epistola-preview-dialog/`, `shared/http/parse-blob-error.ts` (onder `src/main/app/src/app/`) |
 | WireMock-antwoord voor de lokale stand-in | `scripts/docker-compose/imports/epistola-wiremock/mappings/preview-document.json` |
 
 ## 4. Wat Epistola's testserver liet zien
@@ -126,7 +126,7 @@ dag opnieuw ingericht, omdat de tenant elke dag wordt gereset.
                --tests "nl.info.client.epistola.EpistolaClientServicePreviewTest" \
                --tests "nl.info.client.epistola.EpistolaClientServiceRequestTest" \
                --tests "nl.info.zac.app.documentcreation.DocumentCreationRestServicePreviewTest"
-cd src/main/app && npx ng test --test-path-pattern="informatie-object-create-attended|epistola-preview-dialog|parse-blob-error"
+cd src/main/app && npx ng test --test-path-pattern="epistola-document-create|epistola-preview-dialog|parse-blob-error"
 ```
 
 Live: `./gradlew buildDockerImage`, dan `./start-docker-compose.sh -l -E` (Epistola's testserver) of `-W` (WireMock, zonder

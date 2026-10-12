@@ -13,28 +13,45 @@
   </head>
   <body>
     <main>
-      <h1>4 · Foutpaden — twee mislukkingen die andere woorden nodig hebben</h1>
+      <h1>4 · Foutpaden — drie meldingen die andere woorden nodig hebben</h1>
       <p class="subtitle">
         Wireframe bij <a href="../wireframes.md">wireframes.md</a>, scherm 4. Elke mislukking laat het systeem in een
-        andere toestand achter, dus elke krijgt een andere melding.
+        andere toestand achter, dus elke krijgt een andere melding. De melding verschijnt in ZAC's foutdialoog boven het
+        zijpaneel; het zijpaneel blijft open met de invoer.
       </p>
 
       <div class="frame">
-        <div class="frame-bar"><i class="dot"></i><span class="path">dialog · foutmeldingen</span></div>
+        <div class="frame-bar"><i class="dot"></i><span class="path">foutdialoog boven het zijpaneel</span></div>
         <div class="frame-body">
-          <div class="toast err">
-            <span class="mark">!</span>
-            <span>
-              <strong>Epistola is op dit moment niet bereikbaar.</strong> Probeer het later opnieuw.
-            </span>
+          <div class="dialog">
+            <div class="dialog-head"><span class="mark">!</span>Er is een fout opgetreden <span class="x">×</span></div>
+            <div class="dialog-body">
+              <p>Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw.</p>
+            </div>
+            <div class="dialog-foot"><span class="btn">Sluiten</span></div>
           </div>
-          <div class="toast err">
-            <span class="mark">!</span>
-            <span>
-              <strong>Het document is gemaakt, maar het opslaan in Open Zaak is mislukt.</strong> Er is niets
-              aan de zaak toegevoegd. Probeer het later opnieuw.
-            </span>
+          <div class="dialog">
+            <div class="dialog-head"><span class="mark">!</span>Er is een fout opgetreden <span class="x">×</span></div>
+            <div class="dialog-body">
+              <p>
+                Het document is gemaakt, maar het opslaan in Open Zaak is mislukt. Er is niets aan de zaak toegevoegd.
+                Probeer het later opnieuw.
+              </p>
+            </div>
+            <div class="dialog-foot"><span class="btn">Sluiten</span></div>
           </div>
+          <div class="dialog">
+            <div class="dialog-head"><span class="mark">!</span>Er is een fout opgetreden <span class="x">×</span></div>
+            <div class="dialog-body">
+              <p>
+                Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm. Opnieuw proberen helpt
+                niet. Geef de melding hieronder door aan de beheerder.
+              </p>
+              <p><code>/aanvrager: is required</code></p>
+            </div>
+            <div class="dialog-foot"><span class="btn">Sluiten</span></div>
+          </div>
+          <div class="fieldnote">De onderste regel van de derde melding is Epistola's eigen reden</div>
         </div>
       </div>
     </main>

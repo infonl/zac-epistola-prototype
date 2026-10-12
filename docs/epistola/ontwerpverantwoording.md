@@ -6,8 +6,8 @@
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #14 ontwerp · #2 provider-abstractie |
 | Gaat naar | #20 verbetervoorstellen · #10 Confluence |
-| Basis | De fork op `aeb888cc2` |
-| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, met contract en client 1.4.0 van Epistola. Op 7 oktober bijgewerkt: ZAC bewaart geen taal meer bij een document (B32) |
+| Basis | `main` op `9c353dd33` (12 oktober 2026); de regelnummers in §2 tot en met §4 verwijzen naar `aeb888cc2` |
+| Stand | Bijgewerkt op 6 oktober 2026, na het stakeholderoverleg van 5 oktober, met contract en client 1.4.0 van Epistola. Op 7 oktober bijgewerkt: ZAC bewaart geen taal meer bij een document (B32). Op 12 oktober nagelopen tegen `main` (`9c353dd33`): een eigen formulier per provider (#64), de Epistola-payload met eigenschappen en geometrie, en *Voorbeeld bekijken* (#54) |
 
 Why the Epistola document creation integration is defensible against Common Ground, the AVG and ZAC's own security
 practice — and what would still have to change before it could carry real citizen data. [The improvement
@@ -35,7 +35,7 @@ three, and it holds on all three — with two honest caveats.
 
 Nothing about the case is cached for document creation. Every generation reads the zaak from Open Zaak
 (`zrcClientService.readZaak`), the zaaktype and statustype from the catalogus, the initiator's details from the BRP
-or the KvK, and the task from Flowable — all at the moment the behandelaar presses the button. A stale document is
+or the KvK, and, when a task id is given, the task from Flowable — all at the moment the behandelaar presses the button. A stale document is
 therefore impossible by construction, not by cache invalidation.
 
 The datamodel in #14 confirms this from the other side: the integration adds three columns on
@@ -64,8 +64,9 @@ that refuses contradictory combinations. An installation can move from SmartDocu
 without a code change.
 
 Stated precisely, though: that abstraction is configuration-level only. There is no shared interface. Each provider
-has its own endpoint, which checks its own provider, behind one dialog (`create-document-attended` for
-SmartDocuments, `epistola/create-document` for Epistola). The claim is "one provider is selected by configuration",
+has its own endpoint, which checks its own provider, behind one menu action, *Document maken*, which opens each provider's own form
+(since #64: `epistola-document-create` for Epistola, ZAC's unchanged `informatie-object-create-attended` for
+SmartDocuments). The claim is "one provider is selected by configuration",
 not "two providers sit behind one interface". With two providers a shared interface is structure bought too early; R7
 is accepted with that reason.
 
@@ -82,7 +83,8 @@ is accepted with that reason.
 *Acceptatiecriterium 2*
 
 The question "which personal data flows to Epistola" has an exact answer, because the payload is the one
-SmartDocuments already receives: `DocumentCreationDataService.createData` builds it, and #4 maps the same fields onto
+SmartDocuments already receives, plus the zaak's eigenschappen and geometry, which only the Epistola path adds:
+`DocumentCreationDataService.createData` builds it, `createEpistolaData` adds the two, and #4 maps the fields onto
 Epistola's template variables. The table below is that payload, field by field.
 
 | Veld | Bron | Persoonsgegeven | Naar provider | Opmerking |
@@ -95,7 +97,9 @@ Epistola's template variables. The table below is that payload, field by field.
 | identificatie, zaaktype, status, resultaat, data | ZRC / ZTC | Indirect | Ja | The case number is a pseudo-identifier: linkable to a person by anyone holding the registry. |
 | omschrijving, toelichting, opschortingReden, verlengingReden | ZRC | Onbegrensd | Ja | Free text written by behandelaars. It can contain anything a colleague typed, including health or family circumstances. |
 | startformulier aanvraaggegevens | Objecten API | Onbegrensd | Ja | A flattened map of everything the citizen submitted, **reduced to the template's declared variables** before it is sent (#4) — see finding P1. |
-| taaknaam en taakbehandelaar | Flowable | Ja | Ja | Employee data, present only when a document is generated from a task. |
+| eigenschappen | ZRC | Onbegrensd | Ja | Free-text values set per zaak, Epistola only; reduced to the template's declared variables (#4). |
+| zaakgeometrie | ZRC | Indirect | Ja | Epistola only. A location can point at a citizen's address. |
+| taaknaam en taakbehandelaar | Flowable | Ja | Ja | Employee data, present only when the endpoint is called with a task id. The Epistola form is not offered from a task (VV-13). |
 
 *Source: `DocumentCreationDataService.kt`, the payload builder shared by both providers. Classification is mine; the
 field list is the code's.*
@@ -161,7 +165,8 @@ of the processing. On that reading it is a **verwerker** and the gemeente remain
 same relationship the gemeente already has with SmartDocuments. A verwerkersovereenkomst under article 28 AVG is
 therefore **required before any production use**, and it has to settle retention: Epistola keeps a
 generated document for three to four months, because it stays until its month partition is dropped, after three
-months. That is a term the agreement needs to name rather than inherit.
+months. That is a term the agreement needs to name rather than inherit. The preview (*Voorbeeld bekijken*, #54) sends the same
+allow-listed data; Epistola renders it at once and keeps nothing.
 
 **The prototype needs no verwerkersovereenkomst, because only test data goes to Epistola.** The prototype, its tests
 and the final demo run against Epistola's hosted test server (`demo.epistola.app`), so data does leave the local
@@ -181,7 +186,7 @@ in §6.
 *Acceptatiecriterium 3*
 
 #2 requires one authentication mechanism to be chosen and the rejected ones recorded as out of scope. **The choice is
-the static API key** — `EPISTOLA_CLIENT_API_KEY` alongside `EPISTOLA_TENANT_ID`, both validated at startup.
+the static API key** — `EPISTOLA_CLIENT_API_KEY` alongside `EPISTOLA_TENANT_ID` and `EPISTOLA_CATALOG_ID`, all validated at startup.
 Epistola's contract offers two alternatives, a self-signed JWT and OAuth 2.0 client credentials. Contract 1.3.1 (21
 September) makes API keys the supported method, also for production, and marks both alternatives as experimental, so
 both are out of scope and neither is a production path. This section is that record, and the argument for it.
@@ -265,7 +270,7 @@ entries, documented in the chart README (#2).
 >   (`DocumentCreationUserStore.kt:30–39`).
 >
 > That is a genuine security improvement, and it is the strongest architectural argument in favour of Epistola that
-> this prototype has produced. It should be stated in the comparison for #10.
+> this prototype has produced. It is stated in the comparison of the Confluence handoff (#10).
 
 ## 4. Logging
 
@@ -296,8 +301,8 @@ setting. Longer term the log statement should print the query type and field set
 ### L2 — The document payload itself is not logged · *Akkoord*
 
 `SmartDocumentsService` logs the username at `FINE` and the response — a wizard ticket — at `FINE`. The `Deposit`
-carrying the NAW and the form data is never logged. That is the right behaviour and the rule Epistola's client must
-follow: log a correlation id, the template id, the zaak identificatie and the HTTP status; never the request payload
+carrying the NAW and the form data is never logged. That is the right behaviour and the rule ZAC's Epistola client
+follows (#8): it logs a correlation id, the template id, the zaak identificatie and the HTTP status; never the request payload
 and never the response body.
 
 `SmartDocumentsService.kt:92, 105`
@@ -331,7 +336,7 @@ The last column is the outcome of each risk, as [the improvement proposals](verb
 | R4 | No verwerkersovereenkomst with Epistola. **Niet van toepassing op het prototype**: only test data goes to Epistola (§2). Epistola keeps a document for three to four months. | Blokkerend | Article 28 agreement naming the retention, sub-processors and location, plus a verwerkingsregister entry. Confirmation by the FG. Applies the moment real case data is involved. | **Geaccepteerd voor het prototype**, **voorstel** VV-02 voor productie |
 | R5 | The citizen's submitted form data is forwarded to the provider as an unfiltered map (P1). **Opgelost in #4.** | Laag | Done: the payload is allow-listed against the template's JSON Schema, recursively. A template declaring a section as a free-form object receives it whole; that is the template author's call (B17). | **Opgelost**; the free-form section was allowed on 28 September (B17), a warning is VV-09 (#39) |
 | R6 | `vertrouwelijkheidaanduiding` is hardcoded to `OPENBAAR` on the generated document, so a besluit containing someone's NAW is filed as public. | Hoog | Derive it from the zaak or the informatieobjecttype. An acceptance criterion on #6; recorded here because it is a privacy defect, not only a data defect. | **Opgelost** for Epistola in #6 (from the informatieobjecttype); **voorstel** VV-11 for SmartDocuments, which sets `OPENBAAR` |
-| R7 | The provider abstraction is configuration-level only: there is no shared interface, and each provider has its own endpoint that checks its own provider. | Middel | A provider interface with both implementations behind it, which is worth building with a third provider. | **Geaccepteerd**: in #5 each provider got its own endpoint behind one dialog; a shared interface is too early with two providers |
+| R7 | The provider abstraction is configuration-level only: there is no shared interface, and each provider has its own endpoint that checks its own provider. | Middel | A provider interface with both implementations behind it, which is worth building with a third provider. | **Geaccepteerd**: each provider has its own endpoint (#5) and, since #64, its own form behind one menu action; a shared interface is too early with two providers |
 | R8 | A wrong `EPISTOLA_TENANT_ID` could point an installation at another tenant's templates. Startup rejects anything that is not a valid tenant slug (#4). | Laag | Optional: a startup connectivity check that resolves the tenant and logs its name, so a well-formed but wrong identifier is visible at boot rather than in a document. | **Opgelost**: a key belongs to one tenant, so another tenant id gives `403`. Optional remainder VV-07 |
 | R9 | Transport security for the Epistola endpoint is assumed rather than enforced. | Laag | Validate that `EPISTOLA_CLIENT_MP_REST_URL` uses `https`, alongside the existing presence check. | **Voorstel** VV-03 (#36) |
 
@@ -374,14 +379,14 @@ the prototype; it was not put on the agenda of 5 October.
   alternatives recorded as out of scope in §3. The Helm chart entries (R2) are delivered.
 - **#4** — *done.* The criterion was added and built: the payload sent to Epistola contains only variables declared by
   the selected template's JSON Schema (R5).
-- **#8** — add the L2 logging rule verbatim as a criterion, so the error handler is written against it rather than
-  reviewed against it.
-- **#20** — R1 through R9 transfer, each with its outcome (R2, R5 and R8 closed, R1 on *Middel*).
+- **#8** — *done.* The L2 rule is a criterion, and it is met.
+- **#20** — *done.* R1 through R9 transferred, each with its outcome (verbetervoorstellen §3).
 
 ---
 
 **Verantwoording.** Every claim in this document was checked against the fork at commit `aeb888cc2` rather than
-against the documentation. The files read, with the lines cited: `zac/documentcreation/DocumentCreationDataService.kt`,
+against the documentation, and re-checked against `main` at `9c353dd33` on 12 October 2026; the line numbers cited
+are those of `aeb888cc2`. The files read, with the lines cited: `zac/documentcreation/DocumentCreationDataService.kt`,
 `zac/documentcreation/DocumentCreationService.kt`, `zac/documentcreation/DocumentCreationUserStore.kt`,
 `zac/app/documentcreation/DocumentCreationRestService.kt`, `zac/configuration/DocumentCreationProviderConfiguration.kt`,
 `zac/smartdocuments/SmartDocumentsService.kt`, `zac/authentication/RequestAuthorizationFilter.kt`,

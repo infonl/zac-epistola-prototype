@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Issue | [#14](https://github.com/infonl/zac-epistola-prototype/issues/14) · werkproces B1-K1-W2 |
-| Stand | Bijgewerkt op 6 oktober 2026 naar wat #3 tot en met #9, #30, #47 en #51 tot en met #53 hebben gebouwd, met contract en client 1.4.0, en nagegaan op de testtenant. Op 7 oktober bijgewerkt naar `main` zonder variant- en taalkeuze (B32) |
+| Stand | Bijgewerkt op 6 oktober 2026 naar wat #3 tot en met #9, #30, #47 en #51 tot en met #53 hebben gebouwd, met contract en client 1.4.0, en nagegaan op de testtenant. Op 7 oktober bijgewerkt naar `main` zonder variant- en taalkeuze (B32). Op 12 oktober 2026 nagelopen tegen `main` (`9c353dd33`): een eigen formulier voor Epistola (#64), *Voorbeeld bekijken* (#54), de voortgang in stappen en het template dat vóór de zaakgegevens wordt gelezen |
 | Scope | Prototype, alleen CMMN |
 | Bouwt op | #2 provider-configuratie · #15 wireframes · #16 ontwerpverantwoording |
-| Blokkeert | #4 · #5 · #6 · #11 |
+| Blokkeerde | #4 · #5 · #6 · #11 |
 
 Hoe Epistola achter ZAC's documentcreatie past: de flow, hoe ZAC tussen de twee providers kiest, de data
 die oversteekt, en wie op de knop mag drukken.
@@ -15,8 +15,8 @@ die oversteekt, en wie op de knop mag drukken.
 
 | § | Onderwerp | Dekking |
 |---|---|---|
-| [§1](#1--functioneel-ontwerp) | Functioneel ontwerp | Zeven stappen van zaaktypeconfiguratie tot een nieuwe versie, elk met wat er waar wordt vastgelegd |
-| [§2](#2--provider-abstractie) | Provider-abstractie | Gebouwd: twee endpoints achter één dialoog, zonder gedeelde interface (#5, R7). Beschreven voor een derde provider: één interface, twee interactievormen en een sealed outcome in plaats van een geforceerd uniform retourtype |
+| [§1](#1--functioneel-ontwerp) | Functioneel ontwerp | Acht stappen van zaaktypeconfiguratie tot een nieuwe versie, elk met wat er waar wordt vastgelegd |
+| [§2](#2--provider-abstractie) | Provider-abstractie | Gebouwd: twee endpoints, elk met een eigen formulier achter dezelfde actie, zonder gedeelde interface (#5, #64, R7). Beschreven voor een derde provider: één interface, twee interactievormen en een sealed outcome in plaats van een geforceerd uniform retourtype |
 | [§3](#3--datamapping) | Datamapping | De ZAC-kant is exact; Epistola krijgt templatevariabelen plus een correlatie-id |
 | [§4](#4--autorisatiemodel) | Autorisatiemodel | Hergebruik van `creeren_document`, dat al samenvalt met zaaktype- en zaakautorisatie |
 | [§5](#5--api-integratie) | API-integratie | Endpoints, contracten en foutsemantiek, uit Epistola's gepubliceerde OpenAPI-contract |
@@ -26,18 +26,20 @@ die oversteekt, en wie op de knop mag drukken.
 
 ## 1 · Functioneel ontwerp
 
-De flow hergebruikt bewust de schermen die ZAC al heeft. Volgens #15 verraden de actie, het label en de dialoog niet
+De flow hergebruikt bewust de schermen die ZAC al heeft. Volgens #15 verraden de actie en het label niet
 welke documentengine de installatie draait — dat is een beslissing van de beheerder, en het tonen ervan
-zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verandert. De foutmeldingen van de
-gebouwde versie noemen Epistola wel (§5).
+zou elke behandelaar een onderscheid laten leren dat niets aan hun werk verandert. De foutmeldingen en de voortgangsmeldingen
+van de gebouwde versie noemen Epistola wel (§5).
 
-1. **Zaaktypeconfiguratie** — een functioneel beheerder opent het zaaktype in ZAC Admin en kiest één Epistola-catalog
+1. **Zaaktypeconfiguratie** — een functioneel beheerder opent het zaaktype in ZAC Admin, zet in de kaart
+   *Documenten maken met Epistola* aan (kolom `epistola_ingeschakeld`; staat die uit, dan biedt het zaaktype niets aan),
+   en kiest één Epistola-catalog
    en één informatieobjecttype voor het zaaktype, in dezelfde kaart (#51). Het zaaktype biedt elk template in die
    catalog aan; de beheerder kiest geen templates, en ziet in de kaart welke de catalog heeft. De keuzes staan als
    kolommen op het zaaktype in ZAC's eigen database ([datamodel](datamodel.md)): configuratie, nooit zaakdata. Zonder
    gekozen catalog geldt die van `EPISTOLA_CATALOG_ID`; zonder informatieobjecttype biedt het zaaktype niets aan.
    De kaart toont elk template van de catalog als item van een accordeon. Het kopje noemt de naam en welk documenttype
-   geldt; het item toont het id van het template. Per template kiest de beheerder een eigen documenttype, en kan hij
+   geldt, of dat het template verborgen is; het item toont het id van het template. Per template kiest de beheerder een eigen documenttype, en kan hij
    het template uitzetten. Elk template wordt gemaakt in zijn standaardvariant ([§5](#verzoek)).
    Tot 7 oktober koos de beheerder in de kaart ook één taal voor het zaaktype, en toonde het item de talen en eerder ook
    alle varianten met hun attributen; dat staat nu op de branch `explore/epistola-variant-picker` (B32).
@@ -47,31 +49,36 @@ gebouwde versie noemen Epistola wel (§5).
 2. **Actie** — op een CMMN-zaak gebruikt de behandelaar de bestaande actie *Document maken*
    (`actie.document.maken`). Die verschijnt alleen wanneer de policy `creeren_document` toestaat
    ([§4](#4--autorisatiemodel)), en is op BPMN-zaken uitgeschakeld met een toelichtende tooltip (#7).
-3. **Templatekeuze** — de dialoog toont de templates van de catalog van het zaaktype die aanstaan, op naam, en kiest het
+3. **Templatekeuze** — *Document maken* opent een zijpaneel, sinds #64 een eigen formulier voor Epistola. Het toont de templates van de catalog van het zaaktype die aanstaan, op naam, en kiest het
    zelf als er maar één is (#51). Er is geen veld *Templategroep*; SmartDocuments houdt zijn groepveld. Het
-   uitvoerformaat is statische tekst "PDF" in plaats van een keuzelijst met één optie; documenttype en
+   bestandsformaat is een read-only veld "PDF" in plaats van een keuzelijst met één optie; documenttype en
    vertrouwelijkheid zijn read-only en komen uit de configuratie van het zaaktype, zodat een behandelaar een document
    niet onder het verkeerde informatieobjecttype kan wegschrijven. Het documenttype is dat van het gekozen template, en
    anders dat van het zaaktype (`override ?: standaard`).
    De behandelaar kiest geen taal en geen variant; er is geen keuzelijst *Taal* of *Variant*. ZAC vraagt Epistola om
-   geen variant, dus Epistola maakt de standaardvariant van het template ([§5](#verzoek)). Tot 7 oktober bood de dialoog
+   geen variant, dus Epistola maakt de standaardvariant van het template ([§5](#verzoek)). Tot 7 oktober bood het formulier
    bij een template met varianten voor twee of meer kanalen een keuzelijst **Variant** (#47, #53), voorgesteld door het
    communicatiekanaal van de zaak, en vroeg ZAC om de taal van het zaaktype. Dat staat nu op de branch
    `explore/epistola-variant-picker` en gaat niet naar `main` (B32).
-4. **Generatie** — ZAC leest de zaak uit Open Zaak en de initiator uit de BRP of KvK *op dat moment*, bouwt
+4. **Voorbeeld** *(#54)* — met *Voorbeeld bekijken* laat Epistola het document zien met dezelfde zaakgegevens als bij
+   genereren, in de dialoog *Voorbeeld van het document*, met een watermerk van Epistola. Er wordt niets opgeslagen,
+   niet in de zaak en niet bij Epistola (`POST /documents/preview`, [§5](#5--api-integratie)).
+5. **Generatie** — ZAC leest eerst het template met zijn datacontract uit Epistola, dan de zaak uit Open Zaak en de
+   initiator uit de BRP of KvK *op dat moment*, bouwt
    de payload ([§3](#3--datamapping)) en dient hem in bij Epistola. Generatie is **asynchroon**: het
    indienen levert een job op, ZAC pollt die tot hij klaar is en downloadt dan de PDF
-   ([§5](#5--api-integratie)). De dialoog blokkeert met een laadstatus in plaats van te sluiten, zodat een
-   gedeeltelijke mislukking in context gemeld kan worden en niet als een losse toast.
-5. **Opslag en koppeling** — de teruggekregen PDF wordt in de Documenten API van Open Zaak opgeslagen als
+   ([§5](#5--api-integratie)). Het zijpaneel blijft open en toont de voortgang in vier stappen, *Voorbereiden*, *In de wachtrij*,
+   *Maken* en *Opslaan*, met wat Epistola meldt. Een mislukking verschijnt in ZAC's foutdialoog boven het zijpaneel, met
+   de invoer er nog.
+6. **Opslag en koppeling** — de teruggekregen PDF wordt in de Documenten API van Open Zaak opgeslagen als
    `EnkelvoudigInformatieObject` en aan de zaak gekoppeld als `ZaakInformatieObject` — binnen hetzelfde
    geauthenticeerde verzoek ([§2](#2--provider-abstractie)). ZAC houdt geen documentregistratie bij. Het onthoudt alleen welk
-   template het document maakte, voor stap 7 ([datamodel](datamodel.md)), met de catalog waar het template uit kwam
+   template het document maakte, voor stap 8 ([datamodel](datamodel.md)), met de catalog waar het template uit kwam
    (#51).
-6. **Preview** — Solr-herindexering en de WebSocket-notificatie laten het document verschijnen op het
+7. **Zichtbaar in de zaak** — Solr-herindexering en de WebSocket-notificatie laten het document verschijnen op het
    tabblad Documenten van de zaak, waar het met metadata en een in-browserpreview opent zoals elk ander
    document.
-7. **Nieuwe versie** *(optioneel, DoD 11, #9)* — op de pagina van een document dat Epistola maakte, genereert de actie
+8. **Nieuwe versie** *(optioneel, DoD 11, #9)* — op de pagina van een document dat Epistola maakte, genereert de actie
    *Nieuwe versie genereren* het opnieuw uit hetzelfde template, met de zaakgegevens zoals ze dan zijn. Het
    resultaat is de volgende versie van hetzelfde informatieobject (`versie + 1`). De eerdere versies blijven staan,
    en mislukt het opslaan, dan blijft de huidige versie zoals ze was. De zaak is de zaak waaraan het document hangt,
@@ -101,8 +108,10 @@ gebouwd als een losse `EpistolaDocumentCreationService`.
 **Gebouwd in #5 is een eenvoudiger vorm dan de interface hieronder.** Er zijn twee endpoints. Het bestaande
 `create-document-attended` blijft voor SmartDocuments en geeft de redirect naar de wizard. Het nieuwe
 `epistola/create-document` genereert en slaat op in één verzoek, en geeft het opgeslagen document terug. De
-behandelaar merkt daar niets van, want één dialoog kiest het endpoint van de actieve provider. De vertakking
-die de sealed outcome hieronder in de REST-laag legt, ligt daarmee in de dialoog. Het voordeel is dat het
+behandelaar merkt daar niets van, want de actie *Document maken* opent het formulier van de actieve provider:
+sinds #64 een eigen formulier voor Epistola (`EpistolaDocumentCreateComponent`), en anders het bestaande
+SmartDocuments-formulier. De vertakking die de sealed outcome hieronder in de REST-laag legt, ligt daarmee in de
+frontend. Het voordeel is dat het
 SmartDocuments-pad onaangeroerd blijft (DoD-item 1). De prijs is dat er geen gedeelde interface is om een
 derde provider achter te hangen. Die staat daarom op #20 (R7).
 
@@ -135,7 +144,8 @@ sequenceDiagram
     Note over ZAC,OpenZaak: Grens 2 — policycheck overgeslagen,<br/>de sessie kan inmiddels verlopen zijn
 ```
 
-Epistola doet er niet minder stappen over — generatie is asynchroon, dus ZAC dient in, pollt en downloadt —
+Epistola doet er niet minder stappen over — generatie is asynchroon, dus ZAC leest het template, dient in, pollt,
+downloadt en verwijdert —
 maar *elke* hop vertrekt vanuit ZAC en valt binnen het verzoek dat al geautoriseerd was. Er komt niets
 terug naar binnen, dus geen van beide grenzen bestaat.
 
@@ -148,6 +158,8 @@ sequenceDiagram
     participant OpenZaak as Open Zaak
 
     Behandelaar->>ZAC: create-document (geauthenticeerd)
+    ZAC->>Epistola: GET /catalogs/{catalogId}/templates/{templateId} — datacontract
+    Epistola-->>ZAC: dataModel (de allow-list)
     ZAC->>Epistola: POST /documents/generate — allow-listed payload + correlationId
     Epistola-->>ZAC: 202 Accepted + requestId
     loop tot de job klaar is
@@ -158,7 +170,11 @@ sequenceDiagram
     Epistola-->>ZAC: application/pdf
     ZAC->>OpenZaak: opslaan + koppelen
     Note over ZAC,OpenZaak: Zelfde verzoek, policy al vastgesteld
+    ZAC->>Epistola: DELETE /documents/{documentId}
 ```
+
+Intussen vraagt het zijpaneel elke seconde bij ZAC naar de stap van het eigen verzoek
+(`GET …/create-document/{zaakUuid}/status`), voor de voortgang.
 
 ### De interface
 
@@ -186,7 +202,7 @@ lijkt.
 - `POST /documents/preview` is synchroon en geeft de PDF direct terug — maar het contract stelt dat het
   alleen voor preview is: **niet PDF/A-compliant**, rate-limited, resultaten worden niet bewaard, en
   expliciet "do not use for production document generation". Daarmee valt het af voor het artefact dat het
-  dossier in gaat.
+  dossier in gaat. Daarom gebruikt ZAC het alleen voor *Voorbeeld bekijken* (#54), en nooit voor wat in de zaak komt.
 - `POST /generation/collect` is een node-gebaseerde verdeelwachtrij: een client pollt continu, bevestigt een
   cursor en krijgt de resultaten voor zijn partitie. Dat is het juiste antwoord op batchvolume, en het
   vraagt een langlopende collector in ZAC die herstarts overleeft.
@@ -195,7 +211,7 @@ lijkt.
   doorvoerprobleem, en juist door de hele uitwisseling binnen het geauthenticeerde verzoek te houden blijft
   de eigenschap uit figuur 1 overeind.
 
-Het pollen is begrensd: voorbij een timeout faalt de aanroep met een herhaalbare melding, in plaats van een
+Het pollen is begrensd (`EPISTOLA_GENERATION_TIMEOUT_SECONDS`, standaard 60 seconden): voorbij een timeout faalt de aanroep met een herhaalbare melding, in plaats van een
 requestthread onbeperkt vast te houden. Zodra ZAC stopt met wachten zonder document, bij de timeout maar ook
 bij een fout tijdens het pollen, annuleert het de job. Dat is nodig: een job die blijft lopen, rendert alsnog
 een document dat niemand ophaalt, en elke nieuwe poging zou er één bij zetten. De requestthread blijft zo lang
@@ -245,16 +261,16 @@ verantwoordelijkheden. De poort die nu `isSmartDocumentsEnabled` vraagt, vraagt 
 provider. *Niet zo gebouwd; zie het besluit bovenaan deze paragraaf.* Elk endpoint toetst nu zijn eigen
 provider: het SmartDocuments-endpoint `isSmartDocumentsEnabled`, het Epistola-endpoint of Epistola actief is,
 voor het zaaktype aanstaat en een informatieobjecttype heeft. Of het
-template in de catalog van het zaaktype staat, zegt Epistola zelf bij het lezen ervan (#51). Aanbieden,
+template in de catalog van het zaaktype staat, zegt Epistola zelf bij het lezen ervan (#51). Aanmaken
 en voorbeeld weigeren daarnaast een template dat de beheerder heeft uitgezet, met de melding dat het zaaktype het
 template niet aanbiedt (`EpistolaTemplateNotOfferedException`, gecontroleerd in `EpistolaTemplatesService.readCatalogOfferingTemplate`).
-Alleen een nieuwe versie slaat die controle over.
+*Document maken* toont zo'n template niet. Alleen een nieuwe versie slaat die controle over.
 
 ---
 
 ## 3 · Datamapping
 
-De ZAC-kant is geen ontwerpkwestie — die bestaat al, in `DocumentCreationDataService.createData`, en #16
+De ZAC-kant is geen ontwerpkwestie — die bestaat al, in `DocumentCreationDataService.createData`; Epistola krijgt die via `createEpistolaData`, en #16
 heeft hem veld voor veld opgesomd. Epistola krijgt dezelfde payload als SmartDocuments, plus twee eigen
 velden en met datums in een ander formaat, en er komt één regel bij.
 
@@ -345,7 +361,7 @@ evenmin. Die leest het oude veld `schema`, dat Epistola altijd leeg laat, en val
 `invalidFields`. Tegen de versie die gerenderd wordt, is het dan wel bruikbaar, als bron voor de melding uit #8. De
 server doet dat voor `validate` nog niet. Op 30 september gaf de testserver op data met vier fouten alleen de velden
 `errors` en `valid` terug, en [epistola-suite#978](https://github.com/epistola-app/epistola-suite/issues/978)
-laat dat onderdeel wachten op deze contractrelease. ZAC gaat met [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) naar de 1.4.0-client, die de velden al
+laat dat onderdeel wachten op deze contractrelease. ZAC gebruikt sinds [PR #42](https://github.com/infonl/zac-epistola-prototype/pull/42) de 1.4.0-client, die de velden al
 kent.
 
 Epistola neemt deze als templatevariabelen aan, naast een `correlationId`. De variabelenamen zijn de
@@ -401,7 +417,10 @@ weggeschreven.
 
 - Server-side, in `DocumentCreationRestService`, via
   `assertPolicy(policyService.readZaakRechten(zaak, user).creerenDocument)`. Die controle stond er al voor
-  SmartDocuments, en #5 heeft haar in één helper gezet die beide endpoints aanroepen. Genereren vanuit een
+  SmartDocuments, en #5 heeft haar in één helper gezet die het SmartDocuments-endpoint en de Epistola-endpoints voor genereren en
+  voorbeeld aanroepen. Een nieuwe versie (`EpistolaDocumentRestService`) toetst `creeren_document` en
+  `toevoegen_nieuwe_versie`. Het statusendpoint leest alleen het eigen verzoek van de gebruiker en vraagt alleen
+  inloggen. Genereren vanuit een
   taak toetst daarnaast het taakniveau-`creeren_document`, dat ook `taak.open` vereist. Een weigering is een
   `PolicyException`, die `RestExceptionMapper` met 403 beantwoordt, voordat er iets naar Epistola gaat.
 - De frontend verbergt de actie wanneer het recht ontbreekt. Dat is presentatie, geen handhaving; het
@@ -435,7 +454,7 @@ dat contract gelezen en niet voorgesteld.
 | `GET /tenants/{tenantId}/catalogs/{catalogId}/templates` | Ja | `TEMPLATE_VIEW` | De templates van één catalog: in de beheerkaart die van de gekozen catalog, en in *Document maken* die van de catalog van het zaaktype (#51) |
 | `GET /tenants/{tenantId}/catalogs` | Ja | `CATALOG_VIEW` | De catalogs van de tenant, eigen en geabonneerde, waaruit de beheerder er per zaaktype één kiest (#51). ZAC laat `system` weg, Epistola's eigen catalog met de attributen en zonder templates. Bij het opslaan toetst ZAC de gekozen catalog aan deze lijst |
 | `POST /tenants/{tenantId}/catalogs/{catalogId}/templates/{templateId}/validate` | Nee | `TEMPLATE_VIEW` | Toetst data tegen het contract zonder te genereren. Waarom ZAC het niet vooraf aanroept, staat in [§3](#ontbrekende-optionele-velden) |
-| `POST /tenants/{tenantId}/documents/preview` | Nee | `DOCUMENT_GENERATE` | Synchroon, maar alleen preview: geen PDF/A, rate-limited, niet bewaard |
+| `POST /tenants/{tenantId}/documents/preview` | Ja, sinds #54 | `DOCUMENT_GENERATE` | *Voorbeeld bekijken*: synchroon, geen PDF/A, rate-limited, niet bewaard. Daarom alleen om te bekijken, nooit voor wat in de zaak komt |
 | `POST /tenants/{tenantId}/documents/generate/batch` | Nee | `DOCUMENT_GENERATE` | Batchgeneratie — buiten scope; een verbetervoorstel (#20) |
 | `POST /tenants/{tenantId}/generation/collect` | Nee | `DOCUMENT_GENERATE` | Cursorgebaseerde verdeelwachtrij voor continue afname. Het pad voor productieschaal |
 
@@ -458,10 +477,20 @@ open voor elke gebruiker.
 | Endpoint | Wat het doet |
 |---|---|
 | `GET epistola-catalogs` | De catalogs van de tenant, zonder `system`, op naam |
-| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart: elk alleen met `id` en `name`, uit één lijstverzoek bij Epistola. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30). Tot 7 oktober las het daarnaast elk template apart, voor zijn talen en eerder ook zijn kanalen en alle varianten met hun attributen (B32) |
+| `GET epistola-catalogs/{catalogId}/templates` | De templates van een catalog, voor de accordeon in de beheerkaart: elk alleen met `id` en `name`, uit de lijst van de catalog, per 100 opgehaald, zonder elk template apart te lezen. Is Epistola niet bereikbaar, dan komen de namen uit het geheugen (#30). Tot 7 oktober las het daarnaast elk template apart, voor zijn talen en eerder ook zijn kanalen en alle varianten met hun attributen (B32) |
 | `GET {zaaktypeUuid}/epistola-catalog-mapping` | De catalog en het informatieobjecttype van het zaaktype, en de instellingen per template (`templateSettings`: `templateId`, `informatieObjectTypeUUID`, `isEnabled`). Zonder gekozen catalog die van `EPISTOLA_CATALOG_ID` |
 | `POST {zaaktypeUuid}/epistola-catalog-mapping` | Slaat ze op, voor een CMMN-zaaktype. Weigert een catalog die niet in de live lijst staat en een informatieobjecttype dat niet bij het zaaktype hoort. De lijst `templateSettings` vervangt wat er stond (de beheerkaart stuurt hem elke keer geheel); een informatieobjecttype per template toetst ze zoals dat van het zaaktype, en de instelling van een template dat niet in de gekozen catalog staat, laat ze vallen. Een template dat aanstaat en geen eigen documenttype heeft, krijgt geen rij |
 | `GET {zaaktypeUuid}/epistola-templates` | De templates van de catalog van het zaaktype die aanstaan, elk met zijn informatieobjecttype: het eigen, en anders dat van het zaaktype. Leeg als het zaaktype geen Epistola-templates aanbiedt |
+
+**ZAC's eigen endpoints voor documenten**, onder `/rest`. Elk toetst de rechten zelf ([§4](#4--autorisatiemodel)).
+
+| Endpoint | Wat het doet |
+|---|---|
+| `POST document-creation/epistola/create-document` | Genereert en slaat op; antwoordt pas als het document in de zaak staat |
+| `POST document-creation/epistola/preview-document` | Geeft het voorbeeld als PDF terug en slaat niets op (#54) |
+| `GET document-creation/epistola/create-document/{zaakUuid}/status` | De stap van het eigen verzoek van de gebruiker, voor de voortgang |
+| `GET epistola-documents/{uuid}` | Of *Nieuwe versie genereren* bij dit document kan |
+| `POST epistola-documents/{uuid}/versions` | Genereert de volgende versie (#9) |
 
 Het endpoint voor de keuzelijst *Variant*
 (`GET /rest/document-creation/epistola/create-document/{zaakUuid}/template/{templateId}/varianten`, #47, #53) is op
@@ -477,7 +506,8 @@ roteren kan ZAC niet: de tenant manager geeft een nieuwe sleutel uit, die komt i
 daarna trekt hij de oude in.
 
 ZAC krijgt hem als `EPISTOLA_CLIENT_API_KEY` naast `EPISTOLA_TENANT_ID` en `EPISTOLA_CATALOG_ID`. Bij het
-opstarten controleert ZAC dat alle drie gezet zijn, en dat de tenant en de catalogus slugs zijn die Epistola
+opstarten controleert ZAC dat alle drie gezet zijn, net als `EPISTOLA_CLIENT_MP_REST_URL`, en dat de tenant en de
+catalogus slugs zijn die Epistola
 accepteert. De sleutel benoemt de installatie en geen persoon, en daarom blijft handhaving bij ZAC
 ([§4](#4--autorisatiemodel)). Volledig vastgelegd op #2.
 
@@ -532,21 +562,27 @@ nagegaan.
 
 | Situatie | Gedrag van ZAC | Wat de behandelaar ziet | Nagegaan in |
 |---|---|---|---|
-| Data breekt het contract van het template: een verplicht veld ontbreekt, of een waarde heeft het verkeerde type | Epistola neemt de job aan en laat hem mislukken, met de JSON Pointer van het veld: `Data validation failed: /zaak: required property 'identificatie' not found`. ZAC geeft die reden door aan de dialoog en logt haar niet | "Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm. Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder." Eronder staat Epistola's reden | TS-32 |
+| Data breekt het contract van het template: een verplicht veld ontbreekt, of een waarde heeft het verkeerde type | Epistola neemt de job aan en laat hem mislukken, met de JSON Pointer van het veld: `Data validation failed: /zaak: required property 'identificatie' not found`. ZAC geeft die reden door aan het zijpaneel en logt haar niet | "Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm. Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder." Eronder staat Epistola's reden | TS-32 |
 | Template zonder schema | ZAC weigert het vóór het indienen ([§3](#3--datamapping)) | "Het gekozen template geeft niet aan welke zaakgegevens het kan gebruiken. Neem contact op met de beheerder." | TS-21 |
 | Job loopt niet af binnen de timeout | ZAC annuleert de job. Weigert Epistola dat, dan logt ZAC het request-id. De melding hangt af van wat de job op dat moment deed | In de wachtrij: "Het document stond te lang in de wachtrij bij Epistola en is geannuleerd. Epistola is waarschijnlijk druk. Probeer het later opnieuw." Tijdens het renderen: "Epistola deed te lang over het maken van het document, en het is geannuleerd. …" Status onbekend: "Het aanmaken van het document duurde te lang en is afgebroken. Probeer het opnieuw." | TS-33 |
 | Pollen mislukt, bijvoorbeeld een 503 of een verbroken verbinding | ZAC annuleert de job en geeft de fout door | "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." | TS-33 |
 | Job mislukt bij het renderen, om een andere reden | Er is niets opgeslagen. ZAC geeft Epistola's reden door | "Het document kon niet worden aangemaakt. Probeer het opnieuw of neem contact op met de beheerder." | TS-32 |
 | 400 bij het indienen | Een verzoek dat ZAC verkeerd opbouwt, bijvoorbeeld zonder `catalogId` | "Epistola kon het verzoek van ZAC niet verwerken. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
 | 401 / 403 | De API key is afgewezen, verlopen of ingetrokken, of mist een van de twee rollen | "ZAC heeft geen toegang tot Epistola. Neem contact op met de beheerder." | `EpistolaRequestFailedExceptionTest` |
-| 404 op een template | Onbekend template of onbekende tenant — meestal een template dat uit de catalog is verdwenen nadat de dialoog de lijst las, of bij een nieuwe versie uit de catalog van het document (#51) | "Het gekozen template bestaat niet meer in Epistola. Neem contact op met de beheerder." | TS-34 |
+| 404 op een template | Onbekend template of onbekende tenant — meestal een template dat uit de catalog is verdwenen nadat het zijpaneel de lijst las, of bij een nieuwe versie uit de catalog van het document (#51) | "Het gekozen template bestaat niet meer in Epistola. Neem contact op met de beheerder." | TS-34 |
 | 429 rate limited | Herhaalbaar na wachten | "Epistola krijgt op dit moment te veel verzoeken. Probeer het over een paar minuten opnieuw." | `EpistolaRequestFailedExceptionTest` |
-| 5xx of Epistola onbereikbaar | Geen document, geen halve toestand. Het lezen van de mapping valt terug op de namen van de laatste geslaagde lijst ([datamodel](datamodel.md)), die van de catalog van het zaaktype (#51) | Bij het genereren: "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." Bij het openen van de dialoog: "De templates kunnen nu niet worden geladen." | TS-31 |
+| 5xx of Epistola onbereikbaar | Geen document, geen halve toestand. Het lezen van de mapping valt terug op de namen van de laatste geslaagde lijst ([datamodel](datamodel.md)), die van de catalog van het zaaktype (#51) | Bij het genereren: "Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw." Bij het openen van het zijpaneel: "De templates kunnen nu niet worden geladen." | TS-31 |
 | PDF gedownload, opslag in DRC mislukt | De PDF wordt niet bewaard en de kopie bij Epistola wordt verwijderd (B20). De reden van Open Zaak staat niet in het log | "Het document is gemaakt, maar het opslaan in Open Zaak is mislukt. Er is niets aan de zaak toegevoegd. Probeer het later opnieuw." | TS-26 |
 | Opgeslagen in DRC, koppeling in ZRC mislukt | Het informatieobject wordt verwijderd, in de gedeelde `ZgwApiService` en dus voor alle vijf aanroepers (B21). Lukt dat niet, dan een SEVERE-logregel met de URL | Dezelfde melding als hierboven | TS-35 |
+| Template uitgezet voor het zaaktype | ZAC weigert het vóór er iets naar Epistola gaat | "Het gekozen template wordt bij dit zaaktype niet aangeboden bij Document maken. Neem contact op met de beheerder." | Unittests |
+| Epistola niet ingesteld voor het zaaktype | ZAC weigert het vóór er iets naar Epistola gaat | "Documenten maken met Epistola is niet ingesteld voor dit zaaktype. Neem contact op met de beheerder." | Unittests |
+| Zaak van een BPMN-zaaktype | 400, vóór er iets naar Epistola gaat (#7) | "Een document maken met Epistola kan voorlopig alleen bij zaken van een CMMN-zaaktype. Deze zaak wordt door een BPMN-proces gestuurd." | Unittests |
+| Nieuwe versie niet mogelijk | Het document is niet met Epistola gemaakt, of hangt niet aan precies één zaak | "Van dit document kan geen nieuwe versie met Epistola worden gemaakt. Het is niet met Epistola gemaakt, of het is niet aan een zaak gekoppeld." | Unittests |
+| Ongeldige instelling in de beheerkaart | Opslaan weigert een catalog die Epistola niet heeft of een documenttype van een ander zaaktype | "De Epistola-instellingen konden niet worden opgeslagen. Kies een catalog die Epistola heeft, en een documenttype van dit zaaktype." | Unittests |
 
-Terwijl Epistola de job verwerkt, pollt de dialoog zijn status en toont *in de wachtrij*, *Epistola maakt het
-document*, of dat het langer duurt dan gebruikelijk. ZAC pollt Epistola zelf minstens één keer per seconde, zodat
+Terwijl Epistola de job verwerkt, pollt het zijpaneel de status en toont de stap, *Voorbereiden*, *In de wachtrij*,
+*Maken* of *Opslaan*, met een statustekst, ook als het langer duurt dan gebruikelijk. Een nieuwe versie toont
+dezelfde voortgang. ZAC pollt Epistola zelf minstens één keer per seconde, zodat
 de getoonde status niet achterloopt.
 
 ### Bewaartermijn bij Epistola
@@ -624,7 +660,7 @@ Er zijn drie, elk voor iets anders:
   (B32).
 - ***Document maken* heeft voor Epistola geen veld *Templategroep*.** Het veld *Template* biedt de templates van de
   catalog meteen, en kiest het enige zelf ([§1](#1--functioneel-ontwerp), stap 3). SmartDocuments houdt zijn groepveld
-  en zijn eigen namen. De dialoog heeft daardoor niet meer bij beide providers dezelfde velden ([wireframes](wireframes.md)).
+  en zijn eigen namen. Het formulier heeft daardoor niet meer bij beide providers dezelfde velden ([wireframes](wireframes.md)).
 - **`EPISTOLA_CATALOG_ID` blijft verplicht**, als catalog van een zaaktype dat er geen koos ([§5](#authenticatie)).
 - **Een document onthoudt zijn catalog** (`epistola_document.catalog_id`), zodat een nieuwe versie het template
   ook vindt als het zaaktype inmiddels een andere catalog heeft. De templatenamen voor als Epistola niet bereikbaar is
@@ -660,12 +696,14 @@ Er zijn drie, elk voor iets anders:
   Er staat ook de catalog van het template in (#51). Tot 7 oktober stonden er ook het kanaal (#47) en de taal (#52)
   in waar ZAC Epistola om vroeg; die kolommen zijn met B32 vervallen.
 - **De actie staat niet bij een document dat de gebruiker niet mag wijzigen**, want `toevoegen_nieuwe_versie` geldt
-  hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*.
+  hier net als bij een geüpload document: de zaak moet open zijn en het document niet *Definitief*. Ook niet bij een
+  ondertekend document, en niet bij een document dat aan meer dan één zaak hangt.
 
 ### Nog open
 
 - **Mag documenten maken alleen vanuit de zaak, niet vanuit een taakformulier, een bekende beperking blijven?** Het
-  endpoint ondersteunt een taak wel (TS-28); de dialoog opent alleen vanuit de zaak. Geagendeerd op 28 september,
+  endpoint ondersteunt een taak wel (TS-28); *Document maken* met Epistola opent alleen vanuit de zaak; een mogelijke uitwerking staat op de branch
+  `explore/epistola-document-from-task`, die niet in `main` is gemerged. Geagendeerd op 28 september,
   niet beantwoord.
 - **Bij opname in ZAC: mag ZAC een tabel met de herkomst van documenten bijhouden (`epistola_document`)?** Het ontwerp
   van 21 september zei dat ZAC geen documentregistratie bijhoudt. De tabel is klein en bewaart geen inhoud, maar het is

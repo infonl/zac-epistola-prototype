@@ -550,3 +550,130 @@ code {
 .acc-switch .toggle {
   margin-top: 0;
 }
+
+/* ---------- switched off ---------- */
+
+.toggle.off {
+  background: var(--rule-strong);
+}
+
+.toggle.off i {
+  right: auto;
+  left: 2px;
+}
+
+/* ---------- progress in steps ---------- */
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 14px 0 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.step i {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0 auto 4px;
+  border-radius: 50%;
+  border: 1px solid var(--rule-strong);
+  font-style: normal;
+  line-height: 18px;
+  font-size: 0.72rem;
+}
+
+.step.done i {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
+}
+
+.step.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.step.active i {
+  border: 2px solid var(--accent);
+  line-height: 16px;
+}
+
+.bar {
+  height: 4px;
+  background: var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 38%;
+  background: var(--accent);
+}
+
+.status {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  margin: 8px 0 4px;
+}
+
+/* ---------- dialogs ---------- */
+
+.dialog {
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+}
+
+.dialog-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.dialog-head .x {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.dialog-head .mark {
+  color: var(--open);
+}
+
+.dialog-body {
+  padding: 12px 13px;
+  font-size: 0.85rem;
+}
+
+.dialog-body p {
+  margin: 0 0 8px;
+}
+
+.dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 13px 12px;
+}
+
+.pdf {
+  border: 1px dashed var(--rule-strong);
+  background: var(--surface-2);
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 36px 12px;
+  text-align: center;
+  margin: 8px 0;
+}

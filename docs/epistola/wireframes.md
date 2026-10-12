@@ -3,14 +3,15 @@
 | | |
 |---|---|
 | Issue | [#15](https://github.com/infonl/zac-epistola-prototype/issues/15) · werkproces B1-K1-W2 |
-| Stand | Besproken met de stakeholders en bijgewerkt op 6 oktober 2026 naar wat #3, #7, #8, #30, #47 en #51 tot en met #53 hebben gebouwd. Op 7 oktober zijn de variantkeuze en de taalkeuze eruit gehaald (B32) |
-| Raakt | #3 beheerscherm · #5 dialoog · #7 CMMN-poort · #8 foutafhandeling · #51 catalog per zaaktype |
+| Stand | Besproken met de stakeholders en bijgewerkt op 6 oktober 2026 naar wat #3, #7, #8, #30, #47 en #51 tot en met #53 hebben gebouwd. Op 7 oktober zijn de variantkeuze en de taalkeuze eruit gehaald (B32). Op 12 oktober 2026 nagelopen tegen `main`: het zijpaneel, *Voorbeeld bekijken* (#54), de voortgang in stappen en *Nieuwe versie genereren* (#9) |
+| Raakt | #3 beheerscherm · #5 Document maken · #7 CMMN-poort · #8 foutafhandeling · #9 nieuwe versie · #51 catalog per zaaktype · #54 voorbeeld |
 | Fidelity | Laag — structuur, toestanden en labels zijn het onderwerp, visueel ontwerp niet |
 
-Vier schermen, getekend tegen de Angular Material-componenten die ZAC al heeft in plaats van verzonnen.
-Het leidende besluit: **de actie, het label en de dialoog verraden niet welke provider er geconfigureerd is** — de
+Vijf schermen, getekend tegen de Angular Material-componenten die ZAC al heeft in plaats van verzonnen.
+Het leidende besluit: **de actie en het label verraden niet welke provider er geconfigureerd is** — de
 provider is een zaak van de beheerder, dus de zaakkant van de interface blijft het scherm dat mensen al
-kennen. De foutmeldingen van de gebouwde versie noemen Epistola wel (scherm 4).
+kennen. De voortgangsregels en de foutmeldingen noemen Epistola wel (scherm 3 en 4), omdat ze zeggen welk systeem
+bezig is of niet reageert.
 
 De getekende schermen staan als los te openen HTML-mockups in [`wireframes/`](wireframes/). GitHub toont
 die niet inline; download ze of open ze lokaal in een browser. De schermbeschrijvingen hieronder zijn
@@ -33,12 +34,12 @@ aan, behalve wat hij uitzet.
 
 | Element | Type | Gedrag |
 |---|---|---|
-| Kaart *Epistola-documenttemplates* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is |
-| Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder is verborgen zolang hij uit staat. Zonder zichtbare tekst ernaast; de naam *Documenten maken met Epistola* staat als `aria-label` op de schuifknop |
-| Catalog | `mat-select` | Verplicht. Biedt de catalogs van de tenant op naam, zonder Epistola's eigen `system`. Staat op de opgeslagen catalog, en zonder die op de catalog van `EPISTOLA_CATALOG_ID` (#51) |
-| Documenttype | `mat-select` | Verplicht. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6). Eén voor het zaaktype: de standaard; een template met een eigen documenttype overschrijft die (`override ?: standaard`) |
-| Vertrouwelijkheid | read-only tekst | Afgeleid van het gekozen informatieobjecttype, niet apart in te stellen |
-| Templates in deze catalog | `mat-accordion` met één `mat-expansion-panel` per template | Live opgehaald bij Epistola. Het kopje van een item noemt de naam, en als omschrijving het documenttype dat geldt: het eigen documenttype van het template, *Zaaktype-standaard: Besluit* als het er geen heeft, of *Verborgen bij Document maken* als het uit staat. De inhoud van een item toont het template-id. Tot 7 oktober toonde het item ook de talen en eerder de varianten met hun attributen; dat staat nu op de branch `explore/epistola-variant-picker` (B32). Daaronder staat een `mat-select` *Documenttype*, met als eerste keuze *Zaaktype-standaard*, en een schuifknop *Aangeboden bij Document maken*. Is Epistola niet bereikbaar, dan toont het item het id en de naam uit het geheugen van ZAC (#30), met de select en de schuifknop. Heeft de catalog geen templates, dan staat er *Deze catalog heeft geen templates.* |
+| Kaart *Epistola-documenttemplates* | `mat-card` | Alleen bij een CMMN-zaaktype, en volledig afwezig wanneer `DOCUMENT_CREATION_PROVIDER` niet `EPISTOLA` is. Onder de titel: *Kies de Epistola-catalog waarvan dit zaaktype de templates aanbiedt, en het documenttype waaronder de documenten worden opgeslagen.* |
+| Schuifknop | `mat-slide-toggle` | Schrijft `epistola_ingeschakeld` op het zaaktype. Zonder zichtbare tekst ernaast; de naam *Documenten maken met Epistola* staat als `aria-label` op de schuifknop. Staat hij uit, dan toont de kaart alleen *Documenten maken met Epistola staat uit voor dit zaaktype.* |
+| Catalog | `mat-select` | Verplicht. Biedt de catalogs van de tenant op naam, zonder Epistola's eigen `system`. Staat op de opgeslagen catalog, en zonder die op de catalog van `EPISTOLA_CATALOG_ID` (#51). Heeft de tenant geen catalogs, dan staat onder het veld *Epistola heeft voor deze tenant geen catalogs om uit te kiezen.* |
+| Documenttype | `mat-select` | Verplicht, met de tekst *- Kies een documenttype -* zolang er niets gekozen is. Biedt de informatieobjecttypen van het zaaktype, en bepaalt hoe de PDF in Open Zaak wordt geregistreerd (#6). Eén voor het zaaktype: de standaard; een template met een eigen documenttype overschrijft die (`override ?: standaard`) |
+| Vertrouwelijkheidaanduiding | read-only veld | Afgeleid van het gekozen informatieobjecttype, niet apart in te stellen |
+| Templates in deze catalog | `mat-accordion` met één `mat-expansion-panel` per template | Verschijnt pas als er een catalog gekozen is. Live opgehaald bij Epistola. Het kopje van een item noemt de naam, en als omschrijving het documenttype dat geldt: het eigen documenttype van het template, *Zaaktype-standaard: Besluit* als het er geen heeft, of *Verborgen bij Document maken* als het uit staat. De inhoud van een item toont het *Template-id*. Tot 7 oktober toonde het item ook de talen en eerder de varianten met hun attributen; dat staat nu op de branch `explore/epistola-variant-picker` (B32). Daaronder staat een `mat-select` *Documenttype*, met als eerste keuze *Zaaktype-standaard*, en een schuifknop *Aangeboden bij Document maken*. Is Epistola niet bereikbaar, dan toont het item het id en de naam uit het geheugen van ZAC (#30), met de select en de schuifknop. Heeft de catalog geen templates, dan staat er *Deze catalog heeft geen templates.* |
 
 ### Aantekeningen
 
@@ -46,7 +47,7 @@ aan, behalve wat hij uitzet.
    ziet nooit twee providerkaarten tegelijk. Bij een BPMN-zaaktype ontbreekt de kaart altijd: #7 beperkt
    Epistola tot CMMN, dus instellen zou daar niets doen.
 2. **De schuifknop** schrijft `epistola_ingeschakeld` op het zaaktype. Alles eronder blijft verborgen
-   zolang hij uit staat.
+   zolang hij uit staat; de kaart zegt dan dat Epistola voor dit zaaktype uit staat.
 3. **Geen groepen, één catalog.** De indeling maakt de templateauteur in Epistola, met catalogs, en de
    beheerder kiest per zaaktype welke catalog (#51).
 4. **Geen selectievakje per template.** Bij SmartDocuments levert de provider de boom en vinkt de beheerder aan
@@ -64,10 +65,10 @@ aan, behalve wat hij uitzet.
 7. **Opslaan wacht op het zaaktype.** De templateinstellingen worden pas opgeslagen nadat het zaaktype zelf
    is opgeslagen, omdat ze bij die zaaktypeconfiguratie horen. Een ongeldige instelling (geen catalog of geen
    documenttype) houdt de knop *Opslaan* van de hele stap uitgeschakeld. Opslaan toetst de catalog aan de live lijst
-   van Epistola.
+   van Epistola. Een nieuwe versie van het zaaktype neemt de instellingen over, ook die per template.
 8. **Geen taal te kiezen** (B32). Tot 7 oktober koos de beheerder hier één taal voor alle templates van het zaaktype
    (#51). Een taal is ook een variant, en ZAC vraagt Epistola nu om geen variant, dus elk template wordt gemaakt in zijn
-   standaardvariant ([scherm 3](#3--dialoog--document-genereren)). De keuzelijst *Taal* staat op de branch
+   standaardvariant ([scherm 3](#3--zijpaneel--document-maken)). De keuzelijst *Taal* staat op de branch
    `explore/epistola-variant-picker`.
 
 De documenttype-select en de afgeleide vertrouwelijkheid reproduceren
@@ -85,7 +86,7 @@ verandert.
 
 | Zaaktype | Actie *Document maken* | Toelichting |
 |---|---|---|
-| CMMN | Actief | De bestaande actie, met de bestaande vertaalsleutel `actie.document.maken` |
+| CMMN | Actief | De bestaande actie, met de bestaande vertaalsleutel `actie.document.maken`. Alleen als Epistola voor het zaaktype aanstaat en de gebruiker documenten mag maken; anders ontbreekt de actie |
 | BPMN | Zichtbaar maar uitgeschakeld, met tooltip | "Een document maken met Epistola kan voorlopig alleen bij zaken van een CMMN-zaaktype, niet bij zaken die door een BPMN-proces worden gestuurd." |
 
 ### Aantekeningen
@@ -103,54 +104,70 @@ verandert.
 4. **De knop zit in een focusbare omhulling**, zodat de toelichting ook met het toetsenbord en voor een
    schermlezer bereikbaar is. Een uitgeschakelde knop kan geen focus krijgen, en dan was de uitleg onzichtbaar.
    Gebouwd in #7.
+5. **Alleen vanuit de zaak.** Vanuit een taak biedt ZAC *Document maken* met Epistola niet aan; het endpoint
+   accepteert wel een taak (VV-13). Een mogelijke uitwerking staat op de branch `explore/epistola-document-from-task`,
+   die niet in `main` is gemerged.
 
 ---
 
-## 3 · Dialoog — document genereren
+## 3 · Zijpaneel — Document maken
 
 > Mockup: [`wireframes/3-dialoog.html`](wireframes/3-dialoog.html) ·
-> Component: dialoog vanuit de zaakdetailpagina
+> Component: zijpaneel vanuit het zaakmenu
 
-Dezelfde velden als de bestaande SmartDocuments-dialoog, met als verschillen: bij Epistola ontbreekt het veld
-*Templategroep* (#51), en *Formaat* ligt vast op PDF. Er is geen veld *Taal* en geen veld *Variant*: ZAC vraagt
-Epistola om geen variant, dus Epistola maakt de standaardvariant van het template. Tot 7 oktober stond er een veld
-*Variant* bij een template met varianten voor twee of meer kanalen (#47, #53), en vroeg ZAC om de taal die de beheerder
-voor het zaaktype koos ([scherm 1](#1--admin--epistola-documenttemplates-per-zaaktype)); dat staat nu op de branch
-`explore/epistola-variant-picker` (B32).
+*Document maken* opent een zijpaneel met dezelfde velden als het SmartDocuments-formulier, met als verschillen: bij
+Epistola ontbreekt het veld *Templategroep* (#51), en *Bestandsformaat* ligt vast op PDF. Er is geen veld *Taal* en
+geen veld *Variant*: ZAC vraagt Epistola om geen variant, dus Epistola maakt de standaardvariant van het template. Tot
+7 oktober stond er een veld *Variant* bij een template met varianten voor twee of meer kanalen (#47, #53), en vroeg ZAC
+om de taal die de beheerder voor het zaaktype koos ([scherm 1](#1--admin--epistola-documenttemplates-per-zaaktype));
+dat staat nu op de branch `explore/epistola-variant-picker` (B32). Sinds #64 is het een eigen formulier voor Epistola,
+los van ZAC's SmartDocuments-formulier, achter dezelfde actie.
 
 | Veld | Type | Verplicht | Herkomst |
 |---|---|---|---|
-| Templategroep | `mat-select` | Ja | De groepen die voor dit zaaktype zijn geconfigureerd. Alleen bij SmartDocuments; bij Epistola ontbreekt het veld (#51) |
-| Template | `mat-select` | Ja | Bij Epistola elk template in de catalog van het zaaktype dat aanstaat, op naam. Is er maar één, dan is het gekozen (#51) |
-| Titel | tekstveld | Ja | Door de behandelaar in te vullen |
-| Toelichting | tekstveld | Nee | Door de behandelaar in te vullen |
+| Template | autocomplete op naam | Ja | Elk template in de catalog van het zaaktype dat aanstaat. Is er maar één, dan is het gekozen en ligt het veld vast (#51) |
+| Titel | tekstveld, ten hoogste 100 tekens | Ja | Door de behandelaar in te vullen |
+| Beschrijving | tekstveld, ten hoogste 100 tekens | Nee | Door de behandelaar in te vullen |
 | Documenttype | read-only | — | Dat van het gekozen template, en anders dat van het zaaktype (#51) |
-| Vertrouwelijkheid | read-only | — | Afgeleid van het documenttype |
-| Formaat | read-only, statische tekst "PDF" | — | Vast; er is geen keuze |
-| Auteur | read-only | Ja | De ingelogde gebruiker |
+| Vertrouwelijkheidaanduiding | read-only | — | Afgeleid van het documenttype |
+| Bestandsformaat | read-only veld met "PDF" | — | Vast; er is geen keuze |
+| Auteur | read-only | — | De ingelogde gebruiker |
 
-Tijdens het genereren blokkeert de dialoog: een voortgangsbalk met de stappen *Voorbereiden*, *In de wachtrij*,
-*Maken* en *Opslaan*, en een uitgeschakelde knop *Genereren*. Een regel eronder zegt wat Epistola met de job doet, en
-wordt elke seconde ververst: *Het document staat in de wachtrij bij Epistola*, *Epistola maakt het document*, en bij
-een lange wachttijd *… langer dan gebruikelijk. ZAC wacht nog even.* (#8).
+Onder de velden staan drie knoppen: **Voorbeeld bekijken**, **Genereren** en **Annuleren**.
 
-Kan de dialoog de templates niet laden omdat Epistola niet bereikbaar is, dan staat er *De templates kunnen nu
-niet worden geladen*, en niet een lege lijst (#8).
+**Voorbeeld bekijken** werkt zodra er een template gekozen is (#54). Het opent de dialoog *Voorbeeld van het
+document*: de naam van het template, de PDF die Epistola rendert (met een watermerk van Epistola), en de uitleg
+*Dit is een voorbeeld en nog niet in de zaak opgeslagen. Pas bij Genereren maakt ZAC het document dat in de zaak komt.*
+ZAC stuurt dezelfde zaakgegevens als bij genereren en slaat niets op.
+
+Tijdens het genereren blijft het zijpaneel open en zijn de drie knoppen uitgeschakeld; *Genereren* toont een spinner.
+Onder de velden staat de voortgang: vier genummerde stappen *Voorbereiden*, *In de wachtrij*, *Maken* en *Opslaan*, een
+voortgangsbalk en een regel die zegt wat er gebeurt. Die regel wordt elke seconde ververst: eerst *Het document wordt
+gegenereerd. Dat kan enkele seconden duren.*, dan *Het document staat in de wachtrij bij Epistola.* en *Epistola maakt
+het document.*, bij een lange wachttijd *… langer dan gebruikelijk. ZAC wacht nog even.*, en bij het opslaan *Het document
+wordt opgeslagen in de zaak.* (#8). Is het klaar, dan zijn alle stappen afgevinkt met *Het document is klaar.*, volgt de
+melding dat het document aan de zaak is toegevoegd, en sluit het zijpaneel. Het document staat zonder herladen in de lijst.
+
+Kan het zijpaneel de templates niet laden omdat Epistola niet bereikbaar is, dan staat boven *Template* *De templates
+kunnen nu niet worden geladen.* met de reden erachter, en niet een lege lijst (#8). Kent ZAC de namen van een eerdere
+lijst, dan toont het die (#30).
 
 ### Aantekeningen
 
-1. **Geen keuze voor het uitvoerformaat.** "Formaat: PDF" staat er als statische tekst en niet als een
+1. **Geen keuze voor het uitvoerformaat.** *Bestandsformaat: PDF* staat er als read-only veld en niet als een
    keuzelijst met één optie — een select die de gebruiker niet kan wijzigen is een dode besturing. #5
    vereist alleen PDF.
 2. **Documenttype en vertrouwelijkheid zijn read-only**, gevuld uit de configuratie van het zaaktype zodra er een
    template gekozen is. De behandelaar kan een document niet onder het verkeerde informatieobjecttype wegzetten.
 3. **Bij Epistola is er geen groep te kiezen.** *Template* biedt meteen de templates van de catalog van het zaaktype
    (#51). Bij SmartDocuments blijft *Template* leeg tot er een groep is gekozen.
-4. **Genereren blokkeert de dialoog** in plaats van hem te sluiten, zodat een mislukking in context getoond
-   kan worden en niet als een losse toast op de zaakpagina.
+4. **Genereren houdt het zijpaneel open** in plaats van het te sluiten. Mislukt het, dan verschijnt ZAC's foutdialoog
+   boven het zijpaneel, en staat de invoer er nog als de behandelaar die dialoog sluit (scherm 4).
 5. **Geen variant te kiezen** (B32). ZAC vraagt Epistola om geen taal en geen variant, dus Epistola maakt altijd de
    standaardvariant van het template, ook als het template er meer heeft
    ([ontwerp §5](technisch-functioneel-ontwerp.md#verzoek)). Een andere variant kiezen is het vervolg in #50.
+6. **Het voorbeeld is geen dossierstuk.** Het komt uit Epistola's `preview`: geen PDF/A en niet bewaard. Wat in de zaak
+   komt, maakt pas *Genereren*.
 
 Anders dan bij SmartDocuments is er geen overdracht aan een wizard: Epistola genereert server-side, dus de
 flow blijft binnen ZAC en vertrekt nooit naar een externe editor.
@@ -159,7 +176,7 @@ flow blijft binnen ZAC en vertrekt nooit naar een externe editor.
 
 ## 4 · Foutpaden
 
-> Mockup: [`wireframes/4-foutpaden.html`](wireframes/4-foutpaden.html) (tekent de eerste twee meldingen)
+> Mockup: [`wireframes/4-foutpaden.html`](wireframes/4-foutpaden.html)
 
 Drie mislukkingen die andere woorden nodig hebben, omdat elke een andere oorzaak heeft en de behandelaar iets anders
 moet weten of doen. De teksten zijn die van de gebouwde versie (#8), elk met een eigen foutcode. De overige staan in
@@ -167,9 +184,11 @@ moet weten of doen. De teksten zijn die van de gebouwde versie (#8), elk met een
 
 | Situatie | Melding |
 |---|---|
-| Epistola onbereikbaar | **Epistola is op dit moment niet bereikbaar.** Probeer het later opnieuw. |
-| Gegenereerd, opslag mislukt | **Het document is gemaakt, maar het opslaan in Open Zaak is mislukt.** Er is niets aan de zaak toegevoegd. Probeer het later opnieuw. |
-| Data breekt het contract van het template | **Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm.** Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder. *(met Epistola's reden eronder)* |
+| Epistola onbereikbaar | Epistola is op dit moment niet bereikbaar. Probeer het later opnieuw. |
+| Gegenereerd, opslag mislukt | Het document is gemaakt, maar het opslaan in Open Zaak is mislukt. Er is niets aan de zaak toegevoegd. Probeer het later opnieuw. |
+| Data breekt het contract van het template | Het template vraagt zaakgegevens die deze zaak niet heeft, of in een andere vorm. Opnieuw proberen helpt niet. Geef de melding hieronder door aan de beheerder. *(met Epistola's reden eronder)* |
+
+Elke melding verschijnt in ZAC's foutdialoog *Er is een fout opgetreden*, met een knop *Sluiten*.
 
 ### Aantekeningen
 
@@ -179,10 +198,35 @@ moet weten of doen. De teksten zijn die van de gebouwde versie (#8), elk met een
 2. **Nooit een stacktrace.** De melding noemt de oorzaak, en bij een gebroken contract Epistola's eigen
    reden, zodat de behandelaar genoeg heeft om de beheerder te vertellen wat er mis is. Voor het log geldt de regel uit #16: identificaties
    en statussen, nooit de payload.
-3. **Fouten verschijnen binnen de dialoog**, die nog openstaat omdat het genereren hem blokkeerde.
+3. **Fouten verschijnen in ZAC's foutdialoog** boven het zijpaneel. Het zijpaneel blijft open met de invoer, zodat de
+   behandelaar het na het sluiten van de dialoog opnieuw kan proberen.
 4. **De meldingen noemen Epistola wel**, omdat ze het systeem noemen dat niet reageert. Het ontwerpbesluit hieronder
    dat de behandelaar de provider niet hoeft te kennen, geldt voor de *actie* en het *label*: die blijven
-   *Document maken*. Dat de foutmeldingen daarvan afwijken, is nog niet met de stakeholders besproken.
+   *Document maken*. Een melding moet zo duidelijk mogelijk zijn, en daarom noemt ze de provider.
+
+---
+
+## 5 · Documentpagina — Nieuwe versie genereren
+
+> Mockup: [`wireframes/5-nieuwe-versie.html`](wireframes/5-nieuwe-versie.html) ·
+> Route: `/informatie-objecten/{uuid}`
+
+Op de pagina van een document dat Epistola maakte, staat in het menu **Nieuwe versie genereren**, naast het bestaande
+*Nieuwe versie* (uploaden) (#9). Het maakt de PDF opnieuw met hetzelfde template uit dezelfde catalog, ook als het
+zaaktype inmiddels een andere catalog heeft, en met de zaakgegevens van dat moment.
+
+| Element | Gedrag |
+|---|---|
+| Menu-item *Nieuwe versie genereren* | Alleen bij een document waarvan ZAC weet met welk template het is gemaakt (`epistola_document`), als de gebruiker documenten in de zaak mag maken en een nieuwe versie mag toevoegen. Niet bij een ondertekend document |
+| Dialoog *Nieuwe versie genereren* | De titel van het document en dezelfde vier stappen als in scherm 3, met dezelfde statusregel |
+| Klaar | De melding *Er is een nieuwe versie van "…" gemaakt met Epistola.* De documentpagina toont de nieuwe versie (*Versie 2 van 2*); met de pijltjes is de vorige ongewijzigd terug te zien |
+| Mislukt | De huidige versie blijft zoals ze was; de melding is die van scherm 4. Kan er geen nieuwe versie met Epistola worden gemaakt: *Van dit document kan geen nieuwe versie met Epistola worden gemaakt. Het is niet met Epistola gemaakt, of het is niet aan een zaak gekoppeld.* |
+
+### Aantekeningen
+
+1. **Geen formulier.** Template, catalog, titel en documenttype liggen vast door de eerste versie; er is niets te kiezen.
+2. **Een template dat de beheerder heeft uitgezet**, maakt nog steeds een nieuwe versie van een document dat er al mee
+   is gemaakt. Uitzetten haalt het alleen uit de lijst van *Document maken*.
 
 ---
 
@@ -191,8 +235,8 @@ moet weten of doen. De teksten zijn die van de gebouwde versie (#8), elk met een
 ### De actie en het label verraden de provider niet
 
 Elk zaakkant-scherm hierboven is het scherm dat ZAC al heeft. Zelfde actie, zelfde label, vrijwel dezelfde
-dialoogvelden — alleen de templates erachter verschillen, en bij Epistola heeft de dialoog geen veld *Templategroep*
-(#51). De dialoog noemt de provider niet.
+velden — alleen de templates erachter verschillen, en bij Epistola heeft het zijpaneel geen veld *Templategroep*
+(#51). De actie en het label noemen de provider niet; de voortgangsregels en de foutmeldingen wel.
 
 Daarom blijft het "Document maken" in plaats van het "Genereer document" uit #5. Welke documentengine een
 installatie draait is een beslissing van de beheerder; die in de zaakzijbalk tonen zou elke behandelaar een

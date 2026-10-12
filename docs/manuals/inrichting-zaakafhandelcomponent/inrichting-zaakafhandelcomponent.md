@@ -763,7 +763,7 @@ In dit tabblad kan voor een aantal situaties waarin de zaak wordt beëindigd het
 
 ### Koppelingen
 
-Hier kunt u Landelijke registratie koppelingen aan of uit zetten en het documenttype selecteren dat door elk SmartDocuments sjabloon moet worden verwerkt.
+Hier kunt u Landelijke registratie koppelingen aan of uit zetten, en instellen hoe documenten voor dit zaaktype worden gemaakt: met SmartDocuments of met Epistola, en onder welk documenttype ze worden opgeslagen.
 
 #### Landelijke registratie koppelingen
 
@@ -806,18 +806,20 @@ Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren. Het zaaktype is h
 
 #### Epistola
 
-Epistola is de andere documentcreatieapplicatie die ZAC kan gebruiken. ZAC gebruikt één documentcreatieapplicatie tegelijk: de beheerder kiest die bij de installatie.
+Epistola is de andere documentcreatieapplicatie die ZAC kan gebruiken. ZAC gebruikt één documentcreatieapplicatie tegelijk: de beheerder kiest die bij de installatie met `DOCUMENT_CREATION_PROVIDER`. Alleen als dat Epistola is, staat de kaart *Epistola-documenttemplates* bij een CMMN-zaaktype. Epistola maakt PDF-documenten.
 
 **LET OP: met Epistola kan alleen een document worden gemaakt bij zaken van een CMMN-zaaktype.** Een BPMN-zaaktype heeft geen Epistola-instellingen. In een zaak die door een BPMN-proces wordt gestuurd staat *Document maken* uitgeschakeld, met een toelichting bij het menu-item.
 
 De templates worden in Epistola gemaakt en daar ingedeeld in catalogs. Per zaaktype kies je één catalog, en het zaaktype biedt elk template in die catalog aan, behalve de templates die je uitzet. Een template dat in Epistola aan de catalog wordt toegevoegd, is daarna meteen te kiezen bij *Document maken*, zonder dat er in ZAC iets hoeft te veranderen.
 
 - Documenten maken met Epistola aanzetten voor het huidige zaaktype, met de schuifknop rechtsboven in de kaart
-- Catalog kiezen: de catalog in Epistola waaruit het zaaktype zijn templates haalt. Daaronder staan de templates die de catalog nu heeft, zie *Per template instellen*. Zolang er voor het zaaktype geen catalog is gekozen, staat de catalog uit de installatie-instellingen (`EPISTOLA_CATALOG_ID`) geselecteerd
+- Catalog kiezen: de catalog in Epistola waaruit het zaaktype zijn templates haalt. Daaronder staan de templates die de catalog nu heeft, zie *Per template instellen*. Zolang er voor het zaaktype geen catalog is gekozen, staat de catalog uit de installatie-instellingen (`EPISTOLA_CATALOG_ID`) geselecteerd. De keuzelijst toont de catalogs van de tenant, behalve de catalog `system` van Epistola zelf
 - Documenttype kiezen: het documenttype waaronder een document dat met Epistola voor dit zaaktype wordt gemaakt, in Open Zaak wordt opgeslagen. Dit is de standaard voor het zaaktype; een template kan een eigen documenttype hebben. De vertrouwelijkheidaanduiding volgt uit het documenttype
 - Per template instellen: elk template van de catalog staat als uitklapbaar item onder de velden. Het kopje noemt de naam van het template en het documenttype dat voor dat template geldt: het eigen documenttype, *Zaaktype-standaard* met de naam ervan, of *Verborgen bij Document maken*. Open een item voor het template-id, voor een eigen *Documenttype* en voor de schuifknop *Aangeboden bij Document maken*. Kies bij *Documenttype* de keuze *Zaaktype-standaard* als het template het documenttype van het zaaktype moet gebruiken. Zet je *Aangeboden bij Document maken* uit, dan staat het template niet meer in de lijst van de behandelaar. Het blijft in Epistola staan, en een nieuwe versie van een document dat er al mee is gemaakt, lukt nog steeds. Een document wordt altijd gemaakt in de standaardvariant van het template in Epistola: ZAC kiest geen taal en geen andere variant, en de behandelaar ook niet
 
-Staat Epistola aan, dan zijn de catalog en het documenttype van het zaaktype verplicht; de instellingen per template zijn dat niet. Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren.
+Elk template heeft in Epistola een datacontract nodig. ZAC stuurt alleen de zaakgegevens die het contract noemt. Een template zonder datacontract staat wel in de lijst, maar de behandelaar krijgt bij *Document maken* een melding dat het template niet aangeeft welke zaakgegevens het gebruikt. Vraagt het contract gegevens die de zaak niet heeft, dan weigert Epistola het document en ziet de behandelaar de reden.
+
+Staat Epistola aan, dan zijn de catalog en het documenttype van het zaaktype verplicht; de instellingen per template zijn dat niet. Klik op ‘Opslaan’ om de zaps voor het zaaktype te bewaren. Bij een nieuwe versie van het zaaktype neemt ZAC de Epistola-instellingen over, ook die per template.
 
 # Inrichting in OpenZaak - voor functionaliteiten in ZAC
 
